@@ -1,24 +1,14 @@
 {
   "compilerOptions": {
-    "target": "ES6",
-    "module": "CommonJS",
-    "lib": ["ES2020"],
-    "strict": true,
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "esModuleInterop": true,
-    "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "./dist", // Compiled files will go here
-    "rootDir": "./backend/src", // Set the root directory to the backend's src
-    "baseUrl": "./backend/src", // Base URL for module resolution
-    "paths": {
-      "@/*": ["*"]
-    }
-  },
-  "include": [
-    "backend/src" // Make sure we only include files in the backend's src
-  ],
-  "exclude": [
-    "node_modules",
-    "frontend" // Exclude frontend from the backend's tsconfig
-  ]
+    "strict": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "sourceMap": true,
+    "incremental": true
+  }
 }

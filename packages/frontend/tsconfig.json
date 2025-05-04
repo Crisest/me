@@ -26,9 +26,10 @@
       "@/*": ["*"],
       "@components/*": ["components/*"],
       "@assets/*": ["assets/*"],
-      "@customTypes/*": ["types/*"]
+      "@customTypes/*": ["types/*"],
+      "@portfolio/common/*": ["../../common/src/*"]
     }
   },
   "include": ["src/**/*"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "references": [{ "path": "./tsconfig.node.json" }, { "path": "../common" }]
 }

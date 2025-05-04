@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "baseUrl": "./backend/src", // Base URL for module resolution
+    "baseUrl": "./src",
     "paths": {
       "@/*": ["*"],
       "@transactions/*": ["modules/transactions/*"]
