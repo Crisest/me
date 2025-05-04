@@ -1,0 +1,37 @@
+.content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0 3rem;
+  opacity: 0;
+  margin: 3rem 0;
+  transition:
+    transform 0.5s ease-out,
+    opacity 0.5s ease-out;
+}
+
+.contentLeft {
+  transform: translateX(-100%);
+}
+
+.contentRight {
+  transform: translateX(100%);
+}
+
+.visibleContent {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.content img {
+  width: 200px;
+  margin: 0 2rem;
+}
+
+@media (min-width: 768px) {
+  .content {
+    flex-direction: row;
+  }
+}

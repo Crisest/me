@@ -1,0 +1,18 @@
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  height: 100%;
+  width: 300px;
+  margin: auto;
+  gap: var(--spacing-sm);
+}
+
+.container button:last-of-type {
+  margin-left: auto;
+}
+
+.container button:first-of-type {
+  margin-top: var(--spacing-md);
+}

@@ -1,0 +1,19 @@
+.textbox {
+  font-family: var(--font-family-body);
+  padding: var(--input-padding-y) 0;
+  font-size: var(--input-font-size);
+  border: none;
+  background-color: transparent;
+  border-bottom: 2px solid var(--color-grey);
+  text-align: left;
+  color: var(--color-grey);
+  outline: none; /* Remove default focus outline */
+}
+
+/* .textbox:active {
+  border: none;
+} */
+
+.fullWidth {
+  width: 100%;
+}

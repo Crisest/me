@@ -1,0 +1,146 @@
+@font-face {
+  font-family: 'Montserrat';
+  src: url('./resources/fonts/Montserrat-VariableFont_wght.ttf');
+  font-weight: 1 1000;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Roboto-Regular';
+  src: url('./resources/fonts/Roboto-Regular.ttf');
+  font-weight: 1 1000;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Roboto-Bold';
+  src: url('./resources/fonts/Roboto-Bold.ttf');
+  font-weight: 1 1000;
+  font-style: normal;
+}
+
+:root {
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #f0f2f5;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --background-color-white: #f0f2f5;
+  --color-white: #fbfbfb;
+  --color-blue: #5865f2;
+  --color-blue-dark: #4150f1;
+  --color-blue-darker: #2e3eef;
+  --color-grey: #35393c;
+  --color-grey-light: hsla(0, 0%, 96.9%, 0.65);
+  --color-yello: #ffd147;
+  --color-dark: #242424;
+
+  /* Font sizes */
+  --font-xs: 12px;
+  --font-sm: 14px;
+  --font-md: 16px;
+  --font-lg: 18px;
+  --font-xl: 20px;
+  --font-brand: 50px;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* Border radius */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+
+  /* Button sizes */
+  --btn-padding-y: 8px;
+  --btn-padding-x: 16px;
+  --btn-font-size: var(--font-md);
+  --btn-border-radius: var(--border-radius-lg);
+
+  /* Input sizes */
+  --input-padding-y: 8px;
+  --input-padding-x: 12px;
+  --input-font-size: var(--font-md);
+  --input-border-radius: var(--border-radius-sm);
+
+  /* Container sizes */
+  --container-max-width: 1200px;
+  --container-padding: var(--spacing-md);
+
+  /* Breakpoint Variables */
+  --breakpoint-xs: 320px; /* Extra Small Devices */
+  --breakpoint-sm: 480px; /* Small Devices */
+  --breakpoint-md: 768px; /* Medium Devices */
+  --breakpoint-lg: 1024px; /* Large Devices */
+  --breakpoint-xl: 1200px; /* Extra Large Devices */
+  --breakpoint-xxl: 1440px; /* Ultra Wide Devices */
+
+  --font-family-body: 'Roboto-Regular', sans-serif;
+  --font-family-header: 'Montserrat', sans-serif;
+  --font-family-button: 'Roboto-Bold', sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  font-family: 'Montserrat', sans-serif;
+  margin: 0;
+}
+
+h1 {
+  transition: transform 0.3s ease;
+}
+
+h1:hover {
+  transform: scale(1.02);
+}
+
+body {
+  font-family: 'Roboto-Regular', sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.app-container {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  box-sizing: border-box;
+}
+.main-content {
+  flex: 1;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: scroll;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}

@@ -1,0 +1,88 @@
+.button {
+  font-family: var(--font-family-button);
+  border-style: solid;
+  border-width: 2px;
+  border: none;
+  cursor: pointer;
+  padding: var(--btn-padding-y) var(--btn-padding-x);
+  font-size: var(--btn-font-size);
+  font-weight: 500;
+  border-radius: var(--btn-border-radius);
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+.icon {
+  margin-right: 0.5rem;
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.primary {
+  background-color: var(--color-blue);
+  color: var(--color-white);
+}
+
+.primary:hover {
+  background-color: var(--color-blue-darker);
+  /* color: var(--color-blue); Change text color on hover */
+}
+
+.primary:active {
+  background-color: var(--color-blue);
+  color: var(--color-white);
+}
+
+.secondary {
+  background-color: var(--color-grey);
+  color: var(--color-white);
+  border: 1px solid var(--color-blue);
+}
+
+.secondary:hover {
+  background-color: var(--color-white);
+  color: var(--color-dark);
+  border: 1px solid var(--color-blue);
+}
+
+.link {
+  font-family: var(--font-family-body);
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  color: var(--color-blue);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link:hover {
+  color: var(--color-white); /* Change text color on hover */
+}
+
+.cta {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.styleless {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  outline: inherit;
+  text-decoration: none;
+}
+
+/* TODO: Add more variants */
