@@ -26,7 +26,7 @@
       "@/*": ["*"],
       "@components/*": ["components/*"],
       "@assets/*": ["assets/*"],
-      "@customTypes/*": ["types/*"],
+      "@types/*": ["types/index.ts"],
       "@portfolio/common/*": ["../../common/src/*"]
     }
   },

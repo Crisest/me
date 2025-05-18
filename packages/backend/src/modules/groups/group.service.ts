@@ -1,5 +1,4 @@
-import Group from './group.model';
-import { IGroup } from './group.model';
+import { Group, IGroup } from './group.model';
 
 export const createGroup = async (
   name: string,

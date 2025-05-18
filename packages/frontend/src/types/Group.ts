@@ -1,10 +1,10 @@
-import { User } from '@customTypes/User.ts';
+import type { Group } from '@portfolio/common';
 
-export interface Group {
-  name: string;
-  settings: {
-    isPrimary: boolean;
-    jumpToExpense: boolean;
-  };
-  users: User[]; // assuming users are objects of User interface
+export interface GroupSettings {
+  isPrimary: boolean;
+  jumpToExpense: boolean;
+}
+
+export interface GroupWithSettings extends Group {
+  settings: GroupSettings;
 }

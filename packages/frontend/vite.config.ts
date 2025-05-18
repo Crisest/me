@@ -11,6 +11,7 @@ export default defineConfig({
       '@components': resolve(__dirname, './src/components'),
       '@assets': resolve(__dirname, './src/assets'),
       '@portfolio/common': resolve(__dirname, '../common/src'),
+      '@types': resolve(__dirname, './src/types/index.ts'),
     },
   },
 });

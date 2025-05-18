@@ -1,4 +1,4 @@
-import { Group } from '@/types/Group';
+import { Group } from '@portfolio/common';
 import styles from './GroupPage.module.css';
 import { Form } from 'react-aria-components';
 import YButtom from '@/components/Button/Button';
@@ -11,9 +11,12 @@ const GroupPage: React.FC = () => {
     <>
       {groups.length === 0 ? (
         <Form>
-          <YButtom variant="icon" icon={<FaCirclePlus />}>
-            {' '}
-            test{' '}
+          <h1 className={styles.title}>No groups found</h1>
+          <p className={styles.description}>
+            You don't have any groups yet. Create one to get started.
+          </p>
+          <YButtom variant="primary" customClass={styles.createGroupButton}>
+            <FaCirclePlus /> Create Group
           </YButtom>
         </Form>
       ) : (

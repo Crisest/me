@@ -1,30 +1,27 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import {
+  createApi,
+  fetchBaseQuery,
+  BaseQueryFn,
+} from '@reduxjs/toolkit/query/react';
 
-const baseUrl = 'http://localhost:5000/api'; // Replace with your API's base URL
+const baseUrl = 'http://localhost:3000';
 
-// Define an API slice with endpoints for login and register
-export const authApi = createApi({
-  reducerPath: 'authApi',
-  baseQuery: fetchBaseQuery({ baseUrl }),
-  endpoints: builder => ({
-    login: builder.mutation<any, { email: string; password: string }>({
-      query: credentials => ({
-        url: '/auth/login', // Adjust according to your backend route
-        method: 'POST',
-        body: credentials,
-      }),
-    }),
-    register: builder.mutation<
-      any,
-      { email: string; password: string; name: string }
-    >({
-      query: userData => ({
-        url: '/auth/register', // Adjust according to your backend route
-        method: 'POST',
-        body: userData,
-      }),
-    }),
-  }),
+export enum tagTypesEnum {
+  USER = 'user',
+}
+
+export const apiSlice = createApi({
+  reducerPath: 'api',
+  tagTypes: [tagTypesEnum.USER],
+  baseQuery: fetchBaseQuery({
+    baseUrl,
+    prepareHeaders: headers => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        headers.set('authorization', `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }) as BaseQueryFn,
+  endpoints: () => ({}),
 });
-
-export const { useLoginMutation, useRegisterMutation } = authApi;

@@ -27,7 +27,7 @@ export const buttonData: ButtonData[] = [
   },
   {
     text: 'Budget',
-    to: Route.BUDGET,
+    to: Route.LOGIN,
   },
 ];
 

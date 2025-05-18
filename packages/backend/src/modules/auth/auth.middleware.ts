@@ -2,22 +2,22 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '@/modules/users/user.model';
 import { RequestWithUser } from '@/types/express';
+import { getConfig } from '@/config/env';
 
 const authMiddleware = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  const authHeader = req.headers.authorization;
+  const token = req.cookies.jwt;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'Missing or invalid token' });
+  if (!token) {
+    return res.status(401).json({ message: 'No authentication token found' });
   }
 
-  const token = authHeader.split(' ')[1];
-
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+    const config = getConfig();
+    const decoded = jwt.verify(token, config.jwtSecret) as {
       userId: string;
     };
 
@@ -26,10 +26,16 @@ const authMiddleware = async (
       return res.status(404).json({ message: 'User not found' });
     }
 
-    (req as RequestWithUser).user = user;
+    (req as unknown as RequestWithUser).user = user;
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Unauthorized', error });
+    // Clear the invalid cookie
+    res.cookie('jwt', '', {
+      httpOnly: true,
+      expires: new Date(0),
+      path: '/',
+    });
+    res.status(401).json({ message: 'Invalid authentication token' });
   }
 };
 

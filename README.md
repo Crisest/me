@@ -98,3 +98,98 @@ This will automatically rebuild the common package when changes are made, and th
 - The backend runs on http://localhost:3000 by default
 - Use `pnpm run start:all` to run both frontend and backend concurrently
 - Always build the common package after making changes to shared types or utilities
+
+## Logging
+
+The application uses a structured logging system based on Bunyan with sequence ID tracking for request tracing.
+
+### Log Levels
+
+The logging system supports the following levels (in order of increasing severity):
+
+- `TRACE` - Very detailed debugging
+- `DEBUG` - Debugging information
+- `INFO` - Normal operation logs
+- `WARN` - Warning messages
+- `ERROR` - Error conditions
+- `FATAL` - System is unusable
+
+In production, only `INFO` and above are logged. In development, `DEBUG` and above are logged.
+
+### Request Tracking
+
+Each HTTP request is automatically assigned a unique sequence ID using ULID. This allows for easy tracking of requests across the system. Every log entry related to a request includes:
+
+- Sequence ID
+- Timestamp
+- Log level
+- Request method and URL
+- Response time (for completed requests)
+- Additional context provided by the code
+
+### Usage Examples
+
+In request handlers:
+
+```typescript
+// Log with request context
+req.log.info({ userId: '123' }, 'User action completed');
+
+// Create a child logger for a specific context
+const log = req.log.child({ action: 'createUser' });
+log.info({ email }, 'Starting user creation');
+
+// Log errors
+log.error({ err, userId }, 'Operation failed');
+```
+
+### Log Output Format
+
+Logs are output in JSON format for easy parsing. Example:
+
+```json
+{
+  "name": "portfolio-api",
+  "hostname": "server",
+  "pid": 1234,
+  "level": 30,
+  "sequenceId": "01HQ2XBVN5QBRKJ39BMKS6PSDT",
+  "method": "POST",
+  "url": "/api/users",
+  "msg": "Request completed",
+  "time": "2025-05-17T10:30:00.000Z",
+  "v": 0
+}
+```
+
+### Configuration
+
+Logging configuration can be adjusted in `packages/backend/src/config/env.ts`:
+
+- `nodeEnv`: Controls log level (`production` = INFO+, `development` = DEBUG+)
+- Add custom configuration by extending the config object
+
+For development, you can use the Bunyan CLI to pretty-print logs:
+
+```bash
+pnpm run backend:dev | npx bunyan
+```
+
+#### Development Tip
+
+Instead of piping to npx bunyan every time, you can add the bunyan CLI to your package.json scripts:
+
+```json
+{
+  "scripts": {
+    "dev:pretty": "pnpm run dev | bunyan"
+  }
+}
+```
+
+Then install bunyan as a dev dependency:
+
+```bash
+cd packages/backend
+pnpm add -D bunyan
+```

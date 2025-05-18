@@ -3,23 +3,65 @@ import Button from '@components/Button/Button.tsx';
 import styles from '@/modules/Auth/Login/LoginPage.module.css';
 import { useNavigate } from 'react-router-dom';
 import { Route } from '@/enums/routerEnum';
-import type { PressEvent } from 'react-aria';
 import { Form } from 'react-aria-components';
+import { useState } from 'react';
+import { useLoginMutation } from '@/services/authService';
+import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
+import type { SerializedError } from '@reduxjs/toolkit';
+import { LoginPayload } from '@portfolio/common';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const [credentials, setCredentials] = useState<LoginPayload>({
+    email: '',
+    password: '',
+  });
+  const [login, { isLoading, error }] = useLoginMutation();
 
-  const handleLogin = (event: React.FormEvent<HTMLFormElement>): void => {
+  const handleLogin = async (
+    event: React.FormEvent<HTMLFormElement>,
+  ): Promise<void> => {
     event.preventDefault();
-    // TODO: Call login
-    navigate(Route.GROUPS);
+    try {
+      await login(credentials).unwrap();
+      navigate(Route.BUDGET);
+    } catch (err) {
+      console.error('Login failed:', err);
+    }
   };
 
-  function handleRegister(event: PressEvent): void {
-    console.log(event);
-    // call login endpoint and redirect to budget
-    throw new Error('Function not implemented.');
-  }
+  const handleInputChange =
+    (field: keyof LoginPayload) =>
+    (value: string | React.ChangeEvent<HTMLInputElement>): void => {
+      const newValue = typeof value === 'string' ? value : value.target.value;
+      setCredentials(prev => ({ ...prev, [field]: newValue }));
+    };
+
+  const handleRegister = (): void => {
+    navigate(Route.REGISTER);
+  };
+
+  const getErrorMessage = (err: unknown): string => {
+    const error = err as FetchBaseQueryError | SerializedError;
+    if (!error || typeof error !== 'object')
+      return 'An error occurred during login';
+
+    if ('data' in error) {
+      return (
+        (error.data as { message?: string })?.message ||
+        'An error occurred during login'
+      );
+    }
+    if ('message' in error && typeof error.message === 'string') {
+      return error.message;
+    }
+    return 'An error occurred during login';
+  };
+
+  const ErrorMessage = ({ error }: { error: unknown }): JSX.Element | null => {
+    if (!error) return null;
+    return <div className={styles.error}>{getErrorMessage(error)}</div>;
+  };
 
   return (
     <Form onSubmit={handleLogin} className={styles.container}>
@@ -29,6 +71,9 @@ const LoginPage: React.FC = () => {
         placeholder="Email"
         aria-label="email"
         isRequired
+        value={credentials.email}
+        onChange={handleInputChange('email')}
+        isDisabled={isLoading}
       />
       <Textbox
         type="password"
@@ -36,11 +81,15 @@ const LoginPage: React.FC = () => {
         placeholder="Password"
         aria-label="password"
         isRequired
+        value={credentials.password}
+        onChange={handleInputChange('password')}
+        isDisabled={isLoading}
       />
-      <Button variant="primary" type="submit" fullWidth>
-        Login
+      <ErrorMessage error={error} />
+      <Button variant="primary" type="submit" fullWidth isDisabled={isLoading}>
+        {isLoading ? 'Logging in...' : 'Login'}
       </Button>
-      <Button variant="link" onPress={handleRegister}>
+      <Button variant="link" onPress={handleRegister} isDisabled={isLoading}>
         Register
       </Button>
     </Form>
