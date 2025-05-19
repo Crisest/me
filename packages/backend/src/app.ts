@@ -9,6 +9,7 @@ import transactionsRoutes from './modules/transactions';
 import loginRoutes from './modules/auth';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
+import { getConfig } from './config/env';
 dotenv.config();
 
 const app: Application = express();
@@ -20,9 +21,10 @@ app.use(helmet());
 app.use(requestLogger);
 
 // CORS configuration
+const config = getConfig();
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: config.frontendUrl,
     credentials: true,
   })
 );

@@ -18,11 +18,10 @@ const userSchema = new Schema<IUser>({
   groups: [{ type: Schema.Types.ObjectId, ref: 'Group' }],
 });
 
-userSchema.methods.toUser = function (): CommonUser {
+userSchema.methods.toUser = function (): Omit<CommonUser, 'passwordHash'> {
   return {
     id: this._id.toString(),
     email: this.email,
-    passwordHash: this.passwordHash,
     name: this.name,
     createdAt: this.createdAt.toISOString(),
     groups: this.groups.map((id: mongoose.Types.ObjectId) => id.toString()),

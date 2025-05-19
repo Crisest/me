@@ -15,13 +15,7 @@ export const apiSlice = createApi({
   tagTypes: [tagTypesEnum.USER],
   baseQuery: fetchBaseQuery({
     baseUrl,
-    prepareHeaders: headers => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        headers.set('authorization', `Bearer ${token}`);
-      }
-      return headers;
-    },
+    credentials: 'include',
   }) as BaseQueryFn,
   endpoints: () => ({}),
 });

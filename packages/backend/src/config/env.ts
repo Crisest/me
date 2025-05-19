@@ -10,6 +10,7 @@ export const config = {
   mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/portfolio',
   jwtSecret: process.env.JWT_SECRET || 'your-secret-key',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  apiUrl: process.env.VITE_API_URL || 'http://localhost:3000',
   // Add more configuration variables as needed
   rateLimit: {
     windowMs: 15 * 60 * 1000, // 15 minutes
