@@ -1,30 +1,53 @@
 import Textbox from '@components/Textbox/Textbox.tsx';
 import Button from '@components/Button/Button.tsx';
 import styles from '@/modules/Auth/Login/LoginPage.module.css';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Route } from '@/enums/routerEnum';
 import { Form } from 'react-aria-components';
-import { useState } from 'react';
-import { useLoginMutation } from '@/services/authService';
+import { useState, useEffect } from 'react';
+import { useLazyGetUserQuery, useLoginMutation } from '@/services/authService';
 import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import type { SerializedError } from '@reduxjs/toolkit';
 import { LoginPayload } from '@portfolio/common';
 
+interface LocationState {
+  from: string;
+}
+
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as LocationState)?.from || Route.HOME;
+
   const [credentials, setCredentials] = useState<LoginPayload>({
     email: '',
     password: '',
   });
-  const [login, { isLoading, error }] = useLoginMutation();
+  const [login, { isLoading, error, data }] = useLoginMutation();
+  const [getUser] = useLazyGetUserQuery();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const user = await getUser().unwrap();
+        if (user) {
+          navigate(from, { replace: true });
+        }
+      } catch (err) {
+        console.error('Error fetching user:', err);
+      }
+    };
+    if (data) {
+      fetchUser();
+    }
+  }, [data, from, navigate]);
 
   const handleLogin = async (
     event: React.FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     event.preventDefault();
     try {
-      await login(credentials).unwrap();
-      navigate(Route.BUDGET);
+      await login(credentials);
     } catch (err) {
       console.error('Login failed:', err);
     }

@@ -14,6 +14,7 @@ export const authApi = apiSlice.injectEndpoints({
         method: 'POST',
         body: credentials,
       }),
+      invalidatesTags: [tagTypesEnum.USER],
     }),
     register: builder.mutation<LoginResponse, RegisterPayload>({
       query: userData => ({
@@ -22,7 +23,7 @@ export const authApi = apiSlice.injectEndpoints({
         body: userData,
       }),
     }),
-    getUser: builder.query<User, void>({
+    getUser: builder.query<User | null, void>({
       query: () => '/auth/me',
       providesTags: [tagTypesEnum.USER],
     }),
@@ -31,17 +32,14 @@ export const authApi = apiSlice.injectEndpoints({
         url: '/auth/logout',
         method: 'POST',
       }),
-      // Remove invalidatesTags and use onQueryStarted instead
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
-          // Update the getUser cache to null without making a new request
           dispatch(
-            authApi.util.updateQueryData('getUser', undefined, () => {}),
+            authApi.util.updateQueryData('getUser', undefined, () => null),
           );
-        } catch {
-          // Handle error if needed
-        }
+          dispatch(authApi.util.resetApiState());
+        } catch {}
       },
     }),
   }),
@@ -51,5 +49,6 @@ export const {
   useLoginMutation,
   useRegisterMutation,
   useGetUserQuery,
+  useLazyGetUserQuery,
   useLogoutMutation,
 } = authApi;

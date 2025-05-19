@@ -50,8 +50,11 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const logout = async (req: Request, res: Response) => {
+  const config = getConfig();
   res.cookie('jwt', '', {
     httpOnly: true,
+    secure: config.nodeEnv === 'production',
+    sameSite: 'strict',
     expires: new Date(0),
     path: '/',
   });

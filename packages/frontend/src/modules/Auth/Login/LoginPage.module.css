@@ -16,3 +16,9 @@
 .container button:first-of-type {
   margin-top: var(--spacing-md);
 }
+
+.error {
+  color: var(--color-blue-darker);
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-xs);
+}

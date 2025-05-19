@@ -35,7 +35,7 @@ const authMiddleware = async (
       expires: new Date(0),
       path: '/',
     });
-    res.status(401).json({ message: 'Invalid authentication token' });
+    return res.status(401).json({ message: 'Invalid authentication token' });
   }
 };
 
