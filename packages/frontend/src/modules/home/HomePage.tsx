@@ -11,7 +11,7 @@ const HomePage: React.FC = () => {
 
   return (
     <>
-      <Header title="Full Stack Software Developer" />
+      <Header title="Software Engineer" />
       <h1 className={styles.subtitle}>Hey, I&apos;m Yorguin :)</h1>
       <ContentBlock
         isVisible={isVisibleFirst}
@@ -24,10 +24,6 @@ const HomePage: React.FC = () => {
           With <span>Over 5 years</span> of experiences in very different areas!
           I am very keen at learning
         </p>
-        <p>
-          I&apos;ve worked with many different technologies, including .NET,
-          Springboot, and React
-        </p>
       </ContentBlock>
       <ContentBlock
         isVisible={isVisibleSecond}
@@ -39,10 +35,6 @@ const HomePage: React.FC = () => {
         <p>
           With <span>Over 5 years</span> of experiences in very different areas!
           I am very keen at learning
-        </p>
-        <p>
-          I&apos;ve worked with many different technologies, including .NET,
-          Springboot, and React
         </p>
       </ContentBlock>
     </>

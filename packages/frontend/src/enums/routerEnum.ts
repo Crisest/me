@@ -7,3 +7,5 @@ export enum Route {
   CONTACT = '/contact',
   BUDGET = '/budget',
 }
+
+export const protectedRoutes = [Route.BUDGET];

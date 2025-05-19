@@ -46,3 +46,13 @@
   background-color: var(--color-blue);
   color: var(--color-white) !important;
 }
+
+.logout {
+  margin-top: auto;
+  margin-bottom: 1rem;
+  color: var(--color-grey-light) !important;
+}
+
+.logout:hover {
+  color: var(--color-white) !important;
+}

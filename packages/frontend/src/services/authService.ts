@@ -31,7 +31,18 @@ export const authApi = apiSlice.injectEndpoints({
         url: '/auth/logout',
         method: 'POST',
       }),
-      invalidatesTags: [tagTypesEnum.USER],
+      // Remove invalidatesTags and use onQueryStarted instead
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          // Update the getUser cache to null without making a new request
+          dispatch(
+            authApi.util.updateQueryData('getUser', undefined, () => {}),
+          );
+        } catch {
+          // Handle error if needed
+        }
+      },
     }),
   }),
 });
