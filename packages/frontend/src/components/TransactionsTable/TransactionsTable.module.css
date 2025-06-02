@@ -1,0 +1,28 @@
+.tableContainer {
+  margin: 2rem 0;
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: center;
+}
+.table {
+  width: 80%;
+  border-collapse: collapse;
+}
+.table th {
+  background-color: var(--color-blue);
+  color: var(--color-white);
+  padding: 12px;
+  text-align: left;
+  font-weight: bold;
+  border-bottom: 2px solid var(--color-blue-darker);
+}
+
+.table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-blue);
+  color: var(--color-grey);
+}

@@ -13,6 +13,7 @@
     "@portfolio/common": "workspace:*",
     "@react-aria/textfield": "^3.17.2",
     "@reduxjs/toolkit": "^2.7.0",
+    "@tanstack/react-table": "^8.21.3",
     "react": "^18.2.0",
     "react-aria": "^3.33.1",
     "react-aria-components": "^1.2.1",
