@@ -36,6 +36,7 @@
   --color-blue-darker: #2e3eef;
   --color-grey: #35393c;
   --color-grey-light: hsla(0, 0%, 96.9%, 0.65);
+  --color-grey-hover: #e3e6ea; /* adjust this value to be just slightly lighter than your --color-grey */
   --color-yello: #ffd147;
   --color-dark: #242424;
 

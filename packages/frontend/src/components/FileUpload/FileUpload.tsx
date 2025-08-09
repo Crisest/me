@@ -1,5 +1,6 @@
 import { ChangeEvent, useState } from 'react';
 import styles from './FileUpload.module.css';
+import YButtom from '../Button/Button';
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void;
@@ -20,20 +21,24 @@ const FileUpload: React.FC<FileUploadProps> = ({
     }
   };
 
+  const buttonTextString = fileName ? fileName : buttonText;
+
   return (
-    <div className={styles.uploadContainer}>
-      <label className={styles.fileLabel}>
-        <input
-          type="file"
-          className={styles.fileInput}
-          onChange={handleFileChange}
-        />
-        <span className={styles.button}>{buttonText}</span>
-        <span className={styles.fileName}>
-          {fileName || 'No file selected'}
-        </span>
-      </label>
-    </div>
+    <>
+      <div className={styles.uploadContainer}>
+        <label className={styles.fileLabel}>
+          <input
+            type="file"
+            className={styles.fileInput}
+            onChange={handleFileChange}
+          />
+          <span className={styles.button}>{buttonTextString}</span>
+        </label>
+      </div>
+      <YButtom variant="primary">asdasdasdads</YButtom>
+      <YButtom variant="secondary">asdasdsadasd</YButtom>
+      <YButtom variant="cta">asdasdasd</YButtom>
+    </>
   );
 };
 

@@ -10,6 +10,7 @@ import {
   useCreateManyTransactionsMutation,
   useGetTransactionsQuery,
 } from '@/services/transactionService';
+import Content from '@/components/Content/Content';
 
 export const BudgetPage = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -37,12 +38,12 @@ export const BudgetPage = () => {
     <>
       <Header title="Budget" />
       {transactions.length === 0 ? (
-        <>
+        <Content>
           <FileUpload onFileSelect={handleFileSelect} />
           {transactionsData && (
             <TransactionsTable transactions={transactionsData} />
           )}
-        </>
+        </Content>
       ) : (
         <>
           <TransactionsTable transactions={transactions} />

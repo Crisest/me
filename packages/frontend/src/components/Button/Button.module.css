@@ -37,14 +37,18 @@
 }
 
 .secondary {
-  background-color: var(--color-grey);
   color: var(--color-white);
   border: 1px solid var(--color-blue);
 }
 
 .secondary:hover {
-  background-color: var(--color-white);
-  color: var(--color-dark);
+  background-color: var(--color-grey);
+  color: var(--color-grey-light);
+  border: 1px solid var(--color-blue);
+}
+
+.secondary:active {
+  color: var(--color-white);
   border: 1px solid var(--color-blue);
 }
 
