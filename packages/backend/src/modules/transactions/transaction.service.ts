@@ -1,10 +1,12 @@
 import { ITransaction, Transaction } from './transaction.model';
 import mongoose from 'mongoose';
+import { normalizeDate } from '@portfolio/common/src/utils/date';
+import { CreateTransactionsPayload } from '@portfolio/common';
 
 export const getAllTransactions = async (
   userId: mongoose.Types.ObjectId
 ): Promise<ITransaction[]> => {
-  return Transaction.find({ user: userId }).sort({ date: -1 });
+  return Transaction.find({ createdBy: userId }).sort({ date: -1 });
 };
 
 export const createTransaction = async (
@@ -13,15 +15,20 @@ export const createTransaction = async (
   if (!data.createdBy) {
     throw new Error('User is required to create a transaction');
   }
-
+  if (data.date) {
+    data.date = normalizeDate(data.date);
+  }
   const transaction = new Transaction(data);
   return transaction.save();
 };
 
-export const createManyTransactions = async (
-  transactions: (Omit<ITransaction, '_id'> & {
-    user: mongoose.Types.ObjectId;
-  })[]
+export const createManyTransactionsByUser = async (
+  transactions: CreateTransactionsPayload,
+  userId: mongoose.Types.ObjectId
 ): Promise<ITransaction[]> => {
-  return Transaction.insertMany(transactions);
+  const transactionsToAdd = Transaction.fromCommonTransaction(
+    transactions,
+    userId
+  );
+  return await Transaction.insertMany(transactionsToAdd);
 };

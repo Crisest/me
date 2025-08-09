@@ -1,15 +1,12 @@
-import { Response } from 'express';
-import { RequestWithUser } from '@/types/express';
+import { Request, Response } from 'express';
 import * as transactionService from './transaction.service';
-import { ITransaction } from './transaction.model';
+import { CreateTransactionsPayload } from '@portfolio/common';
+import mongoose from 'mongoose';
 
-export const getTransactionsByUserId = async (
-  req: RequestWithUser,
-  res: Response
-) => {
+export const getTransactionsByUserId = async (req: Request, res: Response) => {
   try {
     const transactions = await transactionService.getAllTransactions(
-      req.user.id
+      req.user!.id
     );
     res.json(transactions);
   } catch (err) {
@@ -17,16 +14,13 @@ export const getTransactionsByUserId = async (
   }
 };
 
-export const postTransactionByUser = async (
-  req: RequestWithUser,
-  res: Response
-) => {
+export const postTransactionByUser = async (req: Request, res: Response) => {
   try {
-    const created = await transactionService.createTransaction({
-      ...req.body,
-      user: req.user._id,
-    });
-    res.status(201).json(created);
+    // const created = await transactionService.createTransaction({
+    //   ...req.body,
+    //   user: req.user._id,
+    // });
+    res.status(201).json();
   } catch (err) {
     res
       .status(400)
@@ -35,21 +29,21 @@ export const postTransactionByUser = async (
 };
 
 export const postManyTransactionsByUser = async (
-  req: RequestWithUser,
+  req: Request,
   res: Response
 ) => {
   try {
-    const userId = req.user._id;
+    const payload = req.body as CreateTransactionsPayload;
+    const userId = req.user!._id as mongoose.Types.ObjectId;
 
-    const transactionsWithUser = req.body.map((trx: Partial<ITransaction>) => ({
-      ...trx,
-      user: userId,
-    }));
+    const created = await transactionService.createManyTransactionsByUser(
+      payload,
+      userId
+    );
 
-    const created =
-      await transactionService.createManyTransactions(transactionsWithUser);
     res.status(201).json(created);
   } catch (err) {
+    console.log({ error: err });
     res.status(400).json({
       error: 'Failed to create transactions in bulk',
       details: err,

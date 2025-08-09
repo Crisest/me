@@ -7,16 +7,19 @@ export interface Transaction {
   groupId: string;
   createdBy: string; // user ID
   createdAt: string; // ISO string
-  updatedAt: string; // ISO string
+  updatedAt?: string; // ISO string
 }
 
 export interface CreateTransactionPayload {
   amount: number;
   description: string;
   category?: string;
-  date?: string;
+  date: string;
   groupId: string;
 }
+
+export interface CreateTransactionsPayload
+  extends Array<CreateTransactionPayload> {}
 
 export interface UpdateTransactionPayload {
   amount?: number;

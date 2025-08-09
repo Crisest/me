@@ -5,9 +5,16 @@ import { parseCSVToTransaction } from '@/utils/csv';
 import { parseFileContent } from '@/utils/fileReader';
 import { Transaction } from '@portfolio/common';
 import TransactionsTable from '@/components/TransactionsTable/TransactionsTable';
+import YButtom from '@/components/Button/Button';
+import {
+  useCreateManyTransactionsMutation,
+  useGetTransactionsQuery,
+} from '@/services/transactionService';
 
 export const BudgetPage = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [saveTransactions, result] = useCreateManyTransactionsMutation();
+  const { data: transactionsData, isLoading } = useGetTransactionsQuery();
 
   const handleFileSelect = async (file: File) => {
     try {
@@ -21,14 +28,26 @@ export const BudgetPage = () => {
     }
   };
 
+  const handleClick = () => {
+    saveTransactions(transactions);
+  };
+
   // different page to see the summary per month
   return (
     <>
       <Header title="Budget" />
       {transactions.length === 0 ? (
-        <FileUpload onFileSelect={handleFileSelect} />
+        <>
+          <FileUpload onFileSelect={handleFileSelect} />
+          {transactionsData && (
+            <TransactionsTable transactions={transactionsData} />
+          )}
+        </>
       ) : (
-        <TransactionsTable transactions={transactions} />
+        <>
+          <TransactionsTable transactions={transactions} />
+          <YButtom onClick={handleClick}>Save transactions</YButtom>
+        </>
       )}
     </>
   );

@@ -1,5 +1,9 @@
-import mongoose, { Document } from 'mongoose';
-import { Transaction as CommonTransaction } from '@portfolio/common';
+import mongoose, { Document, Model } from 'mongoose';
+import {
+  Transaction as CommonTransaction,
+  CreateTransactionPayload,
+  CreateTransactionsPayload,
+} from '@portfolio/common';
 
 export interface ITransaction extends Document {
   amount: number;
@@ -9,8 +13,16 @@ export interface ITransaction extends Document {
   groupId: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
-  updatedAt: Date;
+  updatedAt?: Date;
   toTransaction(): CommonTransaction;
+}
+
+// Add this interface for the model statics
+interface TransactionModel extends Model<ITransaction> {
+  fromCommonTransaction(
+    data: CreateTransactionsPayload,
+    userId: mongoose.Types.ObjectId
+  ): Partial<ITransaction> | Partial<ITransaction>[];
 }
 
 const TransactionSchema = new mongoose.Schema<ITransaction>(
@@ -42,12 +54,32 @@ TransactionSchema.methods.toTransaction = function (): CommonTransaction {
     date: this.date.toISOString(),
     groupId: this.groupId.toString(),
     createdBy: this.createdBy.toString(),
-    createdAt: this.createdAt.toISOString(),
+    createdAt: this.createdAt.toISOString() || null,
     updatedAt: this.updatedAt.toISOString(),
   };
 };
 
-export const Transaction = mongoose.model<ITransaction>(
+TransactionSchema.statics.fromCommonTransaction = function (
+  data: CreateTransactionsPayload,
+  userId: mongoose.Types.ObjectId
+): Partial<ITransaction> | Partial<ITransaction>[] {
+  const convert = (tx: CreateTransactionPayload): Partial<ITransaction> => ({
+    amount: tx.amount,
+    description: tx.description,
+    category: tx.category,
+    date: new Date(tx.date),
+    groupId: new mongoose.Types.ObjectId(tx.groupId),
+    createdBy: userId,
+    // createdAt and updatedAt are handled by timestamps
+  });
+
+  if (Array.isArray(data)) {
+    return data.map(convert);
+  }
+  return convert(data);
+};
+
+export const Transaction = mongoose.model<ITransaction, TransactionModel>(
   'Transaction',
   TransactionSchema
 );

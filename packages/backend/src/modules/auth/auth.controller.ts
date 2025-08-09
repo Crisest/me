@@ -61,7 +61,7 @@ export const logout = async (req: Request, res: Response) => {
   res.status(200).json({ message: 'Logged out successfully' });
 };
 
-export const me = async (req: RequestWithUser, res: Response) => {
+export const me = async (req: Request, res: Response) => {
   try {
     // The user should be attached to req by the auth middleware
     if (!req.user) {
