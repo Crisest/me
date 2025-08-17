@@ -11,6 +11,8 @@ import {
   useGetTransactionsQuery,
 } from '@/services/transactionService';
 import Content from '@/components/Content/Content';
+import MonthSelect from '@/components/BudgetComponents/MonthSelect/MonthSelect';
+import YmFlex from '@/components/Layout/YmFlex/YmFlex';
 
 export const BudgetPage = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -39,7 +41,10 @@ export const BudgetPage = () => {
       <Header title="Budget" />
       {transactions.length === 0 ? (
         <Content>
-          <FileUpload onFileSelect={handleFileSelect} />
+          <YmFlex justify="space-between" align="center">
+            <MonthSelect />
+            <FileUpload onFileSelect={handleFileSelect} />
+          </YmFlex>
           {transactionsData && (
             <TransactionsTable transactions={transactionsData} />
           )}

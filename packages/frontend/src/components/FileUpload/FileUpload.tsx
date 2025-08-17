@@ -35,9 +35,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
           <span className={styles.button}>{buttonTextString}</span>
         </label>
       </div>
-      <YButtom variant="primary">asdasdasdads</YButtom>
-      <YButtom variant="secondary">asdasdsadasd</YButtom>
-      <YButtom variant="cta">asdasdasd</YButtom>
     </>
   );
 };
