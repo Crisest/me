@@ -27,3 +27,11 @@ export interface UpdateTransactionPayload {
   category?: string;
   date?: string;
 }
+
+export interface GetTransactionsQuery {
+  month?: number;
+}
+
+export interface GetTransactionsResponse {
+  transactions: Transaction[];
+}

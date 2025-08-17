@@ -10,14 +10,18 @@ import {
   useCreateManyTransactionsMutation,
   useGetTransactionsQuery,
 } from '@/services/transactionService';
-import Content from '@/components/Content/Content';
-import MonthSelect from '@/components/BudgetComponents/MonthSelect/MonthSelect';
-import YmFlex from '@/components/Layout/YmFlex/YmFlex';
+import Content from '@/components/Layout/Content/Content';
+import YmFlex from '@/components/Layout/YmFlex/YmFlex/YmFlex';
+import months from '@/constants/months';
+import YmCombobox from '@/components/YmCombobox/YmCombobox';
 
 export const BudgetPage = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [saveTransactions, result] = useCreateManyTransactionsMutation();
-  const { data: transactionsData, isLoading } = useGetTransactionsQuery();
+  const previousMonth = new Date().getMonth();
+  const [selectedMonth, setSelectedMonth] = useState(previousMonth + 1);
+  const { data: transactionsData, isLoading } =
+    useGetTransactionsQuery(selectedMonth);
 
   const handleFileSelect = async (file: File) => {
     try {
@@ -35,14 +39,19 @@ export const BudgetPage = () => {
     saveTransactions(transactions);
   };
 
-  // different page to see the summary per month
   return (
     <>
       <Header title="Budget" />
       {transactions.length === 0 ? (
         <Content>
           <YmFlex justify="space-between" align="center">
-            <MonthSelect />
+            <YmCombobox
+              options={months}
+              value={selectedMonth}
+              onChange={newMonth => setSelectedMonth(newMonth)}
+              placeholder="Select a month"
+              ariaLabel="Month filter"
+            />
             <FileUpload onFileSelect={handleFileSelect} />
           </YmFlex>
           {transactionsData && (

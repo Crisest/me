@@ -7,8 +7,11 @@ import type {
 
 export const transactionApi = apiSlice.injectEndpoints({
   endpoints: builder => ({
-    getTransactions: builder.query<Transaction[], void>({
-      query: () => '/transactions',
+    getTransactions: builder.query<Transaction[], number>({
+      query: month => ({
+        url: 'transactions',
+        params: month ? { month } : undefined,
+      }),
       providesTags: [tagTypesEnum.TRANSACTIONS],
     }),
     createTransaction: builder.mutation<Transaction, CreateTransactionPayload>({

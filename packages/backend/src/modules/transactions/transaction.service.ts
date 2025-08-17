@@ -4,9 +4,25 @@ import { normalizeDate } from '@portfolio/common/src/utils/date';
 import { CreateTransactionsPayload } from '@portfolio/common';
 
 export const getAllTransactions = async (
-  userId: mongoose.Types.ObjectId
+  userId: mongoose.Types.ObjectId,
+  month?: number
 ): Promise<ITransaction[]> => {
-  return Transaction.find({ createdBy: userId }).sort({ date: -1 });
+  const query: any = { createdBy: userId };
+
+  if (month) {
+    const year = new Date().getFullYear();
+    const startDate = new Date(Date.UTC(year, month - 1, 1));
+    const endDate = new Date(Date.UTC(year, month, 0));
+
+    query.date = {
+      $gte: startDate,
+      $lte: endDate,
+    };
+  }
+
+  const result = await Transaction.find(query).sort({ date: -1 });
+
+  return result;
 };
 
 export const createTransaction = async (

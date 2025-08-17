@@ -5,9 +5,13 @@ import mongoose from 'mongoose';
 
 export const getTransactionsByUserId = async (req: Request, res: Response) => {
   try {
+    const month = Number(req.query.month);
+
     const transactions = await transactionService.getAllTransactions(
-      req.user!.id
+      req.user!.id,
+      month
     );
+
     res.json(transactions);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch transactions' });

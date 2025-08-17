@@ -30,7 +30,7 @@ const TransactionSchema = new mongoose.Schema<ITransaction>(
     amount: { type: Number, required: true },
     description: { type: String, required: true },
     category: { type: String },
-    date: { type: Date, default: Date.now },
+    date: { type: Date, default: Date.now, required: true, index: true },
     groupId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Group',
@@ -78,6 +78,13 @@ TransactionSchema.statics.fromCommonTransaction = function (
   }
   return convert(data);
 };
+
+TransactionSchema.pre('save', function (next) {
+  if (this.date) {
+    this.date.setUTCHours(0, 0, 0, 0);
+  }
+  next();
+});
 
 export const Transaction = mongoose.model<ITransaction, TransactionModel>(
   'Transaction',

@@ -5,31 +5,31 @@ import {
   ComboboxOption,
   ComboboxOptions,
 } from '@headlessui/react';
-import { useState } from 'react';
+import React, { Dispatch, SetStateAction, useState } from 'react';
 import { IoChevronDownCircleOutline } from 'react-icons/io5';
 import styles from './YmCombobox.module.css';
 
-export interface Option {
+export interface Option<T> {
   id: number | string;
   label: string;
-  value: any;
+  value: T;
 }
 
-interface YmComboboxProps {
-  options: Option[];
-  value: any;
-  onChange: (value: any) => void;
+interface YmComboboxProps<T> {
+  options: Option<T>[];
+  value: T;
+  onChange: (value: T) => void;
   placeholder?: string;
   ariaLabel?: string;
 }
 
-const YmCombobox = ({
+const YmCombobox = <T,>({
   options,
   value,
   onChange,
   placeholder = 'Select an option',
   ariaLabel,
-}: YmComboboxProps) => {
+}: YmComboboxProps<T>) => {
   const [query, setQuery] = useState('');
 
   const filteredOptions =
@@ -39,6 +39,10 @@ const YmCombobox = ({
           option.label.toLowerCase().includes(query.toLowerCase()),
         );
 
+  const getDisplayValue = (val: T) => {
+    const selectedOption = options.find(option => option.value === val);
+    return selectedOption ? selectedOption.label : '';
+  };
   return (
     <Combobox value={value} onChange={onChange} onClose={() => setQuery('')}>
       <div className={styles.combobox}>
@@ -47,6 +51,7 @@ const YmCombobox = ({
           className={styles.input}
           placeholder={placeholder}
           onChange={event => setQuery(event.target.value)}
+          displayValue={getDisplayValue}
         />
         <ComboboxButton className={styles.button}>
           <IoChevronDownCircleOutline />
