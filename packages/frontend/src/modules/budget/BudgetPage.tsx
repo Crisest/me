@@ -19,7 +19,7 @@ export const BudgetPage = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [saveTransactions, result] = useCreateManyTransactionsMutation();
   const previousMonth = new Date().getMonth();
-  const [selectedMonth, setSelectedMonth] = useState(previousMonth + 1);
+  const [selectedMonth, setSelectedMonth] = useState(previousMonth);
   const { data: transactionsData, isLoading } =
     useGetTransactionsQuery(selectedMonth);
 

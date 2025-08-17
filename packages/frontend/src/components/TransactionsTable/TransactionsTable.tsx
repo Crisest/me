@@ -17,7 +17,11 @@ const columnHelper = createColumnHelper<Transaction>();
 const columns = [
   columnHelper.accessor('date', {
     header: 'Date',
-    cell: info => new Date(info.getValue()).toLocaleDateString(),
+    cell: info =>
+      new Date(info.getValue()).toLocaleDateString('en-CA', {
+        weekday: 'long',
+        day: 'numeric',
+      }),
   }),
   columnHelper.accessor('description', {
     header: 'Description',
