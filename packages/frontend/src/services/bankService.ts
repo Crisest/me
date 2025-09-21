@@ -5,7 +5,7 @@ export const bankApi = apiSlice.injectEndpoints({
   endpoints: builder => ({
     getBanks: builder.query<Bank[], void>({
       query: () => ({
-        url: 'banks',
+        url: '/banks',
       }),
       providesTags: [tagTypesEnum.BANKS],
     }),

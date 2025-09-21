@@ -7,6 +7,7 @@ import {
 } from '@headlessui/react';
 import React, { Dispatch, SetStateAction, useState } from 'react';
 import { IoChevronDownCircleOutline } from 'react-icons/io5';
+import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import styles from './YmCombobox.module.css';
 
 export interface Option<T> {
@@ -23,6 +24,7 @@ interface YmComboboxProps<T> {
   ariaLabel?: string;
   onCreateNew?: () => void;
   createButtonText?: string;
+  isLoading?: boolean;
 }
 
 const YmCombobox = <T,>({
@@ -33,6 +35,7 @@ const YmCombobox = <T,>({
   ariaLabel,
   onCreateNew,
   createButtonText = 'Create New',
+  isLoading = false,
 }: YmComboboxProps<T>) => {
   const [query, setQuery] = useState('');
 
@@ -58,7 +61,13 @@ const YmCombobox = <T,>({
           displayValue={getDisplayValue}
         />
         <ComboboxButton className={styles.button}>
-          <IoChevronDownCircleOutline />
+          {isLoading ? (
+            <AiOutlineLoading3Quarters
+              className={`${styles.loadingIcon} animate-spin`}
+            />
+          ) : (
+            <IoChevronDownCircleOutline />
+          )}
         </ComboboxButton>
 
         <ComboboxOptions className={styles.options}>

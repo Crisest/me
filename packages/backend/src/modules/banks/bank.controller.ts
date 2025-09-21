@@ -12,8 +12,13 @@ export class BankController {
   }
 
   static async getBanksByUser(req: Request, res: Response) {
-    const userId = req.user?.id;
-    const banks = await BankService.getBanksByUser(userId);
-    res.json(banks);
+    try {
+      const userId = req.user?.id;
+      const banks = await BankService.getBanksByUser(userId);
+      res.json(banks);
+    } catch (err) {
+      console.log(JSON.stringify(err));
+      res.status(500).json({ error: 'Failed to fetch banks' });
+    }
   }
 }

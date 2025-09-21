@@ -5,7 +5,7 @@ export const cardApi = apiSlice.injectEndpoints({
   endpoints: builder => ({
     getCards: builder.query<Card[], void>({
       query: () => ({
-        url: 'cards',
+        url: '/cards',
       }),
       providesTags: [tagTypesEnum.CARDS],
     }),
