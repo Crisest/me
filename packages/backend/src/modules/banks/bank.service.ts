@@ -2,17 +2,19 @@ import { Bank } from './bank.model';
 import mongoose from 'mongoose';
 import { CreateBankPayload } from '@portfolio/common';
 
-export class BankService {
-  static async createBank(userId: string, data: CreateBankPayload) {
-    const userObjectId = new mongoose.Types.ObjectId(userId);
-    const bankData = Bank.fromCommonBank(data, userObjectId);
-    const bank = await Bank.create(bankData);
-    return bank.toBank();
-  }
+export async function createBank(
+  userId: mongoose.Types.ObjectId,
+  data: CreateBankPayload
+) {
+  const iBank = Bank.fromCommonBank(data, userId);
+  const bank = await Bank.create(iBank);
+  return bank.toBank();
+}
 
-  static async getBanksByUser(userId: string) {
-    const userObjectId = new mongoose.Types.ObjectId(userId);
-    const banks = await Bank.find({ createdBy: userObjectId });
-    return banks.map(bank => bank.toBank());
-  }
+export async function getBanksByUser(userId: mongoose.Types.ObjectId) {
+  console.log('CRASHINGGGG');
+  const iBanks = await Bank.find({ createdBy: userId });
+  const banks = iBanks.map(iBank => iBank.toBank());
+  console.log({ banks });
+  return banks || [];
 }

@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { CardController } from './card.controller';
-import { withAuth } from '../../utils/withAuth';
+import { authMiddleware } from '../auth';
 
 const router: Router = Router();
 
-router.post('/', withAuth, CardController.createCard);
-router.get('/', withAuth, CardController.getCardsByUser);
+router.post('/', authMiddleware, CardController.createCard);
+router.get('/', authMiddleware, CardController.getCardsByUser);
 
 export default router;
