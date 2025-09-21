@@ -52,14 +52,26 @@
   z-index: 50;
   margin-top: 4px;
   z-index: 10;
-  max-height: 200px;
-  overflow-y: auto;
+  max-height: 350px;
   top: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.options::-webkit-scrollbar {
+  display: none; /* WebKit */
+}
+
+/* Add a wrapper for the options list */
+.optionsWrapper {
+  overflow-y: auto;
+  flex-grow: 1;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* Internet Explorer 10+ */
 }
 
-.options::-webkit-scrollbar {
+.optionsWrapper::-webkit-scrollbar {
   display: none; /* WebKit */
 }
 
@@ -82,4 +94,25 @@
 /* For accessibility focus */
 .option:focus {
   outline: 2px solid var(--color-blue-darker);
+}
+
+.footer {
+  border-top: 1px solid #e5e7eb;
+  padding: 0.5rem;
+}
+
+.createButton {
+  width: 100%;
+  padding: 0.5rem;
+  background-color: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.createButton:hover {
+  background-color: #f3f4f6;
 }

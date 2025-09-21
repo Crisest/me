@@ -5,6 +5,7 @@ export interface Transaction {
   category?: string;
   date: string; // ISO string for transaction date
   groupId: string;
+  bankId?: string;
   createdBy: string; // user ID
   createdAt: number; // Unix timestamp in milliseconds
   updatedAt?: number; // Unix timestamp in milliseconds
@@ -16,6 +17,7 @@ export interface CreateTransactionPayload {
   category?: string;
   date: string;
   groupId: string;
+  bankId?: string;
 }
 
 export interface CreateTransactionsPayload

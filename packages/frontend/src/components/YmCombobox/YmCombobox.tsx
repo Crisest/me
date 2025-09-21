@@ -21,6 +21,8 @@ interface YmComboboxProps<T> {
   onChange: (value: T) => void;
   placeholder?: string;
   ariaLabel?: string;
+  onCreateNew?: () => void;
+  createButtonText?: string;
 }
 
 const YmCombobox = <T,>({
@@ -29,6 +31,8 @@ const YmCombobox = <T,>({
   onChange,
   placeholder = 'Select an option',
   ariaLabel,
+  onCreateNew,
+  createButtonText = 'Create New',
 }: YmComboboxProps<T>) => {
   const [query, setQuery] = useState('');
 
@@ -58,15 +62,28 @@ const YmCombobox = <T,>({
         </ComboboxButton>
 
         <ComboboxOptions className={styles.options}>
-          {filteredOptions.map(option => (
-            <ComboboxOption
-              key={option.id}
-              value={option.value}
-              className={styles.option}
-            >
-              {option.label}
-            </ComboboxOption>
-          ))}
+          <div className={styles.optionsWrapper}>
+            {filteredOptions.map(option => (
+              <ComboboxOption
+                key={option.id}
+                value={option.value}
+                className={styles.option}
+              >
+                {option.label}
+              </ComboboxOption>
+            ))}
+          </div>
+          {onCreateNew && (
+            <div className={styles.footer}>
+              <button
+                type="button"
+                onClick={onCreateNew}
+                className={styles.createButton}
+              >
+                {createButtonText}
+              </button>
+            </div>
+          )}
         </ComboboxOptions>
       </div>
     </Combobox>

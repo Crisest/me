@@ -7,6 +7,8 @@ import { requestLogger } from './middleware/requestLogger';
 import { connectToDatabase } from './db/db';
 import transactionsRoutes from './modules/transactions';
 import loginRoutes from './modules/auth';
+import bankRoutes from './modules/banks/bank.routes';
+import cardRoutes from './modules/cards/card.routes';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { getConfig } from './config/env';
@@ -45,6 +47,8 @@ app.use(limiter);
 // Routes
 app.use('/transactions', transactionsRoutes);
 app.use('/auth', loginRoutes);
+app.use('/banks', bankRoutes);
+app.use('/cards', cardRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

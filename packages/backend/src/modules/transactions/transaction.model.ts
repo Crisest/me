@@ -11,6 +11,7 @@ export interface ITransaction extends Document {
   category?: string;
   date: Date;
   groupId: mongoose.Types.ObjectId;
+  bankId?: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt?: Date;
@@ -36,6 +37,10 @@ const TransactionSchema = new mongoose.Schema<ITransaction>(
       ref: 'Group',
       required: true,
     },
+    bankId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Bank',
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -53,6 +58,7 @@ TransactionSchema.methods.toTransaction = function (): CommonTransaction {
     category: this.category,
     date: this.date.toISOString(),
     groupId: this.groupId.toString(),
+    bankId: this.bankId?.toString(),
     createdBy: this.createdBy.toString(),
     createdAt: this.createdAt.getTime(),
     updatedAt: this.updatedAt ? this.updatedAt.getTime() : undefined,
@@ -69,6 +75,7 @@ TransactionSchema.statics.fromCommonTransaction = function (
     category: tx.category,
     date: new Date(tx.date),
     groupId: new mongoose.Types.ObjectId(tx.groupId),
+    bankId: tx.bankId ? new mongoose.Types.ObjectId(tx.bankId) : undefined,
     createdBy: userId,
     // createdAt and updatedAt are handled by timestamps
   });
