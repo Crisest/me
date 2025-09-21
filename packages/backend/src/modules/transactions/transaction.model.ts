@@ -54,8 +54,8 @@ TransactionSchema.methods.toTransaction = function (): CommonTransaction {
     date: this.date.toISOString(),
     groupId: this.groupId.toString(),
     createdBy: this.createdBy.toString(),
-    createdAt: this.createdAt.toISOString() || null,
-    updatedAt: this.updatedAt.toISOString(),
+    createdAt: this.createdAt.getTime(),
+    updatedAt: this.updatedAt ? this.updatedAt.getTime() : undefined,
   };
 };
 

@@ -3,11 +3,11 @@ export interface Transaction {
   amount: number;
   description: string;
   category?: string;
-  date: string; // ISO string
+  date: string; // ISO string for transaction date
   groupId: string;
   createdBy: string; // user ID
-  createdAt: string; // ISO string
-  updatedAt?: string; // ISO string
+  createdAt: number; // Unix timestamp in milliseconds
+  updatedAt?: number; // Unix timestamp in milliseconds
 }
 
 export interface CreateTransactionPayload {
