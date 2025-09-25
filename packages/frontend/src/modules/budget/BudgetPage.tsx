@@ -14,7 +14,6 @@ import YmCombobox from '@/components/YmCombobox/YmCombobox';
 import TransactionUploadModal from '@/components/TransactionUploadModal/TransactionUploadModal';
 
 export const BudgetPage = () => {
-  const [saveTransactions, result] = useCreateManyTransactionsMutation();
   const previousMonth = new Date().getMonth();
   const [selectedMonth, setSelectedMonth] = useState(previousMonth);
   const { data: transactionsData, isLoading } =

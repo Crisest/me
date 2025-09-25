@@ -9,6 +9,7 @@ import YmFlex from '../Layout/YmFlex/YmFlex/YmFlex';
 import { useBankSelect, useCardSelect } from './hooks';
 import TransactionsTable from '../TransactionsTable/TransactionsTable';
 import styles from './TransactionsUploadModal.module.css';
+import { useCreateManyTransactionsMutation } from '@/services/transactionService';
 
 const TransactionUploadModal = ({
   openUploadModal,
@@ -18,6 +19,7 @@ const TransactionUploadModal = ({
   setOpenUploadModal: (open: boolean) => void;
 }) => {
   const [tempTransactions, setTempTransactions] = useState<Transaction[]>();
+  const [saveTransactions, result] = useCreateManyTransactionsMutation();
 
   const {
     bankState: [selectedBank, setSelectedBank],
@@ -47,13 +49,29 @@ const TransactionUploadModal = ({
     }
   };
 
+  const handleSubmit = async () => {
+    if (!tempTransactions || !selectedBank || !selectedCard) return;
+
+    try {
+      await saveTransactions({
+        transactions: tempTransactions,
+        bankId: selectedBank,
+        cardId: selectedCard,
+      }).unwrap();
+      setTempTransactions(undefined);
+      setOpenUploadModal(false);
+    } catch (error) {
+      console.error('Failed to save transactions:', error);
+    }
+  };
+
   return (
     <YmDialog
       isOpen={openUploadModal}
       onClose={() => setOpenUploadModal(false)}
       title="Upload transactions"
       footerButtonText="Save"
-      footerButtonAction={() => {}}
+      footerButtonAction={handleSubmit}
     >
       <YmFlex gap={16} direction="column">
         <YmCombobox

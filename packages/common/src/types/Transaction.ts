@@ -9,6 +9,8 @@ export interface Transaction {
   createdBy: string; // user ID
   createdAt: number; // Unix timestamp in milliseconds
   updatedAt?: number; // Unix timestamp in milliseconds
+  deletedAt?: number; // Unix timestamp in milliseconds
+  cardId?: string;
 }
 
 export interface CreateTransactionPayload {
@@ -18,10 +20,14 @@ export interface CreateTransactionPayload {
   date: string;
   groupId: string;
   bankId?: string;
+  cardId?: string;
 }
 
-export interface CreateTransactionsPayload
-  extends Array<CreateTransactionPayload> {}
+export interface CreateTransactionsPayload {
+  transactions: Transaction[];
+  cardId: string;
+  bankId: string;
+}
 
 export interface UpdateTransactionPayload {
   amount?: number;

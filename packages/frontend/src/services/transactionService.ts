@@ -26,10 +26,14 @@ export const transactionApi = apiSlice.injectEndpoints({
       Transaction[],
       CreateTransactionsPayload
     >({
-      query: transactions => ({
+      query: payload => ({
         url: '/transactions/bulk',
         method: 'POST',
-        body: transactions,
+        body: {
+          transactions: payload.transactions,
+          cardId: payload.cardId,
+          bankId: payload.bankId,
+        },
       }),
       invalidatesTags: [tagTypesEnum.TRANSACTIONS],
     }),

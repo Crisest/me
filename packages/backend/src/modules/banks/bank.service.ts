@@ -12,9 +12,7 @@ export async function createBank(
 }
 
 export async function getBanksByUser(userId: mongoose.Types.ObjectId) {
-  console.log('CRASHINGGGG');
   const iBanks = await Bank.find({ createdBy: userId });
   const banks = iBanks.map(iBank => iBank.toBank());
-  console.log({ banks });
   return banks || [];
 }
