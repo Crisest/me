@@ -6,7 +6,7 @@ export interface ITransaction extends Document {
   description: string;
   category?: string;
   date: Date;
-  groupId: mongoose.Types.ObjectId;
+  groupId?: mongoose.Types.ObjectId;
   bankId?: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
@@ -35,7 +35,6 @@ const TransactionSchema = new mongoose.Schema<ITransaction>(
     groupId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Group',
-      required: true,
     },
     bankId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -79,12 +78,13 @@ TransactionSchema.statics.fromCommonTransaction = function (
   bankId?: string,
   groupId?: string
 ): Partial<ITransaction>[] {
+  console.log('debug: cardId, bankId, groupId', cardId, bankId, groupId);
   const convert = (tx: CommonTransaction): Partial<ITransaction> => ({
     amount: tx.amount,
     description: tx.description,
     category: tx.category,
     date: new Date(tx.date),
-    groupId: new mongoose.Types.ObjectId(groupId),
+    // groupId: new mongoose.Types.ObjectId(groupId),
     bankId: new mongoose.Types.ObjectId(bankId),
     cardId: new mongoose.Types.ObjectId(cardId),
     createdBy: userId,
