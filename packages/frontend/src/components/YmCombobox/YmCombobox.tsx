@@ -9,6 +9,7 @@ import React, { Dispatch, SetStateAction, useState } from 'react';
 import { IoChevronDownCircleOutline } from 'react-icons/io5';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import styles from './YmCombobox.module.css';
+import YButtom from '../Button/Button';
 
 export interface Option<T> {
   id: number | string;
@@ -25,6 +26,8 @@ interface YmComboboxProps<T> {
   onCreateNew?: () => void;
   createButtonText?: string;
   isLoading?: boolean;
+  onQueryChange?: (query: string) => void;
+  query?: string;
 }
 
 const YmCombobox = <T,>({
@@ -36,8 +39,11 @@ const YmCombobox = <T,>({
   onCreateNew,
   createButtonText = 'Create New',
   isLoading = false,
+  onQueryChange,
+  query: externalQuery,
 }: YmComboboxProps<T>) => {
-  const [query, setQuery] = useState('');
+  const [internalQuery, setInternalQuery] = useState('');
+  const query = externalQuery ?? internalQuery;
 
   const filteredOptions =
     query === ''
@@ -50,14 +56,27 @@ const YmCombobox = <T,>({
     const selectedOption = options.find(option => option.value === val);
     return selectedOption ? selectedOption.label : '';
   };
+
+  const handleQueryChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newQuery = event.target.value;
+    if (onQueryChange) {
+      onQueryChange(newQuery);
+    } else {
+      setInternalQuery(newQuery);
+    }
+  };
   return (
-    <Combobox value={value} onChange={onChange} onClose={() => setQuery('')}>
+    <Combobox
+      value={value}
+      onChange={onChange}
+      onClose={() => (onQueryChange ? onQueryChange('') : setInternalQuery(''))}
+    >
       <div className={styles.combobox}>
         <ComboboxInput
           aria-label={ariaLabel}
           className={styles.input}
           placeholder={placeholder}
-          onChange={event => setQuery(event.target.value)}
+          onChange={handleQueryChange}
           displayValue={getDisplayValue}
         />
         <ComboboxButton className={styles.button}>
@@ -84,13 +103,9 @@ const YmCombobox = <T,>({
           </div>
           {onCreateNew && (
             <div className={styles.footer}>
-              <button
-                type="button"
-                onClick={onCreateNew}
-                className={styles.createButton}
-              >
+              <YButtom type="button" onClick={onCreateNew} fullWidth>
                 {createButtonText}
-              </button>
+              </YButtom>
             </div>
           )}
         </ComboboxOptions>

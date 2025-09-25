@@ -2,13 +2,13 @@ import YmDialog from '../YmDialog/YmDialog';
 import FileUpload from '../FileUpload/FileUpload';
 import { parseFileContent } from '@/utils/fileReader';
 import { parseCSVToTransaction } from '@/utils/csv';
-import { useEffect, useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Transaction } from '@portfolio/common';
-import { useGetBanksQuery } from '@/services/bankService';
-import { useGetCardsQuery } from '@/services/cardService';
-
-import { ComboboxUtils } from '@/utils/combobox';
 import YmCombobox from '../YmCombobox/YmCombobox';
+import YmFlex from '../Layout/YmFlex/YmFlex/YmFlex';
+import { useBankSelect, useCardSelect } from './hooks';
+import TransactionsTable from '../TransactionsTable/TransactionsTable';
+import styles from './TransactionsUploadModal.module.css';
 
 const TransactionUploadModal = ({
   openUploadModal,
@@ -17,29 +17,23 @@ const TransactionUploadModal = ({
   openUploadModal: boolean;
   setOpenUploadModal: (open: boolean) => void;
 }) => {
-  // fetch banks and cards for the comboboxes
-  const {
-    data: banks,
-    isLoading: banksLoading,
-    error: banksError,
-  } = useGetBanksQuery();
-  const {
-    data: cards,
-    isLoading: cardsLoading,
-    error: cardsError,
-  } = useGetCardsQuery();
-
-  useEffect(() => {
-    if (banksError) {
-      console.error('Error fetching banks:', banksError);
-    }
-    if (cardsError) {
-      console.error('Error fetching cards:', cardsError);
-    }
-  }, [banksError, cardsError]);
   const [tempTransactions, setTempTransactions] = useState<Transaction[]>();
-  const [selectedBank, setSelectedBank] = useState<string>();
-  const [selectedCard, setSelectedCard] = useState<string>();
+
+  const {
+    bankState: [selectedBank, setSelectedBank],
+    searchState: [bankSearchQuery, setBankSearchQuery],
+    bankOptions,
+    isLoading: banksLoading,
+    handleCreateBank,
+  } = useBankSelect();
+
+  const {
+    cardState: [selectedCard, setSelectedCard],
+    searchState: [cardSearchQuery, setCardSearchQuery],
+    cardOptions,
+    isLoading: cardsLoading,
+    handleCreateCard,
+  } = useCardSelect();
 
   const handleFileSelect = async (file: File) => {
     try {
@@ -53,26 +47,15 @@ const TransactionUploadModal = ({
     }
   };
 
-  const bankOptions = useMemo(
-    () => ComboboxUtils.banksToOptions(banks),
-    [banks],
-  );
-  const cardOptions = useMemo(
-    () => ComboboxUtils.cardsToOptions(cards),
-    [cards],
-  );
-
-  console.log(tempTransactions);
-  // I will need to add the combobox for selecting or creating a bank, and a card
   return (
     <YmDialog
       isOpen={openUploadModal}
       onClose={() => setOpenUploadModal(false)}
-      title="Upload CSV file"
-      footerButtonText="Close"
+      title="Upload transactions"
+      footerButtonText="Save"
+      footerButtonAction={() => {}}
     >
-      <FileUpload onFileSelect={handleFileSelect} />
-      <div className="flex flex-col gap-4">
+      <YmFlex gap={16} direction="column">
         <YmCombobox
           options={bankOptions}
           value={selectedBank}
@@ -80,6 +63,9 @@ const TransactionUploadModal = ({
           placeholder="Select a bank"
           createButtonText="Create new bank"
           isLoading={banksLoading}
+          onCreateNew={handleCreateBank}
+          onQueryChange={setBankSearchQuery}
+          query={bankSearchQuery}
         />
         <YmCombobox
           options={cardOptions}
@@ -88,8 +74,21 @@ const TransactionUploadModal = ({
           placeholder="Select a card"
           createButtonText="Create new card"
           isLoading={cardsLoading}
+          onCreateNew={handleCreateCard}
+          onQueryChange={setCardSearchQuery}
+          query={cardSearchQuery}
         />
-      </div>
+        <FileUpload onFileSelect={handleFileSelect} buttonText="Upload file" />
+
+        {tempTransactions && (
+          <>
+            <h3>Preview ...</h3>
+            <div className={styles.tableContainer}>
+              <TransactionsTable transactions={tempTransactions} />
+            </div>
+          </>
+        )}
+      </YmFlex>
     </YmDialog>
   );
 };

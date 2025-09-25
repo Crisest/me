@@ -21,6 +21,6 @@
 .table td {
   padding: 12px;
   text-align: left;
-  border-bottom: 1px solid var(--color-blue-darker);
+  border-bottom: 1px solid var(--color-dark);
   color: var(--color-grey);
 }

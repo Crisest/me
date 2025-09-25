@@ -12,7 +12,7 @@
     var(--input-padding-x);
   font-size: var(--input-font-size);
   border-radius: var(--input-border-radius);
-  border: 1px solid var(--color-blue);
+  border: 1px solid var(--color-dark);
   background-color: var(--color-white);
   color: var(--color-grey);
   transition:
@@ -62,9 +62,8 @@
   border-radius: var(--input-border-radius);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   position: absolute;
-  z-index: 50;
+  z-index: 999;
   margin-top: 4px;
-  z-index: 10;
   max-height: 350px;
   top: 100%;
   display: flex;
@@ -111,6 +110,7 @@
 
 .footer {
   border-top: 1px solid #e5e7eb;
+  background-color: var(--color-blue);
   padding: 0.5rem;
 }
 

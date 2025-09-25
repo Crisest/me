@@ -39,7 +39,7 @@ const YmDialog: React.FC<YmDialogProps> = ({
       <div className={styles.container}>
         <DialogPanel className={styles.panel}>
           {title && (
-            <DialogTitle as="h3" className={styles.title}>
+            <DialogTitle as="h2" className={styles.title}>
               {title}
             </DialogTitle>
           )}

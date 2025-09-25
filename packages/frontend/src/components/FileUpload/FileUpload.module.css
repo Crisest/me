@@ -9,6 +9,7 @@
   display: inline-flex;
   align-items: center;
   cursor: pointer;
+  width: 100%;
 }
 
 .fileInput {
@@ -22,8 +23,9 @@
   border-radius: 8px;
   font-weight: bold;
   transition: background-color 0.3s ease;
-  margin-right: 1rem;
   border-radius: var(--btn-border-radius);
+  width: 100%;
+  text-align: center;
 }
 
 .button:hover {
