@@ -1,7 +1,7 @@
 import YmDialog from '../YmDialog/YmDialog';
 import FileUpload from '../FileUpload/FileUpload';
 import { parseFileContent } from '@/utils/fileReader';
-import { parseCSVToTransaction } from '@/utils/csv';
+import { paparseCSVToTransaction } from '@/utils/csv';
 import { useState } from 'react';
 import { Transaction } from '@portfolio/common';
 import YmCombobox from '../YmCombobox/YmCombobox';
@@ -41,7 +41,7 @@ const TransactionUploadModal = ({
     try {
       const transactionData = await parseFileContent(
         file,
-        parseCSVToTransaction,
+        paparseCSVToTransaction,
       );
       setTempTransactions(transactionData);
     } catch (error) {

@@ -6,7 +6,8 @@ import mongoose from 'mongoose';
 export const getTransactionsByUserId = async (req: Request, res: Response) => {
   try {
     const month = Number(req.query.month);
-
+    const userId = req.user!._id;
+    console.log('userId:', userId, typeof userId);
     const transactions = await transactionService.getAllTransactions(
       req.user!.id,
       month

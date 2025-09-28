@@ -1,4 +1,5 @@
 import { Transaction } from '@/types/Transaction';
+import Papa from 'papaparse';
 
 const headerMapping: Record<string, keyof Transaction> = {
   // Standard headers
@@ -33,6 +34,7 @@ const convertValue = (key: keyof Transaction, value: string): any => {
   }
 };
 
+// Deprecated: Use paparseCSVToTransaction instead
 export const parseCSVToTransaction = (text: string): Transaction[] => {
   const lines = text.trim().split('\n');
   const headers = lines[0].split(',').map(h => h.trim());
@@ -67,6 +69,41 @@ export const parseCSVToTransaction = (text: string): Transaction[] => {
     }
 
     return row as Transaction;
+  });
+};
+
+export const paparseCSVToTransaction = (text: string): Transaction[] => {
+  const { data, errors } = Papa.parse(text, {
+    header: true, // use the first row as headers
+    skipEmptyLines: true,
+  });
+
+  if (errors.length > 0) {
+    throw new Error(
+      `CSV parse errors: ${errors.map(e => e.message).join(', ')}`,
+    );
+  }
+
+  return data.map((row: any, lineIndex: number) => {
+    const mappedRow: Partial<Transaction> = {};
+    for (const header in row) {
+      if (isValidTransactionKey(header)) {
+        const mappedKey = headerMapping[header];
+        try {
+          mappedRow[mappedKey] = convertValue(mappedKey, row[header]);
+        } catch {
+          throw new Error(
+            `Error parsing value at line ${lineIndex + 2}, column ${header}: ${row[header]}`,
+          );
+        }
+      }
+    }
+
+    if (!isValidTransaction(mappedRow)) {
+      throw new Error(`Missing required fields at line ${lineIndex + 2}`);
+    }
+
+    return mappedRow as Transaction;
   });
 };
 

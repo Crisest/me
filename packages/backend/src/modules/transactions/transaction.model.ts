@@ -78,7 +78,6 @@ TransactionSchema.statics.fromCommonTransaction = function (
   bankId?: string,
   groupId?: string
 ): Partial<ITransaction>[] {
-  console.log('debug: cardId, bankId, groupId', cardId, bankId, groupId);
   const convert = (tx: CommonTransaction): Partial<ITransaction> => ({
     amount: tx.amount,
     description: tx.description,
@@ -93,12 +92,12 @@ TransactionSchema.statics.fromCommonTransaction = function (
   return data.map(convert);
 };
 
-TransactionSchema.pre('save', function (next) {
-  if (this.date) {
-    this.date.setUTCHours(0, 0, 0, 0);
-  }
-  next();
-});
+// TransactionSchema.pre('save', function (next) {
+//   if (this.date) {
+//     this.date.setUTCHours(0, 0, 0, 0);
+//   }
+//   next();
+// });
 
 export const Transaction = mongoose.model<ITransaction, TransactionModel>(
   'Transaction',

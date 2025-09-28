@@ -14,12 +14,12 @@ export const getAllTransactions = async (
 
   if (month) {
     const year = new Date().getFullYear();
-    const startDate = new Date(Date.UTC(year, month - 1, 1));
-    const endDate = new Date(Date.UTC(year, month, 0));
+    const startDate = new Date(year, month - 1, 1); // month is 0-based
+    const endDate = new Date(year, month, 1); // first day of next month
 
     query.date = {
       $gte: startDate,
-      $lte: endDate,
+      $lt: endDate,
     };
   }
 
