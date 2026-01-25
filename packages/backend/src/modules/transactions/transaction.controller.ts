@@ -1,16 +1,21 @@
 import { Request, Response } from 'express';
 import * as transactionService from './transaction.service';
-import { CreateTransactionsPayload } from '@portfolio/common';
+import { TransactionPayloads } from '@portfolio/common';
 import mongoose from 'mongoose';
 
 export const getTransactionsByUserId = async (req: Request, res: Response) => {
   try {
     const month = Number(req.query.month);
-    const userId = req.user!._id;
-    console.log('userId:', userId, typeof userId);
+    const year = Number(req.query.year);
+
+    const options = {
+      month: isNaN(month) ? undefined : month,
+      year: isNaN(year) ? undefined : year,
+    };
+
     const transactions = await transactionService.getAllTransactions(
       req.user!.id,
-      month
+      options
     );
 
     res.json(transactions);
@@ -38,8 +43,13 @@ export const postManyTransactionsByUser = async (
   res: Response
 ) => {
   try {
-    const payload = req.body as CreateTransactionsPayload;
-    const userId = req.user!._id as mongoose.Types.ObjectId;
+    const payload = req.body as TransactionPayloads.CreateMany;
+
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
     const created = await transactionService.createManyTransactionsByUser(
       payload,

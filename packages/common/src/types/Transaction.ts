@@ -13,6 +13,36 @@ export interface Transaction {
   cardId?: string;
 }
 
+export namespace TransactionPayloads {
+  export interface Create {
+    amount: number;
+    description: string;
+    category?: string;
+    date: string;
+    groupId: string;
+    bankId?: string;
+    cardId?: string;
+  }
+
+  export interface CreateMany {
+    transactions: Transaction[];
+    cardId: string;
+    bankId: string;
+  }
+
+  export interface Update {
+    amount?: number;
+    description?: string;
+    category?: string;
+    date?: string;
+  }
+
+  export interface GetMany {
+    month?: number;
+    year?: number;
+  }
+}
+
 export interface CreateTransactionPayload {
   amount: number;
   description: string;

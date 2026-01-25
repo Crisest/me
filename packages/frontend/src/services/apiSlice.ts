@@ -13,6 +13,10 @@ export enum tagTypesEnum {
   CARDS = 'cards',
 }
 
+export enum abstractTagTypesEnum {
+  LIST = 'LIST',
+}
+
 export const apiSlice = createApi({
   reducerPath: 'api',
   tagTypes: [

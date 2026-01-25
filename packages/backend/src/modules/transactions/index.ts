@@ -1,4 +1,7 @@
 export * from './transaction.controller';
 export * from './transaction.service';
 export * from './transaction.model';
-export { default } from './transaction.routes'; // This line sets the default export
+export * from './transaction.insights.service';
+export * from './transaction.insights.controller';
+export * from './transaction.insights.routes';
+export { default } from './transaction.routes';

@@ -1,20 +1,17 @@
 import mongoose, { Document, Model } from 'mongoose';
-import { Card as CommonCard, CreateCardPayload } from '@portfolio/common';
+import { Card, CreateCardPayload } from '@portfolio/common';
 
 export interface ICard extends Document {
   name: string;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt?: Date;
-  toCard(): CommonCard;
+  toCard(): Card;
 }
 
 // Add interface for model statics
-interface CardModel extends Model<ICard> {
-  fromCommonCard(
-    data: CreateCardPayload,
-    userId: mongoose.Types.ObjectId
-  ): Partial<ICard>;
+interface CardModelStatics extends Model<ICard> {
+  fromCreatePayload(data: CreateCardPayload, userId: string): Partial<ICard>;
 }
 
 const CardSchema = new mongoose.Schema<ICard>(
@@ -29,7 +26,7 @@ const CardSchema = new mongoose.Schema<ICard>(
   { timestamps: true }
 );
 
-CardSchema.methods.toCard = function (): CommonCard {
+CardSchema.methods.toCard = function (): Card {
   return {
     id: this._id.toString(),
     name: this.name,
@@ -39,14 +36,17 @@ CardSchema.methods.toCard = function (): CommonCard {
   };
 };
 
-CardSchema.statics.fromCommonCard = function (
+CardSchema.statics.fromCreatePayload = function (
   data: CreateCardPayload,
-  userId: mongoose.Types.ObjectId
+  userId: string
 ): Partial<ICard> {
   return {
     name: data.name,
-    createdBy: userId,
+    createdBy: new mongoose.Types.ObjectId(userId),
   };
 };
 
-export const Card = mongoose.model<ICard, CardModel>('Card', CardSchema);
+export const CardModel = mongoose.model<ICard, CardModelStatics>(
+  'Card',
+  CardSchema
+);

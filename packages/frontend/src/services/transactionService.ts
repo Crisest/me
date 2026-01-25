@@ -1,20 +1,22 @@
-import { apiSlice, tagTypesEnum } from './apiSlice';
-import type {
-  Transaction,
-  CreateTransactionsPayload,
-  CreateTransactionPayload,
-} from '@portfolio/common';
+import { abstractTagTypesEnum, apiSlice, tagTypesEnum } from './apiSlice';
+import type { Transaction, TransactionPayloads } from '@portfolio/common';
 
 export const transactionApi = apiSlice.injectEndpoints({
   endpoints: builder => ({
-    getTransactions: builder.query<Transaction[], number>({
-      query: month => ({
+    getTransactions: builder.query<Transaction[], TransactionPayloads.GetMany>({
+      query: ({ month, year }) => ({
         url: 'transactions',
-        params: month ? { month } : undefined,
+        params: { month, year },
       }),
-      providesTags: [tagTypesEnum.TRANSACTIONS],
+      providesTags: (result, error, arg) => [
+        { type: tagTypesEnum.TRANSACTIONS, id: 'LIST' },
+        { type: tagTypesEnum.TRANSACTIONS, id: `${arg.year}-${arg.month}` },
+      ],
     }),
-    createTransaction: builder.mutation<Transaction, CreateTransactionPayload>({
+    createTransaction: builder.mutation<
+      Transaction,
+      TransactionPayloads.Create
+    >({
       query: transaction => ({
         url: '/transactions',
         method: 'POST',
@@ -24,7 +26,7 @@ export const transactionApi = apiSlice.injectEndpoints({
     }),
     createManyTransactions: builder.mutation<
       Transaction[],
-      CreateTransactionsPayload
+      TransactionPayloads.CreateMany
     >({
       query: payload => ({
         url: '/transactions/bulk',
@@ -35,7 +37,9 @@ export const transactionApi = apiSlice.injectEndpoints({
           bankId: payload.bankId,
         },
       }),
-      invalidatesTags: [tagTypesEnum.TRANSACTIONS],
+      invalidatesTags: [
+        { type: tagTypesEnum.TRANSACTIONS, id: abstractTagTypesEnum.LIST },
+      ],
     }),
   }),
 });

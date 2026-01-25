@@ -19,4 +19,10 @@ const months: Option<number>[] = [
   value: index + 1,
 }));
 
-export default months;
+const years: Option<number>[] = [];
+const currentYear = new Date().getFullYear();
+for (let year = currentYear; year >= 2000; year--) {
+  years.push({ id: year, label: year.toString(), value: year });
+}
+
+export { years, months };

@@ -25,13 +25,16 @@ export const authMiddleware = async (
       userId: string;
     };
 
-    const user = await User.findById(decoded.userId);
+    const user = await User.findById(decoded.userId).lean();
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    req.user = user;
+    req.user = {
+      id: user._id.toString(),
+      email: user.email,
+    };
 
     next();
   } catch (error) {

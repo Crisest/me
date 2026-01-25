@@ -1,13 +1,14 @@
+import Logger from 'bunyan';
 // types/express/index.d.ts
-import { Logger } from 'bunyan';
-import { IUser } from '@/modules/users/user.model';
+import { IUser } from '../../modules/users/user.model';
+import { AuthUser } from '../auth';
 
 declare global {
   namespace Express {
     interface Request {
       log: Logger;
       startTime?: number;
-      user?: IUser;
+      user?: AuthUser;
     }
   }
 }

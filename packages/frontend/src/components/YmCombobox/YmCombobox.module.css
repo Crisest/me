@@ -32,7 +32,7 @@
   color: var(--color-blue);
   cursor: pointer;
   font-size: 1.5em;
-  right: 0;
+  right: -11px;
   top: 15%;
   transition: color 0.2s;
   position: absolute;

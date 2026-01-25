@@ -1,21 +1,18 @@
-import { ITransaction, Transaction } from './transaction.model';
+import { ITransaction, TransactionModel } from './transaction.model';
 import mongoose from 'mongoose';
 import { normalizeDate } from '@portfolio/common/src/utils/date';
-import {
-  CreateTransactionsPayload,
-  Transaction as CommonTransaction,
-} from '@portfolio/common';
+import { CreateTransactionsPayload, Transaction } from '@portfolio/common';
 
 export const getAllTransactions = async (
-  userId: mongoose.Types.ObjectId,
-  month?: number
-): Promise<ITransaction[]> => {
-  const query: any = { createdBy: userId };
-
+  userId: string,
+  options: { month?: number; year?: number }
+): Promise<Transaction[]> => {
+  const query: Record<string, any> = { createdBy: userId };
+  const { month, year } = options;
   if (month) {
-    const year = new Date().getFullYear();
-    const startDate = new Date(year, month - 1, 1); // month is 0-based
-    const endDate = new Date(year, month, 1); // first day of next month
+    const yearSelected = year || new Date().getFullYear();
+    const startDate = new Date(yearSelected, month - 1, 1); // month is 0-based
+    const endDate = new Date(yearSelected, month, 1); // first day of next month
 
     query.date = {
       $gte: startDate,
@@ -23,18 +20,18 @@ export const getAllTransactions = async (
     };
   }
 
-  const result = await Transaction.find(query).sort({ date: -1 });
+  const result = await TransactionModel.find(query).sort({ date: -1 });
 
-  return result;
+  return result.map(iTransaction => iTransaction.toTransaction());
 };
 
 export const createManyTransactionsByUser = async (
   payload: CreateTransactionsPayload,
-  userId: mongoose.Types.ObjectId
+  userId: string
 ) => {
   const { transactions, cardId, bankId } = payload;
 
-  const transactionsToAdd = Transaction.fromCommonTransaction(
+  const transactionsToAdd = TransactionModel.fromCreateManyPayload(
     transactions,
     userId,
     cardId,
@@ -42,5 +39,5 @@ export const createManyTransactionsByUser = async (
     'TEMP' // Or pass a real groupId if needed
   );
 
-  await Transaction.insertMany(transactionsToAdd);
+  await TransactionModel.insertMany(transactionsToAdd);
 };

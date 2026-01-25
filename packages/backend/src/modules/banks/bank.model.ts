@@ -11,10 +11,7 @@ export interface IBank extends Document {
 
 // Add interface for model statics
 interface BankModel extends Model<IBank> {
-  fromCommonBank(
-    data: CreateBankPayload,
-    userId: mongoose.Types.ObjectId
-  ): Partial<IBank>;
+  fromCommonBank(data: CreateBankPayload, userId: string): Partial<IBank>;
 }
 
 const BankSchema = new mongoose.Schema<IBank>(
@@ -41,11 +38,11 @@ BankSchema.methods.toBank = function (): CommonBank {
 
 BankSchema.statics.fromCommonBank = function (
   data: CreateBankPayload,
-  userId: mongoose.Types.ObjectId
+  userId: string
 ): Partial<IBank> {
   return {
     name: data.name,
-    createdBy: userId,
+    createdBy: new mongoose.Types.ObjectId(userId),
   };
 };
 

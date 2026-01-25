@@ -1,5 +1,5 @@
 import mongoose, { Document, Model } from 'mongoose';
-import { Transaction as CommonTransaction } from '@portfolio/common';
+import { Transaction } from '@portfolio/common';
 
 export interface ITransaction extends Document {
   amount: number;
@@ -11,15 +11,16 @@ export interface ITransaction extends Document {
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt?: Date;
-  toTransaction(): CommonTransaction;
+  toTransaction(): Transaction;
   cardId?: mongoose.Types.ObjectId;
+  fixedTransactionId?: mongoose.Types.ObjectId;
 }
 
 // Add this interface for the model statics
 interface TransactionModel extends Model<ITransaction> {
-  fromCommonTransaction(
-    data: CommonTransaction[],
-    userId: mongoose.Types.ObjectId,
+  fromCreateManyPayload(
+    data: Transaction[],
+    userId: string,
     cardId?: string,
     bankId?: string,
     groupId?: string
@@ -51,11 +52,15 @@ const TransactionSchema = new mongoose.Schema<ITransaction>(
       ref: 'User',
       required: true,
     },
+    fixedTransactionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'FixedTransaction',
+    },
   },
   { timestamps: true }
 );
 
-TransactionSchema.methods.toTransaction = function (): CommonTransaction {
+TransactionSchema.methods.toTransaction = function (): Transaction {
   return {
     id: this._id.toString(),
     amount: this.amount,
@@ -71,14 +76,14 @@ TransactionSchema.methods.toTransaction = function (): CommonTransaction {
   };
 };
 
-TransactionSchema.statics.fromCommonTransaction = function (
-  data: CommonTransaction[],
-  userId: mongoose.Types.ObjectId,
+TransactionSchema.statics.fromCreateManyPayload = function (
+  data: Transaction[],
+  userId: string,
   cardId?: string,
   bankId?: string,
   groupId?: string
-): Partial<ITransaction>[] {
-  const convert = (tx: CommonTransaction): Partial<ITransaction> => ({
+) {
+  const convert = (tx: Transaction) => ({
     amount: tx.amount,
     description: tx.description,
     category: tx.category,
@@ -86,20 +91,13 @@ TransactionSchema.statics.fromCommonTransaction = function (
     // groupId: new mongoose.Types.ObjectId(groupId),
     bankId: new mongoose.Types.ObjectId(bankId),
     cardId: new mongoose.Types.ObjectId(cardId),
-    createdBy: userId,
+    createdBy: new mongoose.Types.ObjectId(userId),
   });
 
   return data.map(convert);
 };
 
-// TransactionSchema.pre('save', function (next) {
-//   if (this.date) {
-//     this.date.setUTCHours(0, 0, 0, 0);
-//   }
-//   next();
-// });
-
-export const Transaction = mongoose.model<ITransaction, TransactionModel>(
+export const TransactionModel = mongoose.model<ITransaction, TransactionModel>(
   'Transaction',
   TransactionSchema
 );
