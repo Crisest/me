@@ -9,7 +9,6 @@ export interface ICard extends Document {
   toCard(): Card;
 }
 
-// Add interface for model statics
 interface CardModelStatics extends Model<ICard> {
   fromCreatePayload(data: CreateCardPayload, userId: string): Partial<ICard>;
 }

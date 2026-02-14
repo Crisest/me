@@ -8,7 +8,7 @@ export const transactionApi = apiSlice.injectEndpoints({
         url: 'transactions',
         params: { month, year },
       }),
-      providesTags: (result, error, arg) => [
+      providesTags: (r, e, arg) => [
         { type: tagTypesEnum.TRANSACTIONS, id: 'LIST' },
         { type: tagTypesEnum.TRANSACTIONS, id: `${arg.year}-${arg.month}` },
       ],

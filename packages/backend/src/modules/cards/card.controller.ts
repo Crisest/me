@@ -5,16 +5,23 @@ import mongoose from 'mongoose';
 
 export class CardController {
   static async createCard(req: Request, res: Response) {
-    const userId = req.user!._id as mongoose.Types.ObjectId;
-    const cardData: CreateCardPayload = req.body;
-
-    const card = await CardService.createCard(userId, cardData);
-    res.status(201).json(card);
+    try {
+      const userId = req.user!.id;
+      const cardData: CreateCardPayload = req.body;
+      const card = await CardService.createCard(userId, cardData);
+      res.status(201).json(card);
+    } catch (e) {
+      res.status(500).json({ error: 'Failed to create a card', message: e });
+    }
   }
 
   static async getCardsByUser(req: Request, res: Response) {
-    const userId = req.user!._id as mongoose.Types.ObjectId;
-    const cards = await CardService.getCardsByUser(userId);
-    res.json(cards);
+    try {
+      const userId = req.user!.id;
+      const cards = await CardService.getCardsByUser(userId);
+      res.json(cards);
+    } catch (e) {
+      res.status(500).json({ error: 'Failed to fetch cards', message: e });
+    }
   }
 }

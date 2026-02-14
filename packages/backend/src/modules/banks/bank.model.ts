@@ -1,17 +1,16 @@
 import mongoose, { Document, Model } from 'mongoose';
-import { Bank as CommonBank, CreateBankPayload } from '@portfolio/common';
+import { Bank, CreateBankPayload } from '@portfolio/common';
 
 export interface IBank extends Document {
   name: string;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt?: Date;
-  toBank(): CommonBank;
+  toBank(): Bank;
 }
 
-// Add interface for model statics
 interface BankModel extends Model<IBank> {
-  fromCommonBank(data: CreateBankPayload, userId: string): Partial<IBank>;
+  fromCreatePayload(data: CreateBankPayload, userId: string): Partial<IBank>;
 }
 
 const BankSchema = new mongoose.Schema<IBank>(
@@ -26,7 +25,7 @@ const BankSchema = new mongoose.Schema<IBank>(
   { timestamps: true }
 );
 
-BankSchema.methods.toBank = function (): CommonBank {
+BankSchema.methods.toBank = function (): Bank {
   return {
     id: this._id.toString(),
     name: this.name,
@@ -36,7 +35,7 @@ BankSchema.methods.toBank = function (): CommonBank {
   };
 };
 
-BankSchema.statics.fromCommonBank = function (
+BankSchema.statics.fromCreatePayload = function (
   data: CreateBankPayload,
   userId: string
 ): Partial<IBank> {
@@ -46,4 +45,4 @@ BankSchema.statics.fromCommonBank = function (
   };
 };
 
-export const Bank = mongoose.model<IBank, BankModel>('Bank', BankSchema);
+export const BankModel = mongoose.model<IBank, BankModel>('Bank', BankSchema);

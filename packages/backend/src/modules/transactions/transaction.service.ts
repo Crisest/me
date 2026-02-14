@@ -21,6 +21,7 @@ export const getAllTransactions = async (
   }
 
   const result = await TransactionModel.find(query).sort({ date: -1 });
+  console.log({ result });
 
   return result.map(iTransaction => iTransaction.toTransaction());
 };

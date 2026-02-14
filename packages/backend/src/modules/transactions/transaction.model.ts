@@ -67,7 +67,7 @@ TransactionSchema.methods.toTransaction = function (): Transaction {
     description: this.description,
     category: this.category,
     date: this.date.toISOString(),
-    groupId: this.groupId.toString(),
+    groupId: this.groupId?.toString(),
     cardId: this.cardId?.toString(),
     bankId: this.bankId?.toString(),
     createdBy: this.createdBy.toString(),

@@ -2,7 +2,8 @@ import React, { InputHTMLAttributes, useRef } from 'react';
 import { useTextField, AriaTextFieldProps } from '@react-aria/textfield';
 import styles from './Textbox.module.css';
 
-interface TextBoxProps extends InputHTMLAttributes<HTMLInputElement> {
+interface TextBoxProps
+  extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
   customClass?: string;
   fullWidth?: boolean;
 }

@@ -8,6 +8,7 @@ import YmFlex from '@/components/Layout/YmFlex/YmFlex/YmFlex';
 import { months, years } from '@/constants/date';
 import YmCombobox from '@/components/YmCombobox/YmCombobox';
 import TransactionUploadModal from '@/components/TransactionUploadModal/TransactionUploadModal';
+import BudgetModal from '@/components/BudgetModal/BudgetModal';
 
 export const BudgetPage = () => {
   const now = new Date();
@@ -20,6 +21,7 @@ export const BudgetPage = () => {
     year: selectedYear,
   });
   const [openUploadModal, setOpenUploadModal] = useState(false);
+  const [openBudgetModal, setOpenBudgetModal] = useState(false);
 
   return (
     <>
@@ -42,6 +44,9 @@ export const BudgetPage = () => {
           />
           {/* <FileUpload onFileSelect={handleFileSelect} /> */}
           <YButtom onClick={() => setOpenUploadModal(true)}>Upload CSV</YButtom>
+          <YButtom onClick={() => setOpenBudgetModal(true)}>
+            Setup Budget
+          </YButtom>
         </YmFlex>
         {transactionsData && (
           <TransactionsTable transactions={transactionsData} />
@@ -50,6 +55,10 @@ export const BudgetPage = () => {
       <TransactionUploadModal
         openUploadModal={openUploadModal}
         setOpenUploadModal={setOpenUploadModal}
+      />
+      <BudgetModal
+        openModal={openBudgetModal}
+        setOpenModal={setOpenBudgetModal}
       />
     </>
   );
