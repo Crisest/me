@@ -15,6 +15,7 @@ interface YmDialogProps {
   children: ReactNode;
   footerButtonText?: string;
   footerButtonAction?: () => void;
+  footerButtonDisabled?: boolean;
 }
 
 const YmDialog: React.FC<YmDialogProps> = ({
@@ -24,12 +25,14 @@ const YmDialog: React.FC<YmDialogProps> = ({
   children,
   footerButtonText = 'Close',
   footerButtonAction,
+  footerButtonDisabled,
 }) => {
   const handleFooterAction = () => {
     if (footerButtonAction) {
       footerButtonAction();
+    } else {
+      onClose();
     }
-    onClose();
   };
 
   return (
@@ -47,7 +50,11 @@ const YmDialog: React.FC<YmDialogProps> = ({
           <div className={styles.content}>{children}</div>
 
           <div className={styles.footer}>
-            <YButton variant="primary" onClick={handleFooterAction}>
+            <YButton
+              variant="primary"
+              onClick={handleFooterAction}
+              disabled={footerButtonDisabled}
+            >
               {footerButtonText}
             </YButton>
           </div>

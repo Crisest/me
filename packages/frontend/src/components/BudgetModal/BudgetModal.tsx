@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import YButton from '@ui/Button/Button';
 import YmFlex from '@ui/YmFlex/YmFlex';
 import Textbox from '@ui/Textbox/Textbox';
 import YmDialog from '@ui/YmDialog/YmDialog';
+import { useGetBudgetQuery, useUpsertBudgetMutation } from '@/services/budgetService';
 
 type BudgetModalProps = {
   openModal: boolean;
@@ -19,8 +20,26 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
   openModal,
   setOpenModal,
 }) => {
+  const [salary, setSalary] = useState('');
   const [expenses, setExpenses] = useState<FixedExpenseInput[]>([]);
+  const [mutationError, setMutationError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  const { data: budget } = useGetBudgetQuery();
+  const [upsertBudget, { isLoading }] = useUpsertBudgetMutation();
+
+  useEffect(() => {
+    if (openModal && budget) {
+      setSalary(String(budget.salary));
+      setExpenses(
+        budget.fixedExpenses.map(e => ({
+          id: crypto.randomUUID(),
+          name: e.name,
+          amount: String(e.amount),
+        }))
+      );
+    }
+  }, [openModal, budget]);
 
   const addExpense = () => {
     setExpenses([
@@ -43,21 +62,22 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
     );
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const salary = Number(formData.get('salary'));
+    setMutationError(null);
 
-    const payload = {
-      salary,
-      fixedExpenses: expenses.map(e => ({
-        name: e.name,
-        amount: Number(e.amount),
-      })),
-    };
-
-    console.log(payload);
-    // call API to update budget
+    try {
+      await upsertBudget({
+        salary: Number(salary),
+        fixedExpenses: expenses.map(e => ({
+          name: e.name,
+          amount: Number(e.amount),
+        })),
+      }).unwrap();
+      setOpenModal(false);
+    } catch {
+      setMutationError('Failed to save budget. Please try again.');
+    }
   };
 
   const submit = () => {
@@ -71,15 +91,17 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
       onClose={() => setOpenModal(false)}
       footerButtonAction={submit}
       footerButtonText="Save"
+      footerButtonDisabled={isLoading}
     >
       <form onSubmit={handleSubmit} ref={formRef}>
         <YmFlex direction="column" gap={20}>
           <Textbox
             type="number"
-            name="salary"
             aria-label="salary input"
             fullWidth
             placeholder="Enter your monthly salary"
+            value={salary}
+            onChange={setSalary}
           />
 
           {expenses.map(expense => (
@@ -94,6 +116,10 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
           <YButton type="button" onClick={addExpense} variant="primary">
             + Add fixed expense
           </YButton>
+
+          {mutationError && (
+            <p style={{ color: 'red', margin: 0 }}>{mutationError}</p>
+          )}
         </YmFlex>
       </form>
     </YmDialog>

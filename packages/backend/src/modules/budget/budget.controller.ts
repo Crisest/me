@@ -1,31 +1,30 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import * as budgetService from './budget.service';
-import { UpdateBudgetPayload } from '@portfolio/common';
+import { BudgetPayloads } from '@portfolio/common';
 
-export const getBudget = async (req: Request, res: Response) => {
+export const getBudget = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const userId = req.user!.id;
-
-    const budget = await budgetService.getOrCreateBudget(userId);
-    res.json(budget);
+    const budget = await budgetService.getBudgetByUserId(req.user!.id);
+    res.json({ budget });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch budget' });
+    next(err);
   }
 };
 
-export const putBudget = async (req: Request, res: Response) => {
+export const putBudget = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const userId = req.user!.id;
-    const payload = req.body as UpdateBudgetPayload;
-
-    const budget = await budgetService.updateBudgetByUserId(userId, payload);
-
-    if (!budget) {
-      return res.status(404).json({ error: 'Budget not found' });
-    }
-
-    res.json(budget);
+    const payload = req.body as BudgetPayloads.Upsert;
+    const budget = await budgetService.upsertBudget(req.user!.id, payload);
+    res.json({ budget });
   } catch (err) {
-    res.status(400).json({ error: 'Failed to update budget', details: err });
+    next(err);
   }
 };
