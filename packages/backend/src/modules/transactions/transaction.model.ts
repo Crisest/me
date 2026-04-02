@@ -1,5 +1,5 @@
 import mongoose, { Document, Model } from 'mongoose';
-import { Transaction } from '@portfolio/common';
+import { Transaction, TransactionPayloads } from '@portfolio/common';
 
 export interface ITransaction extends Document {
   amount: number;
@@ -16,10 +16,9 @@ export interface ITransaction extends Document {
   fixedTransactionId?: mongoose.Types.ObjectId;
 }
 
-// Add this interface for the model statics
 interface TransactionModel extends Model<ITransaction> {
   fromCreateManyPayload(
-    data: Transaction[],
+    data: TransactionPayloads.Create[],
     userId: string,
     cardId?: string,
     bankId?: string,
@@ -77,13 +76,13 @@ TransactionSchema.methods.toTransaction = function (): Transaction {
 };
 
 TransactionSchema.statics.fromCreateManyPayload = function (
-  data: Transaction[],
+  data: TransactionPayloads.Create[],
   userId: string,
   cardId?: string,
   bankId?: string,
   groupId?: string
 ) {
-  const convert = (tx: Transaction) => ({
+  const convert = (tx: TransactionPayloads.Create) => ({
     amount: tx.amount,
     description: tx.description,
     category: tx.category,

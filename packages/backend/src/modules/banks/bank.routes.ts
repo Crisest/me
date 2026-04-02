@@ -1,10 +1,16 @@
 import { Router } from 'express';
-import { BankController } from './bank.controller';
+import { body } from 'express-validator';
+import { createBankHandler, getBanksByUserHandler } from './bank.controller';
 import { authMiddleware } from '../auth/auth.middleware';
+import { validateRequest } from '../../middleware/validateRequest';
 
 const router: Router = Router();
 
-router.post('/', authMiddleware, BankController.createBank);
-router.get('/', authMiddleware, BankController.getBanksByUser);
+const createBankValidation = [
+  body('name').isString().notEmpty().withMessage('name is required'),
+];
+
+router.post('/', authMiddleware, validateRequest(createBankValidation), createBankHandler);
+router.get('/', authMiddleware, getBanksByUserHandler);
 
 export default router;

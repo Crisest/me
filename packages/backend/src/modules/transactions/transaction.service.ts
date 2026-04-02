@@ -1,7 +1,5 @@
-import { ITransaction, TransactionModel } from './transaction.model';
-import mongoose from 'mongoose';
-import { normalizeDate } from '@portfolio/common/src/utils/date';
-import { CreateTransactionsPayload, Transaction } from '@portfolio/common';
+import { TransactionModel } from './transaction.model';
+import { Transaction, TransactionPayloads } from '@portfolio/common';
 
 export const getAllTransactions = async (
   userId: string,
@@ -11,8 +9,8 @@ export const getAllTransactions = async (
   const { month, year } = options;
   if (month) {
     const yearSelected = year || new Date().getFullYear();
-    const startDate = new Date(yearSelected, month - 1, 1); // month is 0-based
-    const endDate = new Date(yearSelected, month, 1); // first day of next month
+    const startDate = new Date(yearSelected, month - 1, 1);
+    const endDate = new Date(yearSelected, month, 1);
 
     query.date = {
       $gte: startDate,
@@ -21,13 +19,12 @@ export const getAllTransactions = async (
   }
 
   const result = await TransactionModel.find(query).sort({ date: -1 });
-  console.log({ result });
 
   return result.map(iTransaction => iTransaction.toTransaction());
 };
 
 export const createManyTransactionsByUser = async (
-  payload: CreateTransactionsPayload,
+  payload: TransactionPayloads.CreateMany,
   userId: string
 ) => {
   const { transactions, cardId, bankId } = payload;

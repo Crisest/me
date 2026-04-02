@@ -1,27 +1,26 @@
 import { Request, Response } from 'express';
-import { CardService } from './card.service';
 import { CreateCardPayload } from '@portfolio/common';
-import mongoose from 'mongoose';
+import { createCard, getCardsByUser } from './card.service';
 
-export class CardController {
-  static async createCard(req: Request, res: Response) {
-    try {
-      const userId = req.user!.id;
-      const cardData: CreateCardPayload = req.body;
-      const card = await CardService.createCard(userId, cardData);
-      res.status(201).json(card);
-    } catch (e) {
-      res.status(500).json({ error: 'Failed to create a card', message: e });
-    }
+export const createCardHandler = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const cardData: CreateCardPayload = req.body;
+    const card = await createCard(userId, cardData);
+    res.status(201).json(card);
+  } catch (err) {
+    req.log.error({ err }, 'Failed to create a card');
+    res.status(500).json({ error: 'Failed to create a card' });
   }
+};
 
-  static async getCardsByUser(req: Request, res: Response) {
-    try {
-      const userId = req.user!.id;
-      const cards = await CardService.getCardsByUser(userId);
-      res.json(cards);
-    } catch (e) {
-      res.status(500).json({ error: 'Failed to fetch cards', message: e });
-    }
+export const getCardsByUserHandler = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const cards = await getCardsByUser(userId);
+    res.json(cards);
+  } catch (err) {
+    req.log.error({ err }, 'Failed to fetch cards');
+    res.status(500).json({ error: 'Failed to fetch cards' });
   }
-}
+};
