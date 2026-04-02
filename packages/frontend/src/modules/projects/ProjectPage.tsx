@@ -1,6 +1,6 @@
 import Header from '@components/Header/Header';
 import style from './ProjectPage.module.css';
-import Button from '@components/Button/Button';
+import Button from '@ui/Button/Button';
 import { projectsData } from '@/utils/projectData';
 import { useState } from 'react';
 

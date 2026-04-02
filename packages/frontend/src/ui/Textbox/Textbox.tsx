@@ -1,0 +1,31 @@
+import React, { InputHTMLAttributes, useRef } from 'react';
+import { useTextField, AriaTextFieldProps } from '@react-aria/textfield';
+import styles from './Textbox.module.css';
+
+interface TextBoxProps
+  extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+  customClass?: string;
+  fullWidth?: boolean;
+}
+
+type TextBoxAriaProps = AriaTextFieldProps & TextBoxProps;
+
+const Textbox: React.FC<TextBoxAriaProps> = ({
+  customClass,
+  fullWidth,
+  ...rest
+}) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { inputProps } = useTextField(rest as AriaTextFieldProps, inputRef);
+  const classNames = [
+    styles.textbox,
+    customClass,
+    fullWidth ? styles.fullWidth : undefined,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return <input type="text" className={classNames} {...inputProps} />;
+};
+
+export default Textbox;

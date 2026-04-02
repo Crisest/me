@@ -1,6 +1,5 @@
 import { ChangeEvent, useState } from 'react';
 import styles from './FileUpload.module.css';
-import YButtom from '../Button/Button';
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void;

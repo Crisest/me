@@ -1,12 +1,11 @@
 .uploadContainer {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  width: 100%;
 }
 
 .fileLabel {
-  position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   cursor: pointer;
   width: 100%;
@@ -18,14 +17,17 @@
 
 .button {
   background-color: var(--color-blue);
-  color: white;
+  color: var(--color-white);
   padding: var(--btn-padding-y) var(--btn-padding-x);
-  border-radius: 8px;
-  font-weight: bold;
-  transition: background-color 0.3s ease;
   border-radius: var(--btn-border-radius);
+  font-family: var(--font-family-button);
+  font-size: var(--btn-font-size);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
   width: 100%;
   text-align: center;
+  display: block;
 }
 
 .button:hover {
@@ -33,14 +35,5 @@
 }
 
 .button:active {
-  background-color: var(--color-blue);
-}
-
-.fileName {
-  font-size: 0.95rem;
-  color: #333;
-}
-
-.csvPreview {
-  color: var(--color-grey);
+  background-color: var(--color-blue-dark);
 }

@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styles from './Sidebar.module.css';
 import useSideBar, { buttonData } from './useSideBar';
-import YButtom from '../Button/Button';
+import YButton from '@ui/Button/Button';
 import { useGetUserQuery, useLogoutMutation } from '@/services/authService';
 import { protectedRoutes, Route as RouteEnum } from '@/enums/routerEnum';
 
@@ -41,13 +41,13 @@ const Sidebar: React.FC = () => {
         </Link>
       ))}
       {displayLogout && (
-        <YButtom
+        <YButton
           customClass={styles.logout}
           variant="link"
           onClick={handleLogout}
         >
           Logout
-        </YButtom>
+        </YButton>
       )}
     </div>
   );

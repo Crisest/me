@@ -5,11 +5,11 @@ import {
   ComboboxOption,
   ComboboxOptions,
 } from '@headlessui/react';
-import React, { Dispatch, SetStateAction, useState } from 'react';
+import React, { useState } from 'react';
 import { IoChevronDownCircleOutline } from 'react-icons/io5';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import styles from './YmCombobox.module.css';
-import YButtom from '../Button/Button';
+import YButton from '../Button/Button';
 
 export interface Option<T> {
   id: number | string;
@@ -65,6 +65,7 @@ const YmCombobox = <T,>({
       setInternalQuery(newQuery);
     }
   };
+
   return (
     <Combobox
       value={value}
@@ -79,17 +80,15 @@ const YmCombobox = <T,>({
           onChange={handleQueryChange}
           displayValue={getDisplayValue}
         />
-        <ComboboxButton className={styles.button}>
+        <ComboboxButton className={styles.chevron}>
           {isLoading ? (
-            <AiOutlineLoading3Quarters
-              className={`${styles.loadingIcon} animate-spin`}
-            />
+            <AiOutlineLoading3Quarters className={styles.loadingIcon} />
           ) : (
             <IoChevronDownCircleOutline />
           )}
         </ComboboxButton>
 
-        <ComboboxOptions className={styles.options}>
+        <ComboboxOptions transition className={styles.options}>
           <div className={styles.optionsWrapper}>
             {filteredOptions.map(option => (
               <ComboboxOption
@@ -103,9 +102,9 @@ const YmCombobox = <T,>({
           </div>
           {onCreateNew && (
             <div className={styles.footer}>
-              <YButtom type="button" onClick={onCreateNew} fullWidth>
+              <YButton type="button" onClick={onCreateNew} fullWidth>
                 {createButtonText}
-              </YButtom>
+              </YButton>
             </div>
           )}
         </ComboboxOptions>

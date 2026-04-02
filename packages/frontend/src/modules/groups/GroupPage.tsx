@@ -1,7 +1,7 @@
 import { Group } from '@portfolio/common';
 import styles from './GroupPage.module.css';
 import { Form } from 'react-aria-components';
-import YButtom from '@/components/Button/Button';
+import YButton from '@ui/Button/Button';
 import { FaCirclePlus } from 'react-icons/fa6';
 
 const GroupPage: React.FC = () => {
@@ -15,9 +15,9 @@ const GroupPage: React.FC = () => {
           <p className={styles.description}>
             You don't have any groups yet. Create one to get started.
           </p>
-          <YButtom variant="primary" customClass={styles.createGroupButton}>
+          <YButton variant="primary" customClass={styles.createGroupButton}>
             <FaCirclePlus /> Create Group
-          </YButtom>
+          </YButton>
         </Form>
       ) : (
         <h1>List of Groups</h1>

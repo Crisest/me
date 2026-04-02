@@ -1,5 +1,5 @@
-import Textbox from '@components/Textbox/Textbox.tsx';
-import Button from '@components/Button/Button.tsx';
+import Textbox from '@ui/Textbox/Textbox';
+import Button from '@ui/Button/Button';
 import styles from '@/modules/Auth/Login/LoginPage.module.css';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Route } from '@/enums/routerEnum';

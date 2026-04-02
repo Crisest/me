@@ -25,6 +25,7 @@
     "paths": {
       "@/*": ["*"],
       "@components/*": ["components/*"],
+      "@ui/*": ["ui/*"],
       "@assets/*": ["assets/*"],
       "@types/*": ["types/index.ts"],
       "@portfolio/common/*": ["../../common/src/*"]

@@ -1,4 +1,4 @@
-import { Option } from '@/components/YmCombobox/YmCombobox';
+import { Option } from '@ui/YmCombobox/YmCombobox';
 
 const months: Option<number>[] = [
   'January',

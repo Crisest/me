@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
-import YButtom from '../Button/Button';
-import YmFlex from '../Layout/YmFlex/YmFlex/YmFlex';
-import Textbox from '../Textbox/Textbox';
-import YmDialog from '../YmDialog/YmDialog';
+import YButton from '@ui/Button/Button';
+import YmFlex from '@ui/YmFlex/YmFlex';
+import Textbox from '@ui/Textbox/Textbox';
+import YmDialog from '@ui/YmDialog/YmDialog';
 
 type BudgetModalProps = {
   openModal: boolean;
@@ -91,9 +91,9 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
             />
           ))}
 
-          <YButtom type="button" onClick={addExpense} variant="primary">
+          <YButton type="button" onClick={addExpense} variant="primary">
             + Add fixed expense
-          </YButtom>
+          </YButton>
         </YmFlex>
       </form>
     </YmDialog>
@@ -128,13 +128,13 @@ const FixedExpenseItem: React.FC<FixedExpenseItemProps> = ({
         fullWidth
         aria-label="expense amount"
       />
-      <YButtom
+      <YButton
         type="button"
         onClick={() => onRemove(expense.id)}
         variant="secondary"
       >
         Remove
-      </YButtom>
+      </YButton>
     </YmFlex>
   );
 };

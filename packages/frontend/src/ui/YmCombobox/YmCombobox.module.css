@@ -1,4 +1,3 @@
-/* MonthSelect.module.css */
 .combobox {
   position: relative;
   display: flex;
@@ -7,17 +6,18 @@
 
 .input {
   font-family: var(--font-family-body);
-  width: 99%;
-  padding: var(--input-padding-y) 0 var(--input-padding-y)
-    var(--input-padding-x);
+  width: 100%;
+  padding: var(--input-padding-y) var(--input-padding-x);
+  padding-right: 2.5rem;
   font-size: var(--input-font-size);
   border-radius: var(--input-border-radius);
-  border: 1px solid var(--color-dark);
+  border: 1px solid var(--color-grey);
   background-color: var(--color-white);
   color: var(--color-grey);
+  box-sizing: border-box;
   transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .input:focus {
@@ -26,19 +26,28 @@
   box-shadow: 0 0 0 2px var(--color-blue-light);
 }
 
-.button {
+.input:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background-color: var(--color-grey-light);
+}
+
+.chevron {
   background: none;
   border: none;
   color: var(--color-blue);
   cursor: pointer;
-  font-size: 1.5em;
-  right: -11px;
-  top: 15%;
-  transition: color 0.2s;
+  font-size: 1.25rem;
   position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  transition: color 0.2s ease;
 }
 
-.button:hover {
+.chevron:hover {
   color: var(--color-blue-darker);
 }
 
@@ -47,12 +56,8 @@
 }
 
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .options {
@@ -60,7 +65,7 @@
   background: var(--color-white);
   border: 1px solid var(--color-blue);
   border-radius: var(--input-border-radius);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   position: absolute;
   z-index: 999;
   margin-top: 4px;
@@ -69,22 +74,22 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: opacity 0.1s ease;
 }
 
-.options::-webkit-scrollbar {
-  display: none; /* WebKit */
+.options[data-closed] {
+  opacity: 0;
 }
 
-/* Add a wrapper for the options list */
 .optionsWrapper {
   overflow-y: auto;
   flex-grow: 1;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .optionsWrapper::-webkit-scrollbar {
-  display: none; /* WebKit */
+  display: none;
 }
 
 .option {
@@ -93,39 +98,17 @@
   color: var(--color-grey);
   background: none;
   transition:
-    background 0.2s,
-    color 0.2s;
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .option[aria-selected='true'],
-.option:hover {
+.option[data-focus] {
   background: var(--color-blue);
   color: var(--color-white);
 }
 
-/* For accessibility focus */
-.option:focus {
-  outline: 2px solid var(--color-blue-darker);
-}
-
 .footer {
-  border-top: 1px solid #e5e7eb;
-  background-color: var(--color-blue);
+  border-top: 1px solid var(--color-grey-light);
   padding: 0.5rem;
-}
-
-.createButton {
-  width: 100%;
-  padding: 0.5rem;
-  background-color: transparent;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
-  color: #374151;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.createButton:hover {
-  background-color: #f3f4f6;
 }

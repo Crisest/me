@@ -1,11 +1,11 @@
-import YmDialog from '../YmDialog/YmDialog';
-import FileUpload from '../FileUpload/FileUpload';
+import YmDialog from '@ui/YmDialog/YmDialog';
+import FileUpload from '@ui/FileUpload/FileUpload';
 import { parseFileContent } from '@/utils/fileReader';
 import { paparseCSVToTransaction } from '@/utils/csv';
 import { useState } from 'react';
 import { Transaction } from '@portfolio/common';
-import YmCombobox from '../YmCombobox/YmCombobox';
-import YmFlex from '../Layout/YmFlex/YmFlex/YmFlex';
+import YmCombobox from '@ui/YmCombobox/YmCombobox';
+import YmFlex from '@ui/YmFlex/YmFlex';
 import { useBankSelect, useCardSelect } from './hooks';
 import TransactionsTable from '../TransactionsTable/TransactionsTable';
 import styles from './TransactionsUploadModal.module.css';

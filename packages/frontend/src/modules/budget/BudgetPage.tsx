@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import Header from '@/components/Header/Header';
 import TransactionsTable from '@/components/TransactionsTable/TransactionsTable';
-import YButtom from '@/components/Button/Button';
+import YButton from '@ui/Button/Button';
 import { useGetTransactionsQuery } from '@/services/transactionService';
-import Content from '@/components/Layout/Content/Content';
-import YmFlex from '@/components/Layout/YmFlex/YmFlex/YmFlex';
+import Content from '@ui/Content/Content';
+import YmFlex from '@ui/YmFlex/YmFlex';
 import { months, years } from '@/constants/date';
-import YmCombobox from '@/components/YmCombobox/YmCombobox';
+import YmCombobox from '@ui/YmCombobox/YmCombobox';
 import TransactionUploadModal from '@/components/TransactionUploadModal/TransactionUploadModal';
 import BudgetModal from '@/components/BudgetModal/BudgetModal';
 
@@ -43,10 +43,10 @@ export const BudgetPage = () => {
             ariaLabel="Year filter"
           />
           {/* <FileUpload onFileSelect={handleFileSelect} /> */}
-          <YButtom onClick={() => setOpenUploadModal(true)}>Upload CSV</YButtom>
-          <YButtom onClick={() => setOpenBudgetModal(true)}>
+          <YButton onClick={() => setOpenUploadModal(true)}>Upload CSV</YButton>
+          <YButton onClick={() => setOpenBudgetModal(true)}>
             Setup Budget
-          </YButtom>
+          </YButton>
         </YmFlex>
         {transactionsData && (
           <TransactionsTable transactions={transactionsData} />

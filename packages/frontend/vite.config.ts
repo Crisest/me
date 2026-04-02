@@ -9,6 +9,7 @@ export default defineConfig({
     alias: {
       '@': resolve(__dirname, './src'),
       '@components': resolve(__dirname, './src/components'),
+      '@ui': resolve(__dirname, './src/ui'),
       '@assets': resolve(__dirname, './src/assets'),
       '@portfolio/common': resolve(__dirname, '../common/src'),
       '@types': resolve(__dirname, './src/types/index.ts'),

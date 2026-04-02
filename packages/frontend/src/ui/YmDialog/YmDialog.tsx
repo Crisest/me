@@ -1,7 +1,12 @@
-import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogPanel,
+  DialogTitle,
+} from '@headlessui/react';
 import React, { ReactNode } from 'react';
 import styles from './YmDialog.module.css';
-import YButtom from '../Button/Button';
+import YButton from '../Button/Button';
 
 interface YmDialogProps {
   isOpen: boolean;
@@ -28,16 +33,11 @@ const YmDialog: React.FC<YmDialogProps> = ({
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onClose={onClose}
-      as="div"
-      className={styles.dialogWrapper}
-    >
-      <div className={styles.backdrop} aria-hidden="true" />
+    <Dialog open={isOpen} onClose={onClose} className={styles.dialogWrapper}>
+      <DialogBackdrop transition className={styles.backdrop} />
 
       <div className={styles.container}>
-        <DialogPanel className={styles.panel}>
+        <DialogPanel transition className={styles.panel}>
           {title && (
             <DialogTitle as="h2" className={styles.title}>
               {title}
@@ -47,9 +47,9 @@ const YmDialog: React.FC<YmDialogProps> = ({
           <div className={styles.content}>{children}</div>
 
           <div className={styles.footer}>
-            <YButtom variant="primary" onClick={handleFooterAction}>
+            <YButton variant="primary" onClick={handleFooterAction}>
               {footerButtonText}
-            </YButtom>
+            </YButton>
           </div>
         </DialogPanel>
       </div>
