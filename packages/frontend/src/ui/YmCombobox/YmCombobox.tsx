@@ -6,7 +6,7 @@ import {
   ComboboxOptions,
 } from '@headlessui/react';
 import React, { useState } from 'react';
-import { IoChevronDownCircleOutline } from 'react-icons/io5';
+import { IoChevronDownCircleOutline, IoCheckmark, IoSearchOutline, IoCloseOutline } from 'react-icons/io5';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import styles from './YmCombobox.module.css';
 import YButton from '../Button/Button';
@@ -80,6 +80,22 @@ const YmCombobox = <T,>({
           onChange={handleQueryChange}
           displayValue={getDisplayValue}
         />
+        {query !== '' && (
+          <button
+            type="button"
+            className={styles.clearButton}
+            onClick={() => {
+              if (onQueryChange) {
+                onQueryChange('');
+              } else {
+                setInternalQuery('');
+              }
+            }}
+            aria-label="Clear search"
+          >
+            <IoCloseOutline />
+          </button>
+        )}
         <ComboboxButton className={styles.chevron}>
           {isLoading ? (
             <AiOutlineLoading3Quarters className={styles.loadingIcon} />
@@ -90,15 +106,29 @@ const YmCombobox = <T,>({
 
         <ComboboxOptions transition className={styles.options}>
           <div className={styles.optionsWrapper}>
-            {filteredOptions.map(option => (
-              <ComboboxOption
-                key={option.id}
-                value={option.value}
-                className={styles.option}
-              >
-                {option.label}
-              </ComboboxOption>
-            ))}
+            {filteredOptions.length === 0 && query !== '' ? (
+              <div className={styles.emptyState}>
+                <IoSearchOutline className={styles.emptyStateIcon} />
+                <span className={styles.emptyStateText}>
+                  No results found for &ldquo;{query}&rdquo;
+                </span>
+              </div>
+            ) : (
+              filteredOptions.map(option => (
+                <ComboboxOption
+                  key={option.id}
+                  value={option.value}
+                  className={styles.option}
+                >
+                  <span className={styles.optionContent}>
+                    {option.label}
+                    {option.value === value && (
+                      <IoCheckmark className={styles.checkIcon} />
+                    )}
+                  </span>
+                </ComboboxOption>
+              ))
+            )}
           </div>
           {onCreateNew && (
             <div className={styles.footer}>
