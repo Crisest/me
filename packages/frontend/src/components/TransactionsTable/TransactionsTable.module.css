@@ -1,8 +1,9 @@
 .tableContainer {
   width: 100%;
   overflow-x: auto;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: var(--border-radius-lg);
+  background-color: var(--color-white);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   display: flex;
   justify-content: center;
 }
@@ -10,17 +11,68 @@
   width: 100%;
   border-collapse: collapse;
 }
+
 .table th {
-  background-color: var(--color-blue);
-  color: var(--color-white);
-  padding: 12px;
+  background-color: transparent;
+  color: var(--color-grey);
+  padding: 14px 16px;
   text-align: left;
-  font-weight: bold;
+  font-weight: 600;
+  font-size: var(--font-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--color-grey-hover);
 }
 
 .table td {
-  padding: 12px;
+  padding: 14px 16px;
   text-align: left;
-  border-bottom: 1px solid var(--color-dark);
+  border-bottom: 1px solid var(--color-grey-hover);
   color: var(--color-grey);
+  font-size: var(--font-sm);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.table tbody tr:hover {
+  background-color: var(--color-grey-light);
+}
+
+.table td.amountCell {
+  text-align: right;
+  font-family: var(--font-family-button);
+}
+
+.table th.amountHeader {
+  text-align: right;
+}
+
+.amountCredit {
+  color: #2e7d32;
+}
+
+.amountDebit {
+  color: #c62828;
+}
+
+.categoryPill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background-color: var(--color-blue-light);
+  color: var(--color-blue-dark);
+  font-size: var(--font-xs);
+  font-family: var(--font-family-button);
+  white-space: nowrap;
+}
+
+.descriptionCell {
+  font-family: var(--font-family-button);
+  color: var(--color-dark);
 }
