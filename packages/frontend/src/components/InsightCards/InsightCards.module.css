@@ -1,0 +1,53 @@
+.container {
+  position: relative;
+  padding-top: var(--spacing-lg);
+}
+
+.scrollArea {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  -ms-overflow-style: none; /* hide scrollbar IE/Edge */
+  scrollbar-width: none; /* hide scrollbar Firefox */
+  padding: 4px 0;
+  justify-content: center;
+}
+
+.scrollArea::-webkit-scrollbar {
+  display: none; /* hide scrollbar Chrome/Safari */
+}
+
+.blurLeft,
+.blurRight {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.blurLeft {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    var(--background-color-white),
+    transparent
+  );
+}
+
+.blurRight {
+  right: 0;
+  background: linear-gradient(
+    to left,
+    var(--background-color-white),
+    transparent
+  );
+}
+
+.blurVisible {
+  opacity: 1;
+}

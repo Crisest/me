@@ -33,19 +33,19 @@ export const getMonthlyInsights = async (
             },
           },
         ],
-        // credits: [
-        //   {
-        //     $match: { category: 'Credit' },
-        //   },
-        //   {
-        //     $group: {
-        //       _id: null,
-        //       totalIncome: { $sum: '$amount' },
-        //       creditCount: { $sum: 1 },
-        //       averageCredit: { $avg: '$amount' },
-        //     },
-        //   },
-        // ],
+        credits: [
+          {
+            $match: { category: 'Credit' },
+          },
+          {
+            $group: {
+              _id: null,
+              totalIncome: { $sum: '$amount' },
+              creditCount: { $sum: 1 },
+              averageCredit: { $avg: '$amount' },
+            },
+          },
+        ],
       },
     },
   ]);
@@ -64,11 +64,11 @@ export const getMonthlyInsights = async (
 
   return {
     totalSpent: Math.abs(debits.totalSpent),
-    totalIncome: credits.totalIncome,
-    netAmount: credits.totalIncome - Math.abs(debits.totalSpent),
+    totalIncome: Math.abs(credits.totalIncome),
+    netAmount: Math.abs(credits.totalIncome) - Math.abs(debits.totalSpent),
     debitCount: debits.debitCount,
     creditCount: credits.creditCount,
     averageDebit: Math.abs(debits.averageDebit),
-    averageCredit: credits.averageCredit,
+    averageCredit: Math.abs(credits.averageCredit),
   };
 };

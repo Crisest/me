@@ -1,0 +1,56 @@
+.card {
+  background: #5b5bf0;
+  border-radius: 12px;
+  padding: 20px;
+  margin: var(--spacing-sm);
+  min-width: 220px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.skeleton {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.skeletonAmount {
+  height: 36px;
+  width: 70%;
+  margin-bottom: 8px;
+}
+
+.skeletonSubtitle {
+  height: 14px;
+  width: 45%;
+  margin-top: 6px;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 8px;
+}
+
+.amount {
+  font-size: var(--font-2xl);
+  font-weight: 700;
+  color: #fff;
+  font-family: var(--font-family-header);
+}
+
+.subtitle {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 6px;
+}

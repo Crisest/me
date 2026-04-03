@@ -18,7 +18,7 @@ export const getTransactionInsights = async (req: Request, res: Response) => {
     }
 
     const insights = await getMonthlyInsights(
-      new mongoose.Types.ObjectId(req.user.id),
+      new mongoose.Types.ObjectId(req.user!.id),
       month,
       year
     );

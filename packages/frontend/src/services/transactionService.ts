@@ -1,5 +1,10 @@
 import { abstractTagTypesEnum, apiSlice, tagTypesEnum } from './apiSlice';
-import type { Transaction, TransactionPayloads } from '@portfolio/common';
+import type {
+  Transaction,
+  TransactionPayloads,
+  TransactionInsights,
+  GetMonthlyInsightsParams,
+} from '@portfolio/common';
 
 export const transactionApi = apiSlice.injectEndpoints({
   endpoints: builder => ({
@@ -41,6 +46,18 @@ export const transactionApi = apiSlice.injectEndpoints({
         { type: tagTypesEnum.TRANSACTIONS, id: abstractTagTypesEnum.LIST },
       ],
     }),
+    getTransactionInsights: builder.query<
+      TransactionInsights,
+      GetMonthlyInsightsParams
+    >({
+      query: ({ month, year }) => ({
+        url: `transactions/insights/${month}`,
+        params: { year },
+      }),
+      providesTags: (r, e, arg) => [
+        { type: tagTypesEnum.TRANSACTIONS, id: `insights-${arg.year}-${arg.month}` },
+      ],
+    }),
   }),
 });
 
@@ -48,4 +65,5 @@ export const {
   useGetTransactionsQuery,
   useCreateTransactionMutation,
   useCreateManyTransactionsMutation,
+  useGetTransactionInsightsQuery,
 } = transactionApi;

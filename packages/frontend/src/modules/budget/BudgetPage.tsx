@@ -9,6 +9,7 @@ import { months, years } from '@/constants/date';
 import YmCombobox from '@ui/YmCombobox/YmCombobox';
 import TransactionUploadModal from '@/components/TransactionUploadModal/TransactionUploadModal';
 import BudgetModal from '@/components/BudgetModal/BudgetModal';
+import { InsightCards } from '@/components/InsightCards/InsightCards';
 
 export const BudgetPage = () => {
   const now = new Date();
@@ -26,6 +27,7 @@ export const BudgetPage = () => {
   return (
     <>
       <Header title="Budget" />
+      <InsightCards month={selectedMonth} year={selectedYear} />
       <Content>
         <YmFlex justify="end" align="center" gap={30}>
           <YmCombobox
