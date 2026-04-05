@@ -1,4 +1,4 @@
-import express, { Application, NextFunction, Request, Response } from 'express';
+import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -11,10 +11,12 @@ import bankRoutes from './modules/banks/bank.routes';
 import cardRoutes from './modules/cards/card.routes';
 import budgetRoutes from './modules/budget';
 import uploadRoutes from './modules/uploads';
+import groupRoutes from './modules/groups/group.routes';
 import devRoutes from './modules/dev';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { getConfig } from './config/env';
+import { errorHandler } from './middleware/errorHandler';
 dotenv.config();
 
 const app: Application = express();
@@ -54,21 +56,13 @@ app.use('/banks', bankRoutes);
 app.use('/cards', cardRoutes);
 app.use('/budget', budgetRoutes);
 app.use('/uploads', uploadRoutes);
+app.use('/groups', groupRoutes);
 if (config.nodeEnv !== 'production') {
   app.use('/dev', devRoutes);
 }
 
 // Error handling middleware
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({
-    status: 'error',
-    message:
-      process.env.NODE_ENV === 'production'
-        ? 'Internal server error'
-        : err.message,
-  });
-});
+app.use(errorHandler);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

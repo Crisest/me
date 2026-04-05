@@ -29,6 +29,10 @@ export const buttonData: ButtonData[] = [
     text: 'Budget',
     to: Route.BUDGET,
   },
+  {
+    text: 'Groups',
+    to: Route.GROUPS,
+  },
 ];
 
 interface ButtonData {

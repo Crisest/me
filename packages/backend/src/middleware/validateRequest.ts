@@ -15,6 +15,6 @@ export const validateRequest = (validations: ValidationChain[]) => {
     const extractedErrors: string[] = [];
     errors.array().map(err => extractedErrors.push(err.msg));
 
-    throw new AppError(extractedErrors.join(', '), 400);
+    next(new AppError(extractedErrors.join(', '), 400));
   };
 };

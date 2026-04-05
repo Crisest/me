@@ -16,3 +16,17 @@ export interface UpdateGroupPayload {
   name?: string;
   members?: string[];
 }
+
+export interface GroupMember {
+  id: string;
+  email: string;
+}
+
+export interface GroupWithMembers {
+  id: string;
+  name: string;
+  members: GroupMember[];
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -22,7 +22,7 @@ export const getMonthlyInsights = async (
       $facet: {
         debits: [
           {
-            $match: { category: 'Debit' },
+            $match: { amount: { $lt: 0 } },
           },
           {
             $group: {
@@ -35,7 +35,7 @@ export const getMonthlyInsights = async (
         ],
         credits: [
           {
-            $match: { category: 'Credit' },
+            $match: { amount: { $gte: 0 } },
           },
           {
             $group: {

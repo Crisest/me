@@ -1,10 +1,50 @@
-.container {
+.createForm {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  height: 100%;
-  width: 300px;
-  margin: auto;
   gap: var(--spacing-sm);
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.input {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: 6px;
+  font-size: var(--font-sm);
+  flex: 1;
+  max-width: 300px;
+}
+
+.empty {
+  color: var(--color-muted, #888);
+  text-align: center;
+  margin-top: var(--spacing-lg);
+}
+
+.groupList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.groupCard {
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+
+.groupCard:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.groupName {
+  margin: 0 0 4px;
+  font-size: var(--font-md);
+}
+
+.memberCount {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--color-muted, #888);
 }

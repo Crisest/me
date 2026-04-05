@@ -6,6 +6,7 @@ export enum Route {
   HOME = '/',
   CONTACT = '/contact',
   BUDGET = '/budget',
+  GROUP_DASHBOARD = '/groups/:groupId',
 }
 
 export const protectedRoutes = [Route.BUDGET];

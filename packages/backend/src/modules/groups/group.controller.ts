@@ -1,50 +1,86 @@
-// import { Response } from 'express';
-// import * as groupService from './group.service';
+import { Request, Response } from 'express';
+import * as groupService from './group.service';
 
-// export const createGroup = async (req: Request, res: Response) => {
-//   const { name } = req.body as any;
-//   const userId = req.user!._id;
+export const createGroup = async (req: Request, res: Response) => {
+  try {
+    const { name } = req.body;
+    const userId = req.user!.id;
+    const group = await groupService.createGroup(name, userId);
+    res.status(201).json(group);
+  } catch (err) {
+    req.log.error({ err }, 'Failed to create group');
+    res.status(500).json({ error: 'Failed to create group' });
+  }
+};
 
-//   try {
-//     const group = await groupService.createGroup(name, userId);
-//     res.status(201).json(group);
-//   } catch (err) {
-//     res.status(500).json({ message: 'Error creating group', error: err });
-//   }
-// };
+export const getGroups = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const groups = await groupService.getUserGroups(userId);
+    res.json(groups);
+  } catch (err) {
+    req.log.error({ err }, 'Failed to fetch groups');
+    res.status(500).json({ error: 'Failed to fetch groups' });
+  }
+};
 
-// export const getGroups = async (req: Request, res: Response) => {
-//   const { id } = req.user as any;
+export const addMember = async (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.params;
+    const { userId } = req.body;
+    const updatedGroup = await groupService.addUserToGroup(groupId, userId);
+    res.json(updatedGroup);
+  } catch (err) {
+    req.log.error({ err }, 'Failed to add member');
+    res.status(500).json({ error: 'Failed to add member' });
+  }
+};
 
-//   try {
-//     const groups = await groupService.getUserGroups(id);
-//     res.status(200).json(groups);
-//   } catch (err) {
-//     res.status(500).json({ message: 'Error fetching groups', error: err });
-//   }
-// };
+export const removeMember = async (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.params;
+    const { userId } = req.body;
+    const updatedGroup = await groupService.removeUserFromGroup(groupId, userId);
+    res.json(updatedGroup);
+  } catch (err) {
+    req.log.error({ err }, 'Failed to remove member');
+    res.status(500).json({ error: 'Failed to remove member' });
+  }
+};
 
-// export const addMember = async (req: Request, res: Response) => {
-//   const { groupId, userId } = req.body;
+export const getGroupTransactions = async (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.params;
+    const month = Number(req.query.month);
+    const year = Number(req.query.year);
 
-//   try {
-//     const updatedGroup = await groupService.addUserToGroup(groupId, userId);
-//     res.status(200).json(updatedGroup);
-//   } catch (err) {
-//     res.status(500).json({ message: 'Error adding member', error: err });
-//   }
-// };
+    const options = {
+      month: isNaN(month) ? undefined : month,
+      year: isNaN(year) ? undefined : year,
+    };
 
-// export const removeMember = async (req: Request, res: Response) => {
-//   const { groupId, userId } = req.body;
+    const transactions = await groupService.getGroupTransactions(groupId, options);
+    res.json(transactions);
+  } catch (err) {
+    req.log.error({ err }, 'Failed to fetch group transactions');
+    res.status(500).json({ error: 'Failed to fetch group transactions' });
+  }
+};
 
-//   try {
-//     const updatedGroup = await groupService.removeUserFromGroup(
-//       groupId,
-//       userId
-//     );
-//     res.status(200).json(updatedGroup);
-//   } catch (err) {
-//     res.status(500).json({ message: 'Error removing member', error: err });
-//   }
-// };
+export const getGroupInsights = async (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.params;
+    const month = parseInt(req.params.month);
+    const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+
+    if (isNaN(month) || month < 1 || month > 12) {
+      return res.status(400).json({ error: 'Invalid month parameter' });
+    }
+
+    const insights = await groupService.getGroupInsights(groupId, month, year);
+    res.json(insights);
+  } catch (err) {
+    req.log.error({ err }, 'Failed to fetch group insights');
+    res.status(500).json({ error: 'Failed to fetch group insights' });
+  }
+};

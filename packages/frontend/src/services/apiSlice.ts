@@ -13,6 +13,7 @@ export enum tagTypesEnum {
   CARDS = 'cards',
   BUDGET = 'budget',
   UPLOADS = 'uploads',
+  GROUPS = 'groups',
 }
 
 export enum abstractTagTypesEnum {
@@ -28,6 +29,7 @@ export const apiSlice = createApi({
     tagTypesEnum.CARDS,
     tagTypesEnum.BUDGET,
     tagTypesEnum.UPLOADS,
+    tagTypesEnum.GROUPS,
   ],
   baseQuery: fetchBaseQuery({
     baseUrl,
