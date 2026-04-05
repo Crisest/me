@@ -9,6 +9,7 @@ import JoinGroupPage from '@/modules/groups/JoinGroupPage';
 import HomePage from '@/modules/home/HomePage';
 import ProjectsPage from '@/modules/projects/ProjectPage';
 import { BudgetPage } from '@/modules/budget/BudgetPage';
+import { ProfilePage } from '@/modules/profile/ProfilePage';
 import { PrivateRoutes } from '@/components/Auth/PrivateRoute';
 
 export const AppRoutes: React.FC = () => {
@@ -23,6 +24,7 @@ export const AppRoutes: React.FC = () => {
       {/* Protected routes */}
       <Route element={<PrivateRoutes />}>
         <Route path={RouteEnum.BUDGET} element={<BudgetPage />} />
+        <Route path={RouteEnum.PROFILE} element={<ProfilePage />} />
         <Route path={RouteEnum.GROUPS} element={<GroupPage />} />
         <Route path={RouteEnum.GROUP_JOIN} element={<JoinGroupPage />} />
         <Route path={RouteEnum.GROUP_DASHBOARD} element={<GroupDashboardPage />} />

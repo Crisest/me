@@ -24,31 +24,44 @@ const Sidebar: React.FC = () => {
       console.error('Logout failed:', error);
     }
   };
-
   // TODO: Use Icons when min width's is reached
   return (
     <div className={styles.container}>
       <div className={styles.brand}>
         <h1>YM</h1>
       </div>
-      {buttonData.map((button, index) => (
-        <Link
-          key={index}
-          to={button.to}
-          className={button.to === selectedTab ? styles.selected : undefined}
-        >
-          {button.text}
-        </Link>
-      ))}
-      {displayLogout && (
-        <YButton
-          customClass={styles.logout}
-          variant="link"
-          onClick={handleLogout}
-        >
-          Logout
-        </YButton>
-      )}
+      <div>
+        {buttonData.map((button, index) => (
+          <Link
+            key={index}
+            to={button.to}
+            className={button.to === selectedTab ? styles.selected : undefined}
+          >
+            {button.text}
+          </Link>
+        ))}
+      </div>
+      <div className={styles.userSection}>
+        {user && (
+          <Link
+            to={RouteEnum.PROFILE}
+            className={`${
+              selectedTab === RouteEnum.PROFILE ? styles.selected : ''
+            }`}
+          >
+            {user.name || user.email}
+          </Link>
+        )}
+        {displayLogout && (
+          <YButton
+            customClass={styles.logout}
+            variant="link"
+            onClick={handleLogout}
+          >
+            Logout
+          </YButton>
+        )}
+      </div>
     </div>
   );
 };

@@ -68,7 +68,7 @@ export const me = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
-    res.status(200).json({ user: req.user });
+    res.status(200).json(req.user);
   } catch (err: any) {
     res.status(500).json({ message: 'Internal server error' });
   }

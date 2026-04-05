@@ -8,6 +8,7 @@ export enum Route {
   BUDGET = '/budget',
   GROUP_JOIN = '/groups/join/:code',
   GROUP_DASHBOARD = '/groups/:groupId',
+  PROFILE = '/profile',
 }
 
-export const protectedRoutes = [Route.BUDGET];
+export const protectedRoutes = [Route.BUDGET, Route.PROFILE];

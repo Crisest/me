@@ -1,0 +1,78 @@
+.section {
+  background: var(--color-white);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.profileHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: var(--color-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-white);
+  font-family: var(--font-family-header);
+  font-size: var(--font-2xl);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.profileInfo {
+  flex: 1;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.name {
+  font-family: var(--font-family-header);
+  font-size: var(--font-xl);
+  font-weight: 700;
+  color: var(--color-dark);
+  margin: 0;
+}
+
+.editButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #999;
+  padding: var(--spacing-xs);
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.editButton:hover {
+  color: var(--color-blue);
+  background-color: var(--color-blue-light);
+}
+
+.email {
+  font-family: var(--font-family-body);
+  font-size: var(--font-sm);
+  color: #777;
+  margin-top: var(--spacing-xs);
+}
+
+.label {
+  font-family: var(--font-family-body);
+  font-size: var(--font-xs);
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--spacing-xs);
+}
