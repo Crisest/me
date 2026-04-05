@@ -25,9 +25,17 @@ const columns = [
   }),
   columnHelper.accessor('description', {
     header: 'Description',
-    cell: info => (
-      <span className={styles.descriptionCell}>{info.getValue()}</span>
-    ),
+    cell: info => {
+      const subDescription = info.row.original.subDescription;
+      return (
+        <div>
+          <span className={styles.descriptionCell}>{info.getValue()}</span>
+          {subDescription && (
+            <span className={styles.subDescriptionCell}>{subDescription}</span>
+          )}
+        </div>
+      );
+    },
   }),
   columnHelper.accessor('amount', {
     header: 'Amount',

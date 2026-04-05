@@ -5,6 +5,7 @@ export interface ITransaction extends Document {
   amount: number;
   description: string;
   category?: string;
+  subDescription?: string;
   date: Date;
   groupId?: mongoose.Types.ObjectId;
   bankId?: mongoose.Types.ObjectId;
@@ -31,6 +32,7 @@ const TransactionSchema = new mongoose.Schema<ITransaction>(
     amount: { type: Number, required: true },
     description: { type: String, required: true },
     category: { type: String },
+    subDescription: { type: String },
     date: { type: Date, default: Date.now, required: true, index: true },
     groupId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -65,6 +67,7 @@ TransactionSchema.methods.toTransaction = function (): Transaction {
     amount: this.amount,
     description: this.description,
     category: this.category,
+    subDescription: this.subDescription,
     date: this.date.toISOString(),
     groupId: this.groupId?.toString(),
     cardId: this.cardId?.toString(),
@@ -86,6 +89,7 @@ TransactionSchema.statics.fromCreateManyPayload = function (
     amount: tx.amount,
     description: tx.description,
     category: tx.category,
+    subDescription: tx.subDescription,
     date: new Date(tx.date),
     // groupId: new mongoose.Types.ObjectId(groupId),
     bankId: new mongoose.Types.ObjectId(bankId),

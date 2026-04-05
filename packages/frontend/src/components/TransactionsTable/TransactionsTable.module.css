@@ -76,3 +76,10 @@
   font-family: var(--font-family-button);
   color: var(--color-dark);
 }
+
+.subDescriptionCell {
+  display: block;
+  font-size: var(--font-xs);
+  color: var(--color-grey);
+  margin-top: 2px;
+}

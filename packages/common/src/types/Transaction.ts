@@ -3,6 +3,7 @@ export interface Transaction {
   amount: number;
   description: string;
   category?: string;
+  subDescription?: string;
   date: string; // ISO string for transaction date
   groupId: string;
   bankId?: string;
@@ -18,6 +19,7 @@ export namespace TransactionPayloads {
     amount: number;
     description: string;
     category?: string;
+    subDescription?: string;
     date: string;
     groupId: string;
     bankId?: string;

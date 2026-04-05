@@ -5,11 +5,7 @@ const headerMapping: Record<string, keyof Transaction> = {
   date: 'date',
   amount: 'amount',
   description: 'description',
-  category: 'category',
-  'sub-description': 'category',
-  status: 'category',
-  'type of transaction': 'category',
-  filter: 'category',
+  'sub-description': 'subDescription',
 };
 
 const convertValue = (key: keyof Transaction, value: string): string | number => {
@@ -41,7 +37,12 @@ export const paparseCSVToTransaction = (text: string): Transaction[] => {
     );
   }
 
-  return data.map((row, lineIndex) => {
+  const postedRows = data.filter(row => {
+    const status = row['Status'] || row['status'];
+    return !status || status.toLowerCase() !== 'pending';
+  });
+
+  return postedRows.map((row, lineIndex) => {
     const mappedRow: Partial<Transaction> = {};
     for (const header in row) {
       const normalizedHeader = header.toLowerCase().trim();
