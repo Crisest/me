@@ -8,6 +8,7 @@ const router: Router = Router();
 
 const createCardValidation = [
   body('name').isString().notEmpty().withMessage('name is required'),
+  body('bankId').isString().notEmpty().withMessage('bankId is required'),
 ];
 
 router.post('/', authMiddleware, validateRequest(createCardValidation), createCardHandler);

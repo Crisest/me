@@ -3,6 +3,7 @@ import { Card, CreateCardPayload } from '@portfolio/common';
 
 export interface ICard extends Document {
   name: string;
+  bankId: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt?: Date;
@@ -16,6 +17,11 @@ interface CardModelStatics extends Model<ICard> {
 const CardSchema = new mongoose.Schema<ICard>(
   {
     name: { type: String, required: true },
+    bankId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Bank',
+      required: true,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -29,6 +35,7 @@ CardSchema.methods.toCard = function (): Card {
   return {
     id: this._id.toString(),
     name: this.name,
+    bankId: this.bankId.toString(),
     createdBy: this.createdBy.toString(),
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
@@ -41,6 +48,7 @@ CardSchema.statics.fromCreatePayload = function (
 ): Partial<ICard> {
   return {
     name: data.name,
+    bankId: new mongoose.Types.ObjectId(data.bankId),
     createdBy: new mongoose.Types.ObjectId(userId),
   };
 };

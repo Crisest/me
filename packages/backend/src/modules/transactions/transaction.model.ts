@@ -8,7 +8,6 @@ export interface ITransaction extends Document {
   subDescription?: string;
   date: Date;
   groupId?: mongoose.Types.ObjectId;
-  bankId?: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt?: Date;
@@ -22,7 +21,6 @@ interface TransactionModel extends Model<ITransaction> {
     data: TransactionPayloads.Create[],
     userId: string,
     cardId?: string,
-    bankId?: string,
     groupId?: string
   ): Partial<ITransaction>[];
 }
@@ -37,11 +35,6 @@ const TransactionSchema = new mongoose.Schema<ITransaction>(
     groupId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Group',
-    },
-    bankId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Bank',
-      required: true,
     },
     cardId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -71,7 +64,6 @@ TransactionSchema.methods.toTransaction = function (): Transaction {
     date: this.date.toISOString(),
     groupId: this.groupId?.toString(),
     cardId: this.cardId?.toString(),
-    bankId: this.bankId?.toString(),
     createdBy: this.createdBy.toString(),
     createdAt: this.createdAt.getTime(),
     updatedAt: this.updatedAt ? this.updatedAt.getTime() : undefined,
@@ -82,7 +74,6 @@ TransactionSchema.statics.fromCreateManyPayload = function (
   data: TransactionPayloads.Create[],
   userId: string,
   cardId?: string,
-  bankId?: string,
   groupId?: string
 ) {
   const convert = (tx: TransactionPayloads.Create) => ({
@@ -91,8 +82,6 @@ TransactionSchema.statics.fromCreateManyPayload = function (
     category: tx.category,
     subDescription: tx.subDescription,
     date: new Date(tx.date),
-    // groupId: new mongoose.Types.ObjectId(groupId),
-    bankId: new mongoose.Types.ObjectId(bankId),
     cardId: new mongoose.Types.ObjectId(cardId),
     createdBy: new mongoose.Types.ObjectId(userId),
   });

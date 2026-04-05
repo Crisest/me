@@ -1,6 +1,6 @@
 import YmDialog from '@ui/YmDialog/YmDialog';
 import FileUpload from '@ui/FileUpload/FileUpload';
-import { parseFileContent } from '@/utils/fileReader';
+import { parseFileContent, computeFileHash } from '@/utils/fileReader';
 import { paparseCSVToTransaction } from '@/utils/csv';
 import { useState } from 'react';
 import { Transaction } from '@portfolio/common';
@@ -10,6 +10,7 @@ import { useBankSelect, useCardSelect } from './hooks';
 import TransactionsTable from '../TransactionsTable/TransactionsTable';
 import styles from './TransactionsUploadModal.module.css';
 import { useCreateManyTransactionsMutation } from '@/services/transactionService';
+import { useCheckDuplicateUploadMutation } from '@/services/uploadService';
 
 const TransactionUploadModal = ({
   openUploadModal,
@@ -19,7 +20,11 @@ const TransactionUploadModal = ({
   setOpenUploadModal: (open: boolean) => void;
 }) => {
   const [tempTransactions, setTempTransactions] = useState<Transaction[]>();
-  const [saveTransactions, result] = useCreateManyTransactionsMutation();
+  const [fileName, setFileName] = useState<string>('');
+  const [fileHash, setFileHash] = useState<string>('');
+  const [duplicateWarning, setDuplicateWarning] = useState<string>();
+  const [saveTransactions] = useCreateManyTransactionsMutation();
+  const [checkDuplicate] = useCheckDuplicateUploadMutation();
 
   const {
     bankState: [selectedBank, setSelectedBank],
@@ -35,36 +40,57 @@ const TransactionUploadModal = ({
     cardOptions,
     isLoading: cardsLoading,
     handleCreateCard,
-  } = useCardSelect();
+    canCreateCard,
+  } = useCardSelect(selectedBank);
 
   const handleFileSelect = async (file: File) => {
     try {
-      const transactionData = await parseFileContent(
-        file,
-        paparseCSVToTransaction,
-      );
+      setDuplicateWarning(undefined);
+      const [transactionData, hash] = await Promise.all([
+        parseFileContent(file, paparseCSVToTransaction),
+        computeFileHash(file),
+      ]);
       setTempTransactions(transactionData);
+      setFileName(file.name);
+      setFileHash(hash);
+
+      if (selectedCard) {
+        const result = await checkDuplicate({
+          fileName: file.name,
+          fileHash: hash,
+          cardId: selectedCard,
+        }).unwrap();
+
+        if (result.isDuplicate) {
+          setDuplicateWarning(
+            `This file appears to have been uploaded before (${result.existingUpload?.fileName}). You can still proceed if intended.`
+          );
+        }
+      }
     } catch (error) {
       console.error('Error processing file:', error);
     }
   };
 
   const handleSubmit = async () => {
-    if (!tempTransactions || !selectedBank || !selectedCard) return;
+    if (!tempTransactions || !selectedCard || !fileName || !fileHash) return;
 
     try {
       await saveTransactions({
         transactions: tempTransactions,
-        bankId: selectedBank,
         cardId: selectedCard,
+        fileName,
+        fileHash,
       }).unwrap();
       setTempTransactions(undefined);
+      setFileName('');
+      setFileHash('');
+      setDuplicateWarning(undefined);
       setOpenUploadModal(false);
     } catch (error) {
       console.error('Failed to save transactions:', error);
     }
   };
-  // TODO: Default last use bank and card, leverage local storage
 
   return (
     <YmDialog
@@ -78,7 +104,10 @@ const TransactionUploadModal = ({
         <YmCombobox
           options={bankOptions}
           value={selectedBank}
-          onChange={setSelectedBank}
+          onChange={(value) => {
+            setSelectedBank(value);
+            setSelectedCard(undefined);
+          }}
           placeholder="Select a bank"
           createButtonText="Create new bank"
           isLoading={banksLoading}
@@ -90,14 +119,20 @@ const TransactionUploadModal = ({
           options={cardOptions}
           value={selectedCard}
           onChange={setSelectedCard}
-          placeholder="Select a card"
+          placeholder={selectedBank ? 'Select a card' : 'Select a bank first'}
           createButtonText="Create new card"
           isLoading={cardsLoading}
-          onCreateNew={handleCreateCard}
+          onCreateNew={canCreateCard ? handleCreateCard : undefined}
           onQueryChange={setCardSearchQuery}
           query={cardSearchQuery}
         />
         <FileUpload onFileSelect={handleFileSelect} buttonText="Upload file" />
+
+        {duplicateWarning && (
+          <p style={{ color: 'var(--color-warning, #e67e22)', margin: 0 }}>
+            {duplicateWarning}
+          </p>
+        )}
 
         {tempTransactions && (
           <>

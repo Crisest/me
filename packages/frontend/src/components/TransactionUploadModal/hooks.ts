@@ -22,7 +22,7 @@ export const useBankSelect = () => {
 
   const bankOptions = useMemo(
     () => ComboboxUtils.banksToOptions(banks),
-    [banks],
+    [banks]
   );
 
   return {
@@ -35,7 +35,7 @@ export const useBankSelect = () => {
   };
 };
 
-export const useCardSelect = () => {
+export const useCardSelect = (selectedBankId?: string) => {
   const [selectedCard, setSelectedCard] = useState<string>();
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -43,12 +43,21 @@ export const useCardSelect = () => {
   const [createCard] = useCreateCardMutation();
 
   const handleCreateCard = () => {
-    createCard({ name: searchQuery });
+    if (!selectedBankId) return;
+    createCard({ name: searchQuery, bankId: selectedBankId });
   };
 
+  const filteredCards = useMemo(
+    () =>
+      (cards ?? []).filter(
+        card => !selectedBankId || card.bankId === selectedBankId
+      ),
+    [cards, selectedBankId]
+  );
+
   const cardOptions = useMemo(
-    () => ComboboxUtils.cardsToOptions(cards),
-    [cards],
+    () => ComboboxUtils.cardsToOptions(filteredCards),
+    [filteredCards]
   );
 
   return {
@@ -58,5 +67,6 @@ export const useCardSelect = () => {
     isLoading,
     error,
     handleCreateCard,
+    canCreateCard: !!selectedBankId,
   };
 };

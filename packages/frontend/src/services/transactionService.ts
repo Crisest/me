@@ -13,7 +13,7 @@ export const transactionApi = apiSlice.injectEndpoints({
         url: 'transactions',
         params: { month, year },
       }),
-      providesTags: (r, e, arg) => [
+      providesTags: (_r, _e, arg) => [
         { type: tagTypesEnum.TRANSACTIONS, id: 'LIST' },
         { type: tagTypesEnum.TRANSACTIONS, id: `${arg.year}-${arg.month}` },
       ],
@@ -39,11 +39,13 @@ export const transactionApi = apiSlice.injectEndpoints({
         body: {
           transactions: payload.transactions,
           cardId: payload.cardId,
-          bankId: payload.bankId,
+          fileName: payload.fileName,
+          fileHash: payload.fileHash,
         },
       }),
       invalidatesTags: [
         { type: tagTypesEnum.TRANSACTIONS, id: abstractTagTypesEnum.LIST },
+        tagTypesEnum.UPLOADS,
       ],
     }),
     getTransactionInsights: builder.query<
@@ -54,7 +56,7 @@ export const transactionApi = apiSlice.injectEndpoints({
         url: `transactions/insights/${month}`,
         params: { year },
       }),
-      providesTags: (r, e, arg) => [
+      providesTags: (_r, _e, arg) => [
         { type: tagTypesEnum.TRANSACTIONS, id: `insights-${arg.year}-${arg.month}` },
       ],
     }),

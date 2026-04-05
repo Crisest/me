@@ -10,6 +10,8 @@ import loginRoutes from './modules/auth';
 import bankRoutes from './modules/banks/bank.routes';
 import cardRoutes from './modules/cards/card.routes';
 import budgetRoutes from './modules/budget';
+import uploadRoutes from './modules/uploads';
+import devRoutes from './modules/dev';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { getConfig } from './config/env';
@@ -51,6 +53,10 @@ app.use('/auth', loginRoutes);
 app.use('/banks', bankRoutes);
 app.use('/cards', cardRoutes);
 app.use('/budget', budgetRoutes);
+app.use('/uploads', uploadRoutes);
+if (config.nodeEnv !== 'production') {
+  app.use('/dev', devRoutes);
+}
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

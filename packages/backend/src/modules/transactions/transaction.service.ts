@@ -1,5 +1,6 @@
 import { TransactionModel } from './transaction.model';
 import { Transaction, TransactionPayloads } from '@portfolio/common';
+import { createUploadRecord } from '../uploads/upload.service';
 
 export const getAllTransactions = async (
   userId: string,
@@ -27,15 +28,21 @@ export const createManyTransactionsByUser = async (
   payload: TransactionPayloads.CreateMany,
   userId: string
 ) => {
-  const { transactions, cardId, bankId } = payload;
+  const { transactions, cardId, fileName, fileHash } = payload;
 
   const transactionsToAdd = TransactionModel.fromCreateManyPayload(
     transactions,
     userId,
     cardId,
-    bankId,
-    'TEMP' // Or pass a real groupId if needed
+    'TEMP'
   );
 
   await TransactionModel.insertMany(transactionsToAdd);
+  await createUploadRecord(
+    fileName,
+    fileHash,
+    cardId,
+    transactions.length,
+    userId
+  );
 };

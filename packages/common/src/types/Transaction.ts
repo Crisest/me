@@ -4,13 +4,12 @@ export interface Transaction {
   description: string;
   category?: string;
   subDescription?: string;
-  date: string; // ISO string for transaction date
+  date: string;
   groupId: string;
-  bankId?: string;
-  createdBy: string; // user ID
-  createdAt: number; // Unix timestamp in milliseconds
-  updatedAt?: number; // Unix timestamp in milliseconds
-  deletedAt?: number; // Unix timestamp in milliseconds
+  createdBy: string;
+  createdAt: number;
+  updatedAt?: number;
+  deletedAt?: number;
   cardId?: string;
 }
 
@@ -22,14 +21,14 @@ export namespace TransactionPayloads {
     subDescription?: string;
     date: string;
     groupId: string;
-    bankId?: string;
     cardId?: string;
   }
 
   export interface CreateMany {
     transactions: Transaction[];
     cardId: string;
-    bankId: string;
+    fileName: string;
+    fileHash: string;
   }
 
   export interface Update {

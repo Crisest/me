@@ -6,3 +6,4 @@ export * from './types/Bank';
 export * from './types/Card';
 export * from './types/Budget';
 export * from './types/Insights';
+export * from './types/Upload';

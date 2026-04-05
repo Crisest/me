@@ -17,7 +17,7 @@ export const BudgetPage = () => {
   const previousMonth = prevMonthIndex + 1; // 1-12
   const [selectedMonth, setSelectedMonth] = useState(previousMonth);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
-  const { data: transactionsData, isLoading } = useGetTransactionsQuery({
+  const { data: transactionsData } = useGetTransactionsQuery({
     month: selectedMonth,
     year: selectedYear,
   });
