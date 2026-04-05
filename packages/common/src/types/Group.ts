@@ -5,6 +5,7 @@ export interface Group {
   createdBy: string; // user ID
   createdAt: string; // ISO string
   updatedAt: string; // ISO string
+  inviteCode: string;
 }
 
 export interface CreateGroupPayload {
@@ -29,4 +30,5 @@ export interface GroupWithMembers {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  inviteCode: string;
 }

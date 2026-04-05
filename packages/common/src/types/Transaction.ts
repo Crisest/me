@@ -11,6 +11,11 @@ export interface Transaction {
   updatedAt?: number;
   deletedAt?: number;
   cardId?: string;
+  // Populated enrichment fields (optional — present when backend populates them)
+  cardName?: string;
+  bankName?: string;
+  ownerEmail?: string;
+  ownerName?: string;
 }
 
 export namespace TransactionPayloads {

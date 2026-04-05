@@ -12,3 +12,12 @@ export interface GetMonthlyInsightsParams {
   month: number;
   year?: number;
 }
+
+export interface GroupBudgetInsights {
+  totalSpent: number;
+  debitCount: number;
+  budget: number; // sum of all members' salaries
+  totalFixed: number; // sum of all members' fixed expense amounts
+  fixedCount: number; // total number of fixed expense entries across all members
+  moneyLeft: number; // budget - totalFixed - totalSpent
+}

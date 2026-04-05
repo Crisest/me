@@ -1,22 +1,54 @@
 import { Group, IGroup } from './group.model';
 import { TransactionModel } from '../transactions/transaction.model';
-import { Transaction, TransactionInsights } from '@portfolio/common';
+import { BudgetModel } from '../budget/budget.model';
+import { GroupWithMembers, Transaction, GroupBudgetInsights } from '@portfolio/common';
 import mongoose from 'mongoose';
+import crypto from 'crypto';
+
+const generateInviteCode = () =>
+  crypto.randomBytes(4).toString('base64url').slice(0, 6);
 
 export const createGroup = async (
   name: string,
   userId: string
-): Promise<IGroup> => {
-  const group = new Group({
-    name,
-    members: [userId],
-    createdBy: userId,
-  });
-  return await group.save();
+): Promise<GroupWithMembers> => {
+  const maxAttempts = 3;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const group = new Group({
+        name,
+        members: [userId],
+        createdBy: userId,
+        inviteCode: generateInviteCode(),
+      });
+      await group.save();
+      await group.populate('members', 'email');
+      return group.toGroupWithMembers();
+    } catch (err: any) {
+      if (attempt < maxAttempts - 1 && err?.code === 11000) {
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error('Failed to generate unique invite code');
 };
 
-export const getUserGroups = async (userId: string): Promise<IGroup[]> => {
-  return await Group.find({ members: userId }).populate('members', 'email');
+export const joinGroupByCode = async (
+  code: string,
+  userId: string
+): Promise<GroupWithMembers | null> => {
+  const group = await Group.findOneAndUpdate(
+    { inviteCode: code },
+    { $addToSet: { members: userId } },
+    { new: true }
+  ).populate('members', 'email');
+  return group ? group.toGroupWithMembers() : null;
+};
+
+export const getUserGroups = async (userId: string): Promise<GroupWithMembers[]> => {
+  const groups = await Group.find({ members: userId }).populate('members', 'email');
+  return groups.map(g => g.toGroupWithMembers());
 };
 
 export const addUserToGroup = async (
@@ -41,6 +73,11 @@ export const removeUserFromGroup = async (
   );
 };
 
+export const deleteGroup = async (groupId: string, userId: string): Promise<boolean> => {
+  const result = await Group.findOneAndDelete({ _id: groupId, createdBy: userId });
+  return result !== null;
+};
+
 export const getGroupTransactions = async (
   groupId: string,
   options: { month?: number; year?: number }
@@ -60,15 +97,34 @@ export const getGroupTransactions = async (
     query.date = { $gte: startDate, $lt: endDate };
   }
 
-  const result = await TransactionModel.find(query).sort({ date: -1 });
-  return result.map(t => t.toTransaction());
+  const result = await TransactionModel.find(query)
+    .populate('createdBy', 'email name')
+    .populate({ path: 'cardId', select: 'name bankId', populate: { path: 'bankId', select: 'name' } })
+    .sort({ date: -1 });
+
+  return result.map(t => {
+    const tx = t.toTransaction();
+    const card = t.cardId as any;
+    if (card && typeof card === 'object' && card.name) {
+      tx.cardName = card.name;
+      if (card.bankId && typeof card.bankId === 'object') {
+        tx.bankName = card.bankId.name;
+      }
+    }
+    const owner = t.createdBy as any;
+    if (owner && typeof owner === 'object') {
+      tx.ownerEmail = owner.email;
+      tx.ownerName = owner.name;
+    }
+    return tx;
+  });
 };
 
 export const getGroupInsights = async (
   groupId: string,
   month: number,
   year?: number
-): Promise<TransactionInsights> => {
+): Promise<GroupBudgetInsights> => {
   const group = await Group.findById(groupId);
   if (!group) throw new Error('Group not found');
 
@@ -80,6 +136,7 @@ export const getGroupInsights = async (
     (id: mongoose.Types.ObjectId) => new mongoose.Types.ObjectId(id)
   );
 
+  // Aggregate transaction spending for all members in the given month
   const insights = await TransactionModel.aggregate([
     {
       $match: {
@@ -87,52 +144,42 @@ export const getGroupInsights = async (
         date: { $gte: startDate, $lt: endDate },
       },
     },
+    { $match: { amount: { $lt: 0 } } },
     {
-      $facet: {
-        debits: [
-          { $match: { amount: { $lt: 0 } } },
-          {
-            $group: {
-              _id: null,
-              totalSpent: { $sum: '$amount' },
-              debitCount: { $sum: 1 },
-              averageDebit: { $avg: '$amount' },
-            },
-          },
-        ],
-        credits: [
-          { $match: { amount: { $gte: 0 } } },
-          {
-            $group: {
-              _id: null,
-              totalIncome: { $sum: '$amount' },
-              creditCount: { $sum: 1 },
-              averageCredit: { $avg: '$amount' },
-            },
-          },
-        ],
+      $group: {
+        _id: null,
+        totalSpent: { $sum: '$amount' },
+        debitCount: { $sum: 1 },
       },
     },
   ]);
 
-  const debits = insights[0].debits[0] || {
-    totalSpent: 0,
-    debitCount: 0,
-    averageDebit: 0,
-  };
-  const credits = insights[0].credits[0] || {
-    totalIncome: 0,
-    creditCount: 0,
-    averageCredit: 0,
-  };
+  const debits = insights[0] || { totalSpent: 0, debitCount: 0 };
+  const totalSpent = Math.abs(debits.totalSpent);
+
+  // Aggregate all members' personal budgets
+  const memberBudgets = await BudgetModel.find({
+    createdBy: { $in: memberObjectIds },
+  });
+
+  let budget = 0;
+  let totalFixed = 0;
+  let fixedCount = 0;
+
+  for (const b of memberBudgets) {
+    budget += b.salary;
+    for (const e of b.fixedExpenses) {
+      totalFixed += e.amount;
+      fixedCount += 1;
+    }
+  }
 
   return {
-    totalSpent: Math.abs(debits.totalSpent),
-    totalIncome: Math.abs(credits.totalIncome),
-    netAmount: Math.abs(credits.totalIncome) - Math.abs(debits.totalSpent),
+    totalSpent,
     debitCount: debits.debitCount,
-    creditCount: credits.creditCount,
-    averageDebit: Math.abs(debits.averageDebit),
-    averageCredit: Math.abs(credits.averageCredit),
+    budget,
+    totalFixed,
+    fixedCount,
+    moneyLeft: budget - totalFixed - totalSpent,
   };
 };

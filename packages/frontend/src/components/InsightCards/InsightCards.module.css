@@ -11,7 +11,7 @@
   -ms-overflow-style: none; /* hide scrollbar IE/Edge */
   scrollbar-width: none; /* hide scrollbar Firefox */
   padding: 4px 0;
-  justify-content: center;
+  justify-content: safe center;
 }
 
 .scrollArea::-webkit-scrollbar {

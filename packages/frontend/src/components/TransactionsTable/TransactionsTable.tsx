@@ -1,15 +1,17 @@
 import { Transaction } from '@/types';
-import React from 'react';
+import React, { useMemo } from 'react';
 import styles from './TransactionsTable.module.css';
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
   createColumnHelper,
+  ColumnDef,
 } from '@tanstack/react-table';
 
 type transactionTableProps = {
   transactions: Transaction[];
+  extraColumns?: ColumnDef<Transaction, any>[];
 };
 
 const columnHelper = createColumnHelper<Transaction>();
@@ -35,6 +37,16 @@ const columns = [
           )}
         </div>
       );
+    },
+  }),
+  columnHelper.accessor('cardName', {
+    header: 'Account',
+    cell: info => {
+      const bankName = info.row.original.bankName;
+      const cardName = info.getValue();
+      if (!cardName) return null;
+      if (bankName) return `${bankName} · ${cardName}`;
+      return cardName;
     },
   }),
   columnHelper.accessor('amount', {
@@ -64,10 +76,15 @@ const columns = [
 
 const TransactionsTable: React.FC<transactionTableProps> = ({
   transactions,
+  extraColumns,
 }) => {
+  const allColumns = useMemo(
+    () => (extraColumns ? [...extraColumns, ...columns] : columns),
+    [extraColumns]
+  );
   const table = useReactTable({
     data: transactions,
-    columns,
+    columns: allColumns,
     getCoreRowModel: getCoreRowModel(),
   });
   return (

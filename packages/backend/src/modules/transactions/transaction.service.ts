@@ -19,9 +19,21 @@ export const getAllTransactions = async (
     };
   }
 
-  const result = await TransactionModel.find(query).sort({ date: -1 });
+  const result = await TransactionModel.find(query)
+    .populate({ path: 'cardId', select: 'name bankId', populate: { path: 'bankId', select: 'name' } })
+    .sort({ date: -1 });
 
-  return result.map(iTransaction => iTransaction.toTransaction());
+  return result.map(t => {
+    const tx = t.toTransaction();
+    const card = t.cardId as any;
+    if (card && typeof card === 'object' && card.name) {
+      tx.cardName = card.name;
+      if (card.bankId && typeof card.bankId === 'object') {
+        tx.bankName = card.bankId.name;
+      }
+    }
+    return tx;
+  });
 };
 
 export const createManyTransactionsByUser = async (

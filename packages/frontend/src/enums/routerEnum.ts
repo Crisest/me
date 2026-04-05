@@ -6,6 +6,7 @@ export enum Route {
   HOME = '/',
   CONTACT = '/contact',
   BUDGET = '/budget',
+  GROUP_JOIN = '/groups/join/:code',
   GROUP_DASHBOARD = '/groups/:groupId',
 }
 

@@ -1,5 +1,5 @@
 import mongoose, { Document } from 'mongoose';
-import { Group as CommonGroup } from '@portfolio/common';
+import { Group as CommonGroup, GroupWithMembers, GroupMember } from '@portfolio/common';
 
 export interface IGroup extends Document {
   name: string;
@@ -7,7 +7,9 @@ export interface IGroup extends Document {
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+  inviteCode: string;
   toGroup(): CommonGroup;
+  toGroupWithMembers(): GroupWithMembers;
 }
 
 const GroupSchema = new mongoose.Schema<IGroup>(
@@ -19,6 +21,7 @@ const GroupSchema = new mongoose.Schema<IGroup>(
       ref: 'User',
       required: true,
     },
+    inviteCode: { type: String, required: true, unique: true, index: true },
   },
   { timestamps: true }
 );
@@ -31,6 +34,22 @@ GroupSchema.methods.toGroup = function (): CommonGroup {
     createdBy: this.createdBy.toString(),
     createdAt: this.createdAt.toISOString(),
     updatedAt: this.updatedAt.toISOString(),
+    inviteCode: this.inviteCode,
+  };
+};
+
+GroupSchema.methods.toGroupWithMembers = function (): GroupWithMembers {
+  return {
+    id: this._id.toString(),
+    name: this.name,
+    members: this.members.map((member: any): GroupMember => ({
+      id: member._id.toString(),
+      email: member.email,
+    })),
+    createdBy: this.createdBy.toString(),
+    createdAt: this.createdAt.toISOString(),
+    updatedAt: this.updatedAt.toISOString(),
+    inviteCode: this.inviteCode,
   };
 };
 

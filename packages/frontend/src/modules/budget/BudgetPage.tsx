@@ -3,53 +3,77 @@ import Header from '@/components/Header/Header';
 import TransactionsTable from '@/components/TransactionsTable/TransactionsTable';
 import YButton from '@ui/Button/Button';
 import { useGetTransactionsQuery } from '@/services/transactionService';
+import { useGetTransactionInsightsQuery } from '@/services/transactionService';
+import { useGetBudgetQuery } from '@/services/budgetService';
 import Content from '@ui/Content/Content';
-import YmFlex from '@ui/YmFlex/YmFlex';
-import { months, years } from '@/constants/date';
-import YmCombobox from '@ui/YmCombobox/YmCombobox';
 import TransactionUploadModal from '@/components/TransactionUploadModal/TransactionUploadModal';
 import BudgetModal from '@/components/BudgetModal/BudgetModal';
-import { InsightCards } from '@/components/InsightCards/InsightCards';
+import { InsightCards, InsightCardItem } from '@/components/InsightCards/InsightCards';
+import { MonthYearFilter } from '@/components/MonthYearFilter/MonthYearFilter';
+import { formatCAD } from '@/utils/format';
 
 export const BudgetPage = () => {
   const now = new Date();
-  const prevMonthIndex = (now.getMonth() + 11) % 12; // 0-11 previous month
-  const previousMonth = prevMonthIndex + 1; // 1-12
+  const prevMonthIndex = (now.getMonth() + 11) % 12;
+  const previousMonth = prevMonthIndex + 1;
   const [selectedMonth, setSelectedMonth] = useState(previousMonth);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const { data: transactionsData } = useGetTransactionsQuery({
     month: selectedMonth,
     year: selectedYear,
   });
+  const { data: insights, isLoading: insightsLoading } =
+    useGetTransactionInsightsQuery({ month: selectedMonth, year: selectedYear });
+  const { data: budget, isLoading: budgetLoading } = useGetBudgetQuery();
   const [openUploadModal, setOpenUploadModal] = useState(false);
   const [openBudgetModal, setOpenBudgetModal] = useState(false);
+
+  const totalFixed =
+    budget?.fixedExpenses.reduce((sum, e) => sum + e.amount, 0) ?? 0;
+  const remainingAfterFixed = (budget?.salary ?? 0) - totalFixed;
+  const moneyLeft = remainingAfterFixed - (insights?.totalSpent ?? 0);
+
+  const loading = insightsLoading || budgetLoading;
+
+  const cards: InsightCardItem[] = [
+    {
+      label: 'Budget',
+      amount: `+${formatCAD(8000)}`,
+      subtitle: `${insights?.debitCount ?? 0} transactions`,
+    },
+    {
+      label: 'Total Spent',
+      amount: `-${formatCAD(insights?.totalSpent ?? 0)}`,
+      subtitle: `${insights?.debitCount ?? 0} transactions`,
+    },
+    {
+      label: 'Fixed Expenses',
+      amount: `-${formatCAD(totalFixed)}`,
+      subtitle: `${budget?.fixedExpenses.length ?? 0} fixed expenses`,
+    },
+    {
+      label: 'Money Left',
+      amount: formatCAD(moneyLeft),
+      subtitle: 'After fixed & spending',
+    },
+  ];
 
   return (
     <>
       <Header title="Budget" />
-      <InsightCards month={selectedMonth} year={selectedYear} />
+      <InsightCards cards={cards} loading={loading} />
       <Content>
-        <YmFlex justify="end" align="center" gap={30}>
-          <YmCombobox
-            options={months}
-            value={selectedMonth}
-            onChange={newMonth => setSelectedMonth(newMonth)}
-            placeholder="Select a month"
-            ariaLabel="Month filter"
-          />
-          <YmCombobox
-            options={years}
-            value={selectedYear}
-            onChange={newYear => setSelectedYear(newYear)}
-            placeholder="Select a year"
-            ariaLabel="Year filter"
-          />
-          {/* <FileUpload onFileSelect={handleFileSelect} /> */}
+        <MonthYearFilter
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
+          onMonthChange={setSelectedMonth}
+          onYearChange={setSelectedYear}
+        >
           <YButton onClick={() => setOpenUploadModal(true)}>Upload CSV</YButton>
           <YButton onClick={() => setOpenBudgetModal(true)}>
             Setup Budget
           </YButton>
-        </YmFlex>
+        </MonthYearFilter>
         {transactionsData && (
           <TransactionsTable transactions={transactionsData} />
         )}

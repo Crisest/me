@@ -3,7 +3,7 @@ import type {
   GroupWithMembers,
   CreateGroupPayload,
   Transaction,
-  TransactionInsights,
+  GroupBudgetInsights,
 } from '@portfolio/common';
 
 export const groupApi = apiSlice.injectEndpoints({
@@ -49,7 +49,7 @@ export const groupApi = apiSlice.injectEndpoints({
       ],
     }),
     getGroupInsights: builder.query<
-      TransactionInsights,
+      GroupBudgetInsights,
       { groupId: string; month: number; year: number }
     >({
       query: ({ groupId, month, year }) => ({
@@ -59,6 +59,21 @@ export const groupApi = apiSlice.injectEndpoints({
       providesTags: (_r, _e, arg) => [
         { type: tagTypesEnum.GROUPS, id: `insights-${arg.groupId}-${arg.year}-${arg.month}` },
       ],
+    }),
+    joinGroup: builder.mutation<GroupWithMembers, { code: string }>({
+      query: ({ code }) => ({
+        url: 'groups/join',
+        method: 'POST',
+        body: { code },
+      }),
+      invalidatesTags: [{ type: tagTypesEnum.GROUPS, id: 'LIST' }],
+    }),
+    deleteGroup: builder.mutation<void, string>({
+      query: groupId => ({
+        url: `groups/${groupId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: [{ type: tagTypesEnum.GROUPS, id: 'LIST' }],
     }),
   }),
 });
@@ -70,4 +85,6 @@ export const {
   useRemoveGroupMemberMutation,
   useGetGroupTransactionsQuery,
   useGetGroupInsightsQuery,
+  useJoinGroupMutation,
+  useDeleteGroupMutation,
 } = groupApi;

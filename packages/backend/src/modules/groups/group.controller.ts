@@ -13,6 +13,21 @@ export const createGroup = async (req: Request, res: Response) => {
   }
 };
 
+export const joinGroup = async (req: Request, res: Response) => {
+  try {
+    const { code } = req.body;
+    const userId = req.user!.id;
+    const group = await groupService.joinGroupByCode(code, userId);
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+    res.json(group);
+  } catch (err) {
+    req.log.error({ err }, 'Failed to join group');
+    res.status(500).json({ error: 'Failed to join group' });
+  }
+};
+
 export const getGroups = async (req: Request, res: Response) => {
   try {
     const userId = req.user!.id;
@@ -45,6 +60,21 @@ export const removeMember = async (req: Request, res: Response) => {
   } catch (err) {
     req.log.error({ err }, 'Failed to remove member');
     res.status(500).json({ error: 'Failed to remove member' });
+  }
+};
+
+export const deleteGroup = async (req: Request, res: Response) => {
+  try {
+    const { groupId } = req.params;
+    const userId = req.user!.id;
+    const deleted = await groupService.deleteGroup(groupId, userId);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Group not found or not authorized' });
+    }
+    res.status(204).send();
+  } catch (err) {
+    req.log.error({ err }, 'Failed to delete group');
+    res.status(500).json({ error: 'Failed to delete group' });
   }
 };
 

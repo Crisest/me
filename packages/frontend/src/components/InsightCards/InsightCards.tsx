@@ -1,27 +1,19 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { useGetTransactionInsightsQuery } from '@/services/transactionService';
-import { useGetBudgetQuery } from '@/services/budgetService';
 import { Card } from '@/ui/Card/Card';
 import styles from './InsightCards.module.css';
 
+export interface InsightCardItem {
+  label: string;
+  amount: string;
+  subtitle: string;
+}
+
 interface InsightCardsProps {
-  month: number;
-  year: number;
+  cards: InsightCardItem[];
+  loading?: boolean;
 }
 
-function formatCAD(amount: number): string {
-  return amount.toLocaleString('en-CA', { style: 'currency', currency: 'CAD' });
-}
-
-export function InsightCards({ month, year }: InsightCardsProps) {
-  const { data, isLoading } = useGetTransactionInsightsQuery({ month, year });
-  const { data: budget, isLoading: budgetLoading } = useGetBudgetQuery();
-
-  const totalFixed =
-    budget?.fixedExpenses.reduce((sum, e) => sum + e.amount, 0) ?? 0;
-  const remainingAfterFixed = (budget?.salary ?? 0) - totalFixed;
-  const moneyLeft = remainingAfterFixed - (data?.totalSpent ?? 0);
-
+export function InsightCards({ cards, loading }: InsightCardsProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -52,42 +44,15 @@ export function InsightCards({ month, year }: InsightCardsProps) {
         className={`${styles.blurLeft} ${canScrollLeft ? styles.blurVisible : ''}`}
       />
       <div className={styles.scrollArea} ref={scrollRef}>
-        <Card
-          label="Budget"
-          amount={`+${formatCAD(8000)}`}
-          subtitle={`${data?.debitCount ?? 0} transactions`}
-          loading={isLoading}
-        />
-        <Card
-          label="Total Spent"
-          amount={`-${formatCAD(data?.totalSpent ?? 0)}`}
-          subtitle={`${data?.debitCount ?? 0} transactions`}
-          loading={isLoading}
-        />
-        {/* <Card
-          label="Total Income"
-          amount={formatCAD(data?.totalIncome ?? 0)}
-          subtitle={`${data?.creditCount ?? 0} transactions`}
-          loading={isLoading} 
-        />
-        {/* <Card
-          label="Net Amount"
-          amount={formatCAD(data?.netAmount ?? 0)}
-          subtitle="Income − Expenses"
-          loading={isLoading}
-        /> */}
-        <Card
-          label="Fixed Expenses"
-          amount={`-${formatCAD(totalFixed)}`}
-          subtitle={`${budget?.fixedExpenses.length ?? 0} fixed expenses`}
-          loading={isLoading || budgetLoading}
-        />
-        <Card
-          label="Money Left"
-          amount={formatCAD(moneyLeft)}
-          subtitle="After fixed & spending"
-          loading={isLoading || budgetLoading}
-        />
+        {cards.map(card => (
+          <Card
+            key={card.label}
+            label={card.label}
+            amount={card.amount}
+            subtitle={card.subtitle}
+            loading={loading}
+          />
+        ))}
       </div>
       <div
         className={`${styles.blurRight} ${canScrollRight ? styles.blurVisible : ''}`}

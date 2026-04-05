@@ -5,6 +5,7 @@ import LoginPage from '@/modules/Auth/Login/LoginPage';
 import RegisterPage from '@/modules/Auth/register/RegisterPage';
 import GroupPage from '@/modules/groups/GroupPage';
 import GroupDashboardPage from '@/modules/groups/GroupDashboardPage';
+import JoinGroupPage from '@/modules/groups/JoinGroupPage';
 import HomePage from '@/modules/home/HomePage';
 import ProjectsPage from '@/modules/projects/ProjectPage';
 import { BudgetPage } from '@/modules/budget/BudgetPage';
@@ -23,6 +24,7 @@ export const AppRoutes: React.FC = () => {
       <Route element={<PrivateRoutes />}>
         <Route path={RouteEnum.BUDGET} element={<BudgetPage />} />
         <Route path={RouteEnum.GROUPS} element={<GroupPage />} />
+        <Route path={RouteEnum.GROUP_JOIN} element={<JoinGroupPage />} />
         <Route path={RouteEnum.GROUP_DASHBOARD} element={<GroupDashboardPage />} />
       </Route>
     </Routes>

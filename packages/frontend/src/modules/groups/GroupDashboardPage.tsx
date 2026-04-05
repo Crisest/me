@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+import { ColumnDef } from '@tanstack/react-table';
+import { Transaction } from '@/types';
 import {
   useGetGroupsQuery,
   useGetGroupTransactionsQuery,
@@ -8,15 +10,19 @@ import {
 import Header from '@/components/Header/Header';
 import Content from '@ui/Content/Content';
 import TransactionsTable from '@/components/TransactionsTable/TransactionsTable';
-import YmFlex from '@ui/YmFlex/YmFlex';
-import YmCombobox from '@ui/YmCombobox/YmCombobox';
-import { Card } from '@/ui/Card/Card';
-import { months, years } from '@/constants/date';
-import styles from './GroupDashboardPage.module.css';
+import { InsightCards, InsightCardItem } from '@/components/InsightCards/InsightCards';
+import { MonthYearFilter } from '@/components/MonthYearFilter/MonthYearFilter';
+import { formatCAD } from '@/utils/format';
+import YButton from '@/ui/Button/Button';
+import { FaRegCopy } from 'react-icons/fa';
 
-function formatCAD(amount: number): string {
-  return amount.toLocaleString('en-CA', { style: 'currency', currency: 'CAD' });
-}
+const groupExtraColumns: ColumnDef<Transaction, any>[] = [
+  {
+    accessorKey: 'ownerName',
+    header: 'User',
+    cell: ({ row }) => row.original.ownerName || row.original.ownerEmail || '—',
+  },
+];
 
 const GroupDashboardPage: React.FC = () => {
   const { groupId } = useParams<{ groupId: string }>();
@@ -25,61 +31,76 @@ const GroupDashboardPage: React.FC = () => {
   const previousMonth = prevMonthIndex + 1;
   const [selectedMonth, setSelectedMonth] = useState(previousMonth);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback((inviteCode: string) => {
+    const url = `${window.location.origin}/groups/join/${inviteCode}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, []);
 
   const { data: groups = [] } = useGetGroupsQuery();
   const group = groups.find(g => g.id === groupId);
 
   const { data: transactions } = useGetGroupTransactionsQuery(
     { groupId: groupId!, month: selectedMonth, year: selectedYear },
-    { skip: !groupId }
+    { skip: !groupId },
   );
 
-  const { data: insights, isLoading: insightsLoading } = useGetGroupInsightsQuery(
-    { groupId: groupId!, month: selectedMonth, year: selectedYear },
-    { skip: !groupId }
-  );
+  const { data: insights, isLoading: insightsLoading } =
+    useGetGroupInsightsQuery(
+      { groupId: groupId!, month: selectedMonth, year: selectedYear },
+      { skip: !groupId },
+    );
+
+  const cards: InsightCardItem[] = [
+    {
+      label: 'Budget',
+      amount: `+${formatCAD(insights?.budget ?? 0)}`,
+      subtitle: 'Combined monthly budget',
+    },
+    {
+      label: 'Total Spent',
+      amount: `-${formatCAD(insights?.totalSpent ?? 0)}`,
+      subtitle: `${insights?.debitCount ?? 0} transactions`,
+    },
+    {
+      label: 'Fixed Expenses',
+      amount: `-${formatCAD(insights?.totalFixed ?? 0)}`,
+      subtitle: `${insights?.fixedCount ?? 0} fixed expenses`,
+    },
+    {
+      label: 'Money Left',
+      amount: formatCAD(insights?.moneyLeft ?? 0),
+      subtitle: 'After fixed & spending',
+    },
+  ];
 
   return (
     <>
       <Header title={group?.name ?? 'Group'} />
-      <div className={styles.insightCards}>
-        <Card
-          label="Total Spent"
-          amount={`-${formatCAD(insights?.totalSpent ?? 0)}`}
-          subtitle={`${insights?.debitCount ?? 0} transactions`}
-          loading={insightsLoading}
-        />
-        <Card
-          label="Total Income"
-          amount={formatCAD(insights?.totalIncome ?? 0)}
-          subtitle={`${insights?.creditCount ?? 0} transactions`}
-          loading={insightsLoading}
-        />
-        <Card
-          label="Net Amount"
-          amount={formatCAD(insights?.netAmount ?? 0)}
-          subtitle="Income - Expenses"
-          loading={insightsLoading}
-        />
-      </div>
+      <InsightCards cards={cards} loading={insightsLoading} />
       <Content>
-        <YmFlex justify="end" align="center" gap={30}>
-          <YmCombobox
-            options={months}
-            value={selectedMonth}
-            onChange={newMonth => setSelectedMonth(newMonth)}
-            placeholder="Select a month"
-            ariaLabel="Month filter"
+        <MonthYearFilter
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
+          onMonthChange={setSelectedMonth}
+          onYearChange={setSelectedYear}
+        >
+          {group?.inviteCode && (
+            <YButton onClick={() => handleCopy(group.inviteCode)}>
+              {copied ? 'Copied!' : 'Copy invite link'} <FaRegCopy />
+            </YButton>
+          )}
+        </MonthYearFilter>
+        {transactions && (
+          <TransactionsTable
+            transactions={transactions}
+            extraColumns={groupExtraColumns}
           />
-          <YmCombobox
-            options={years}
-            value={selectedYear}
-            onChange={newYear => setSelectedYear(newYear)}
-            placeholder="Select a year"
-            ariaLabel="Year filter"
-          />
-        </YmFlex>
-        {transactions && <TransactionsTable transactions={transactions} />}
+        )}
       </Content>
     </>
   );

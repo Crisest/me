@@ -14,8 +14,16 @@ const addMemberValidation = [
   body('userId').isString().notEmpty().withMessage('userId is required'),
 ];
 
+const joinValidation = [
+  body('code').isString().notEmpty().withMessage('code is required'),
+];
+
 // Group CRUD
 router.post('/', authMiddleware, validateRequest(createGroupValidation), controller.createGroup);
+router.delete('/:groupId', authMiddleware, controller.deleteGroup);
+
+// Join by invite code — must be before /:groupId routes
+router.post('/join', authMiddleware, validateRequest(joinValidation), controller.joinGroup);
 router.get('/', authMiddleware, controller.getGroups);
 
 // Member management
