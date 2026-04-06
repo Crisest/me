@@ -39,6 +39,14 @@
   --color-yello: #ffd147;
   --color-dark: #242424;
 
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #5b5bf0 0%, #8080ff 100%);
+  --gradient-primary-horizontal: linear-gradient(
+    to right,
+    #5b5bf0 0%,
+    #8080ff 100%
+  );
+
   /* Font sizes */
   --font-xs: 12px;
   --font-sm: 14px;

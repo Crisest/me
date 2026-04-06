@@ -43,7 +43,7 @@
 }
 
 .selected {
-  background-color: var(--color-blue);
+  background: var(--gradient-primary);
   color: var(--color-white) !important;
 }
 

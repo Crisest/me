@@ -1,5 +1,5 @@
 .header {
-  background-color: var(--color-blue);
+  background: var(--gradient-primary-horizontal);
   width: 100%;
   height: 20vh;
   display: flex;
