@@ -1,4 +1,5 @@
 import express, { Application, Request, Response } from 'express';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -20,15 +21,29 @@ import { errorHandler } from './middleware/errorHandler';
 dotenv.config();
 
 const app: Application = express();
+const config = getConfig();
 
 // Security middleware
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: config.nodeEnv === 'production'
+      ? {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:', 'blob:'],
+            connectSrc: ["'self'"],
+          },
+        }
+      : false,
+  })
+);
 
 // Request logging middleware
 app.use(requestLogger);
 
 // CORS configuration
-const config = getConfig();
 app.use(
   cors({
     origin: config.frontendUrl,
@@ -59,6 +74,15 @@ app.use('/uploads', uploadRoutes);
 app.use('/groups', groupRoutes);
 if (config.nodeEnv !== 'production') {
   app.use('/dev', devRoutes);
+}
+
+// In production, serve the Vite-built frontend
+if (config.nodeEnv === 'production') {
+  const staticPath = path.join(__dirname, '../../frontend/dist');
+  app.use(express.static(staticPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(staticPath, 'index.html'));
+  });
 }
 
 // Error handling middleware

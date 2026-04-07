@@ -11,7 +11,8 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || 'your-secret-key',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
   apiUrl: process.env.VITE_API_URL || 'http://localhost:3000',
-  // Add more configuration variables as needed
+  sslCertPath: process.env.SSL_CERT_PATH || '',
+  sslKeyPath: process.env.SSL_KEY_PATH || '',
   rateLimit: {
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
