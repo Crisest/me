@@ -22,7 +22,7 @@ export const getMonthlyInsights = async (
       $facet: {
         debits: [
           {
-            $match: { amount: { $lt: 0 } },
+            $match: { amount: { $gt: 0 } },
           },
           {
             $group: {
@@ -35,7 +35,7 @@ export const getMonthlyInsights = async (
         ],
         credits: [
           {
-            $match: { amount: { $gte: 0 } },
+            $match: { amount: { $lt: 0 } },
           },
           {
             $group: {
@@ -63,12 +63,12 @@ export const getMonthlyInsights = async (
   };
 
   return {
-    totalSpent: Math.abs(debits.totalSpent),
+    totalSpent: debits.totalSpent,
     totalIncome: Math.abs(credits.totalIncome),
-    netAmount: Math.abs(credits.totalIncome) - Math.abs(debits.totalSpent),
+    netAmount: Math.abs(credits.totalIncome) - debits.totalSpent,
     debitCount: debits.debitCount,
     creditCount: credits.creditCount,
-    averageDebit: Math.abs(debits.averageDebit),
+    averageDebit: debits.averageDebit,
     averageCredit: Math.abs(credits.averageCredit),
   };
 };

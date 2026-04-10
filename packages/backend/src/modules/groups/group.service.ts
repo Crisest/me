@@ -144,7 +144,7 @@ export const getGroupInsights = async (
         date: { $gte: startDate, $lt: endDate },
       },
     },
-    { $match: { amount: { $lt: 0 } } },
+    { $match: { amount: { $gt: 0 } } },
     {
       $group: {
         _id: null,
@@ -155,7 +155,7 @@ export const getGroupInsights = async (
   ]);
 
   const debits = insights[0] || { totalSpent: 0, debitCount: 0 };
-  const totalSpent = Math.abs(debits.totalSpent);
+  const totalSpent = debits.totalSpent;
 
   // Aggregate all members' personal budgets
   const memberBudgets = await BudgetModel.find({

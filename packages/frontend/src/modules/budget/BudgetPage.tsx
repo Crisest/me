@@ -38,7 +38,7 @@ export const BudgetPage = () => {
   const cards: InsightCardItem[] = [
     {
       label: 'Budget',
-      amount: `+${formatCAD(8000)}`,
+      amount: `+${formatCAD(budget?.salary ?? 0)}`,
       subtitle: `${insights?.debitCount ?? 0} transactions`,
     },
     {

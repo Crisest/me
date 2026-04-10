@@ -54,7 +54,7 @@ const columns = [
     cell: info => {
       const value = info.getValue();
       return (
-        <span className={value >= 0 ? styles.amountCredit : styles.amountDebit}>
+        <span className={value >= 0 ? styles.amountDebit : styles.amountCredit}>
           {value.toLocaleString('en-CA', {
             style: 'currency',
             currency: 'CAD',
