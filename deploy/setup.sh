@@ -14,7 +14,6 @@ function msg_ok()   { echo -e " ${CM} $1"; }
 function msg_error(){ echo -e " ${CROSS} $1"; exit 1; }
 
 APP_DIR="/opt/portfolio"
-CERT_DIR="${APP_DIR}/certs"
 
 # ─── System update ──────────────────────────────────────────────────────────
 msg_info "Updating system packages"
@@ -89,10 +88,8 @@ cat > "${APP_DIR}/packages/backend/.env" <<EOF
 NODE_ENV=production
 MONGODB_URI=mongodb://localhost:27017/portfolio
 JWT_SECRET=${JWT_SECRET}
-FRONTEND_URL=https://${LXC_IP}
+FRONTEND_URL=https://me.home
 VITE_API_URL=
-SSL_CERT_PATH=${CERT_DIR}/cert.pem
-SSL_KEY_PATH=${CERT_DIR}/key.pem
 EOF
 msg_ok "Production .env written"
 
@@ -102,16 +99,6 @@ cd "$APP_DIR"
 pnpm run common:build &>/dev/null
 pnpm run build &>/dev/null
 msg_ok "Application built"
-
-# ─── Self-signed TLS certificates ────────────────────────────────────────────
-msg_info "Generating self-signed TLS certificates"
-mkdir -p "$CERT_DIR"
-openssl req -x509 -nodes -days 365 \
-  -newkey rsa:2048 \
-  -keyout "${CERT_DIR}/key.pem" \
-  -out "${CERT_DIR}/cert.pem" \
-  -subj "/CN=${LXC_IP}" &>/dev/null
-msg_ok "TLS certificates generated"
 
 # ─── systemd service ─────────────────────────────────────────────────────────
 msg_info "Creating systemd service"
@@ -141,4 +128,5 @@ msg_ok "Portfolio service started"
 # ─── Done ─────────────────────────────────────────────────────────────────────
 echo ""
 echo -e "${GN}Setup complete!${CL}"
-echo -e "  Access: ${BL}https://${LXC_IP}:3000${CL}"
+echo -e "  Internal URL: ${BL}http://${LXC_IP}:3000${CL}"
+echo -e "  Next: add NPM proxy host me.home → http://${LXC_IP}:3000"
