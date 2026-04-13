@@ -35,7 +35,7 @@ export const login = async (req: Request, res: Response) => {
     // Set JWT as HttpOnly cookie
     res.cookie('jwt', token, {
       httpOnly: true,
-      secure: config.nodeEnv === 'production', // Only send cookie over HTTPS in production
+      secure: config.cookieSecure,
       sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
       path: '/',
@@ -53,7 +53,7 @@ export const logout = async (req: Request, res: Response) => {
   const config = getConfig();
   res.cookie('jwt', '', {
     httpOnly: true,
-    secure: config.nodeEnv === 'production',
+    secure: config.cookieSecure,
     sameSite: 'strict',
     expires: new Date(0),
     path: '/',

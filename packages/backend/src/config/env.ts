@@ -10,6 +10,7 @@ export const config = {
   mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/portfolio',
   jwtSecret: process.env.JWT_SECRET || 'your-secret-key',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  cookieSecure: (process.env.FRONTEND_URL || '').startsWith('https://'),
   apiUrl: process.env.VITE_API_URL || 'http://localhost:3000',
   sslCertPath: process.env.SSL_CERT_PATH || '',
   sslKeyPath: process.env.SSL_KEY_PATH || '',
