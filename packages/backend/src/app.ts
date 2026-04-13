@@ -37,6 +37,8 @@ app.use(
           },
         }
       : false,
+    // App is served over HTTP on the LAN via NPM; HSTS would force HTTPS and break loads
+    strictTransportSecurity: false,
   })
 );
 

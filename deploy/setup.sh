@@ -88,7 +88,7 @@ cat > "${APP_DIR}/packages/backend/.env" <<EOF
 NODE_ENV=production
 MONGODB_URI=mongodb://localhost:27017/portfolio
 JWT_SECRET=${JWT_SECRET}
-FRONTEND_URL=https://me.home
+FRONTEND_URL=http://me.home
 VITE_API_URL=
 EOF
 msg_ok "Production .env written"
