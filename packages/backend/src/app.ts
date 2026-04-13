@@ -28,12 +28,18 @@ app.use(
   helmet({
     contentSecurityPolicy: config.nodeEnv === 'production'
       ? {
+          useDefaults: false,
           directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'"],
             imgSrc: ["'self'", 'data:', 'blob:'],
             connectSrc: ["'self'"],
+            fontSrc: ["'self'", 'data:'],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+            frameAncestors: ["'self'"],
+            objectSrc: ["'none'"],
           },
         }
       : false,
