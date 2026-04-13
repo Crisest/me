@@ -4,7 +4,9 @@ import {
   BaseQueryFn,
 } from '@reduxjs/toolkit/query/react';
 
-const baseUrl = 'http://localhost:3000';
+const baseUrl =
+  import.meta.env.VITE_API_URL ??
+  (import.meta.env.DEV ? 'http://localhost:3000' : '');
 
 export enum tagTypesEnum {
   USER = 'user',
