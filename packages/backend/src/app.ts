@@ -31,12 +31,13 @@ app.use(
       ? {
           useDefaults: false,
           directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
+            defaultSrc: ["'self'", 'https://cdn.plaid.com/'],
+            scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.plaid.com/link/v2/stable/link-initialize.js'],
             styleSrc: ["'self'", "'unsafe-inline'"],
             imgSrc: ["'self'", 'data:', 'blob:'],
-            connectSrc: ["'self'"],
+            connectSrc: ["'self'", `https://${config.plaid.env}.plaid.com/`],
             fontSrc: ["'self'", 'data:'],
+            frameSrc: ['https://cdn.plaid.com/'],
             baseUri: ["'self'"],
             formAction: ["'self'"],
             frameAncestors: ["'self'"],
