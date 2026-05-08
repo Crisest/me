@@ -18,6 +18,21 @@ export const config = {
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
   },
+  plaid: {
+    clientId: process.env.PLAID_CLIENT_ID || '',
+    secret: process.env.PLAID_SECRET || '',
+    env: (process.env.PLAID_ENV || 'sandbox') as 'sandbox' | 'development' | 'production',
+    tokenEncryptionKey: process.env.PLAID_TOKEN_ENCRYPTION_KEY || '',
+  },
 };
+
+if (config.nodeEnv === 'production') {
+  const missing = (['clientId', 'secret', 'tokenEncryptionKey'] as const).filter(
+    k => !config.plaid[k]
+  );
+  if (missing.length > 0) {
+    throw new Error(`Missing required Plaid env vars: ${missing.map(k => k.toUpperCase()).join(', ')}`);
+  }
+}
 
 export const getConfig = () => config;

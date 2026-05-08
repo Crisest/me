@@ -11,6 +11,7 @@ export interface Transaction {
   updatedAt?: number;
   deletedAt?: number;
   cardId?: string;
+  plaidTransactionId?: string;
   // Populated enrichment fields (optional — present when backend populates them)
   cardName?: string;
   bankName?: string;

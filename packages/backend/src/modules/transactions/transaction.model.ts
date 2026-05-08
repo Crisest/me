@@ -14,6 +14,7 @@ export interface ITransaction extends Document {
   toTransaction(): Transaction;
   cardId?: mongoose.Types.ObjectId;
   fixedTransactionId?: mongoose.Types.ObjectId;
+  plaidTransactionId?: string;
 }
 
 interface TransactionModel extends Model<ITransaction> {
@@ -39,7 +40,6 @@ const TransactionSchema = new mongoose.Schema<ITransaction>(
     cardId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Card',
-      required: true,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -50,6 +50,7 @@ const TransactionSchema = new mongoose.Schema<ITransaction>(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'FixedTransaction',
     },
+    plaidTransactionId: { type: String, unique: true, sparse: true, index: true },
   },
   { timestamps: true }
 );
@@ -67,6 +68,7 @@ TransactionSchema.methods.toTransaction = function (): Transaction {
     createdBy: this.createdBy.toString(),
     createdAt: this.createdAt.getTime(),
     updatedAt: this.updatedAt ? this.updatedAt.getTime() : undefined,
+    plaidTransactionId: this.plaidTransactionId,
   };
 };
 

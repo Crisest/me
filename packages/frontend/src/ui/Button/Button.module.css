@@ -3,9 +3,9 @@
   border: none;
   cursor: pointer;
   padding: var(--btn-padding-y) var(--btn-padding-x);
-  font-size: var(--btn-font-size);
+  font-size: var(--font-sm);
   font-weight: 500;
-  border-radius: var(--btn-border-radius);
+  border-radius: var(--border-radius-sm);
   transition:
     background-color 0.2s ease,
     color 0.2s ease,

@@ -4,6 +4,7 @@ import { BudgetBreakdown } from '@/components/BudgetBreakdown/BudgetBreakdown';
 import { useGetUserQuery } from '@/services/authService';
 import { useGetBudgetQuery } from '@/services/budgetService';
 import { FaPencilAlt } from 'react-icons/fa';
+import { ConnectedAccounts } from './ConnectedAccounts/ConnectedAccounts';
 import styles from './ProfilePage.module.css';
 
 function getInitials(name?: string, email?: string): string {
@@ -47,6 +48,10 @@ export const ProfilePage = () => {
 
         <div className={styles.section}>
           <BudgetBreakdown budget={budget} />
+        </div>
+
+        <div className={styles.section}>
+          <ConnectedAccounts />
         </div>
       </Content>
     </>

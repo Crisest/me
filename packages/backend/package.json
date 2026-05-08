@@ -25,6 +25,7 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.2",
+    "plaid": "^42.1.0",
     "ulid": "^3.0.0"
   },
   "devDependencies": {

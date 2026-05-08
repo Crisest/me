@@ -12,3 +12,11 @@ export async function getBanksByUser(userId: string) {
   const banks = iBanks.map(iBank => iBank.toBank());
   return banks || [];
 }
+
+export async function findPlaidBankByIdForUser(userId: string, bankId: string) {
+  return BankModel.findOne({ _id: bankId, createdBy: userId, isPlaidLinked: true });
+}
+
+export async function findPlaidLinkedBanksByUser(userId: string) {
+  return BankModel.find({ createdBy: userId, isPlaidLinked: true });
+}
