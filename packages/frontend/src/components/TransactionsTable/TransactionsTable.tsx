@@ -28,13 +28,30 @@ const columns = [
   columnHelper.accessor('description', {
     header: 'Description',
     cell: info => {
-      const subDescription = info.row.original.subDescription;
+      const row = info.row.original;
+      const subDescription = row.subDescription;
+      const iconUrl = row.logoUrl ?? row.categoryIconUrl;
       return (
-        <div>
-          <span className={styles.descriptionCell}>{info.getValue()}</span>
-          {subDescription && (
-            <span className={styles.subDescriptionCell}>{subDescription}</span>
+        <div className={styles.descriptionWrapper}>
+          {iconUrl ? (
+            <img
+              src={iconUrl}
+              alt=""
+              className={styles.txIcon}
+              loading="lazy"
+              onError={e => {
+                (e.currentTarget as HTMLImageElement).style.visibility = 'hidden';
+              }}
+            />
+          ) : (
+            <span className={styles.txIconPlaceholder} aria-hidden />
           )}
+          <div>
+            <span className={styles.descriptionCell}>{info.getValue()}</span>
+            {subDescription && (
+              <span className={styles.subDescriptionCell}>{subDescription}</span>
+            )}
+          </div>
         </div>
       );
     },
@@ -42,11 +59,20 @@ const columns = [
   columnHelper.accessor('cardName', {
     header: 'Account',
     cell: info => {
-      const bankName = info.row.original.bankName;
+      const row = info.row.original;
+      const bankName = row.bankName;
+      const accountName = row.accountName;
+      const accountMask = row.accountMask;
       const cardName = info.getValue();
-      if (!cardName) return null;
-      if (bankName) return `${bankName} · ${cardName}`;
-      return cardName;
+
+      if (accountName) {
+        const masked = accountMask ? `${accountName} ••${accountMask}` : accountName;
+        return bankName ? `${bankName} · ${masked}` : masked;
+      }
+      if (cardName) {
+        return bankName ? `${bankName} · ${cardName}` : cardName;
+      }
+      return null;
     },
   }),
   columnHelper.accessor('amount', {

@@ -11,10 +11,15 @@ export interface Transaction {
   updatedAt?: number;
   deletedAt?: number;
   cardId?: string;
+  accountId?: string;          // NEW — Mongo id of the linked Account (Plaid txs)
   plaidTransactionId?: string;
+  logoUrl?: string;            // NEW — merchant logo from Plaid
+  categoryIconUrl?: string;    // NEW — Plaid PFC category icon (fallback)
   // Populated enrichment fields (optional — present when backend populates them)
   cardName?: string;
   bankName?: string;
+  accountName?: string;        // NEW — e.g. "Plaid Checking"
+  accountMask?: string;        // NEW — e.g. "0000"
   ownerEmail?: string;
   ownerName?: string;
 }

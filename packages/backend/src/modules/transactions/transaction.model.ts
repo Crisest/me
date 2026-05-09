@@ -13,8 +13,11 @@ export interface ITransaction extends Document {
   updatedAt?: Date;
   toTransaction(): Transaction;
   cardId?: mongoose.Types.ObjectId;
+  accountId?: mongoose.Types.ObjectId;
   fixedTransactionId?: mongoose.Types.ObjectId;
   plaidTransactionId?: string;
+  logoUrl?: string;
+  categoryIconUrl?: string;
 }
 
 interface TransactionModel extends Model<ITransaction> {
@@ -41,6 +44,11 @@ const TransactionSchema = new mongoose.Schema<ITransaction>(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Card',
     },
+    accountId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Account',
+      index: true,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -51,6 +59,8 @@ const TransactionSchema = new mongoose.Schema<ITransaction>(
       ref: 'FixedTransaction',
     },
     plaidTransactionId: { type: String, unique: true, sparse: true, index: true },
+    logoUrl: { type: String },
+    categoryIconUrl: { type: String },
   },
   { timestamps: true }
 );
@@ -65,10 +75,13 @@ TransactionSchema.methods.toTransaction = function (): Transaction {
     date: this.date.toISOString(),
     groupId: this.groupId?.toString(),
     cardId: this.cardId?.toString(),
+    accountId: this.accountId?.toString(),
     createdBy: this.createdBy.toString(),
     createdAt: this.createdAt.getTime(),
     updatedAt: this.updatedAt ? this.updatedAt.getTime() : undefined,
     plaidTransactionId: this.plaidTransactionId,
+    logoUrl: this.logoUrl,
+    categoryIconUrl: this.categoryIconUrl,
   };
 };
 

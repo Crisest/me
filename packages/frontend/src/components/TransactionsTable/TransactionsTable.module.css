@@ -83,3 +83,19 @@
   color: var(--color-grey);
   margin-top: 2px;
 }
+
+.descriptionWrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.txIcon,
+.txIconPlaceholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+  background-color: var(--color-grey-light);
+}

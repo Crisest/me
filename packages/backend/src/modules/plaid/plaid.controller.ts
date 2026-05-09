@@ -65,3 +65,13 @@ export const updateLinkTokenHandler = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to create update-mode link token' });
   }
 };
+
+export const resyncBankHandler = async (req: Request, res: Response) => {
+  try {
+    const result = await plaidService.resyncBank(req.user!.id, req.params.bankId);
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, 'Failed to resync Plaid bank');
+    res.status(500).json({ error: 'Failed to resync Plaid bank' });
+  }
+};

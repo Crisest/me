@@ -9,6 +9,7 @@ import {
   syncOneHandler,
   unlinkBankHandler,
   updateLinkTokenHandler,
+  resyncBankHandler,
 } from './plaid.controller';
 
 const router: Router = Router();
@@ -33,6 +34,12 @@ router.post(
 
 router.post('/sync', authMiddleware, syncAllHandler);
 router.post('/sync/:bankId', authMiddleware, validateRequest(bankIdValidation), syncOneHandler);
+router.post(
+  '/resync/:bankId',
+  authMiddleware,
+  validateRequest(bankIdValidation),
+  resyncBankHandler
+);
 
 router.delete('/bank/:bankId', authMiddleware, validateRequest(bankIdValidation), unlinkBankHandler);
 

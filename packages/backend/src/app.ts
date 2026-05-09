@@ -13,6 +13,7 @@ import cardRoutes from './modules/cards/card.routes';
 import budgetRoutes from './modules/budget';
 import uploadRoutes from './modules/uploads';
 import groupRoutes from './modules/groups/group.routes';
+import accountRoutes from './modules/accounts';
 import plaidRoutes from './modules/plaid';
 import devRoutes from './modules/dev';
 import dotenv from 'dotenv';
@@ -34,7 +35,13 @@ app.use(
             defaultSrc: ["'self'", 'https://cdn.plaid.com/'],
             scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.plaid.com/link/v2/stable/link-initialize.js'],
             styleSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", 'data:', 'blob:'],
+            imgSrc: [
+              "'self'",
+              'data:',
+              'blob:',
+              'https://plaid-merchant-logos.plaid.com',
+              'https://plaid-category-icons.plaid.com',
+            ],
             connectSrc: ["'self'", `https://${config.plaid.env}.plaid.com/`],
             fontSrc: ["'self'", 'data:'],
             frameSrc: ['https://cdn.plaid.com/'],
@@ -82,6 +89,7 @@ app.use('/cards', cardRoutes);
 app.use('/budget', budgetRoutes);
 app.use('/uploads', uploadRoutes);
 app.use('/groups', groupRoutes);
+app.use('/accounts', accountRoutes);
 app.use('/plaid', plaidRoutes);
 if (config.nodeEnv !== 'production') {
   app.use('/dev', devRoutes);
