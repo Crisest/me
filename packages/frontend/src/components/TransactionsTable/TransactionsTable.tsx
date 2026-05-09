@@ -100,6 +100,22 @@ const columns = [
   }),
 ];
 
+const HIDE_ON_MOBILE_COLUMNS = new Set(['cardName', 'category']);
+
+const buildHeaderClass = (columnId: string): string | undefined => {
+  const classes: string[] = [];
+  if (columnId === 'amount') classes.push(styles.amountHeader);
+  if (HIDE_ON_MOBILE_COLUMNS.has(columnId)) classes.push(styles.hideOnMobile);
+  return classes.length ? classes.join(' ') : undefined;
+};
+
+const buildCellClass = (columnId: string): string | undefined => {
+  const classes: string[] = [];
+  if (columnId === 'amount') classes.push(styles.amountCell);
+  if (HIDE_ON_MOBILE_COLUMNS.has(columnId)) classes.push(styles.hideOnMobile);
+  return classes.length ? classes.join(' ') : undefined;
+};
+
 const TransactionsTable: React.FC<transactionTableProps> = ({
   transactions,
   extraColumns,
@@ -120,10 +136,7 @@ const TransactionsTable: React.FC<transactionTableProps> = ({
           {table.getHeaderGroups().map(headerGroup => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map(header => (
-                <th
-                  key={header.id}
-                  className={header.column.id === 'amount' ? styles.amountHeader : undefined}
-                >
+                <th key={header.id} className={buildHeaderClass(header.column.id)}>
                   {header.isPlaceholder
                     ? null
                     : flexRender(
@@ -139,10 +152,7 @@ const TransactionsTable: React.FC<transactionTableProps> = ({
           {table.getRowModel().rows.map(row => (
             <tr key={row.id}>
               {row.getVisibleCells().map(cell => (
-                <td
-                  key={cell.id}
-                  className={cell.column.id === 'amount' ? styles.amountCell : undefined}
-                >
+                <td key={cell.id} className={buildCellClass(cell.column.id)}>
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}

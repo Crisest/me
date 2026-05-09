@@ -137,6 +137,13 @@ body {
   overflow-y: scroll;
 }
 
+/* Below md breakpoint (see src/styles/breakpoints.ts): stack navbar on top */
+@media (max-width: 767px) {
+  .app-container {
+    flex-direction: column;
+  }
+}
+
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
