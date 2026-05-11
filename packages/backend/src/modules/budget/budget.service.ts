@@ -1,5 +1,6 @@
-import { Budget, BudgetPayloads } from '@portfolio/common';
+import { Budget, BudgetPayloads, BudgetOverride, BudgetOverridePayloads } from '@portfolio/common';
 import { BudgetModel } from './budget.model';
+import { BudgetOverrideModel } from './budgetOverride.model';
 
 export const getBudgetByUserId = async (
   userId: string
@@ -18,4 +19,25 @@ export const upsertBudget = async (
     { upsert: true, new: true, runValidators: true }
   );
   return result.toBudget();
+};
+
+export const getBudgetOverride = async (
+  userId: string,
+  month: number,
+  year: number
+): Promise<BudgetOverride | null> => {
+  const result = await BudgetOverrideModel.findOne({ createdBy: userId, month, year });
+  return result ? result.toBudgetOverride() : null;
+};
+
+export const upsertBudgetOverride = async (
+  userId: string,
+  payload: BudgetOverridePayloads.Upsert
+): Promise<BudgetOverride> => {
+  const result = await BudgetOverrideModel.findOneAndUpdate(
+    { createdBy: userId, month: payload.month, year: payload.year },
+    { ...payload, createdBy: userId },
+    { upsert: true, new: true, runValidators: true }
+  );
+  return result.toBudgetOverride();
 };

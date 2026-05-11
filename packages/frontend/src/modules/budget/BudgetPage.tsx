@@ -4,7 +4,8 @@ import TransactionsTable from '@/components/TransactionsTable/TransactionsTable'
 import YButton from '@ui/Button/Button';
 import { useGetTransactionsQuery } from '@/services/transactionService';
 import { useGetTransactionInsightsQuery } from '@/services/transactionService';
-import { useGetBudgetQuery } from '@/services/budgetService';
+import { useGetBudgetQuery, useGetBudgetOverrideQuery } from '@/services/budgetService';
+import ActualIncomeModal from '@/components/ActualIncomeModal/ActualIncomeModal';
 import Content from '@ui/Content/Content';
 import TransactionUploadModal from '@/components/TransactionUploadModal/TransactionUploadModal';
 import BudgetModal from '@/components/BudgetModal/BudgetModal';
@@ -25,20 +26,25 @@ export const BudgetPage = () => {
   const { data: insights, isLoading: insightsLoading } =
     useGetTransactionInsightsQuery({ month: selectedMonth, year: selectedYear });
   const { data: budget, isLoading: budgetLoading } = useGetBudgetQuery();
+  const { data: override, isLoading: overrideLoading } = useGetBudgetOverrideQuery({ month: selectedMonth, year: selectedYear });
   const [openUploadModal, setOpenUploadModal] = useState(false);
   const [openBudgetModal, setOpenBudgetModal] = useState(false);
+  const [openActualModal, setOpenActualModal] = useState(false);
+
+  const effectiveSalary = override?.salary ?? budget?.salary ?? 0;
+  const isActual = !!override;
 
   const totalFixed =
     budget?.fixedExpenses.reduce((sum, e) => sum + e.amount, 0) ?? 0;
-  const remainingAfterFixed = (budget?.salary ?? 0) - totalFixed;
+  const remainingAfterFixed = effectiveSalary - totalFixed;
   const moneyLeft = remainingAfterFixed - (insights?.totalSpent ?? 0);
 
-  const loading = insightsLoading || budgetLoading;
+  const loading = insightsLoading || budgetLoading || overrideLoading;
 
   const cards: InsightCardItem[] = [
     {
-      label: 'Budget',
-      amount: `+${formatCAD(budget?.salary ?? 0)}`,
+      label: isActual ? 'Actual Income' : 'Projected Income',
+      amount: `+${formatCAD(effectiveSalary)}`,
       subtitle: `${insights?.debitCount ?? 0} transactions`,
     },
     {
@@ -73,6 +79,7 @@ export const BudgetPage = () => {
           <YButton onClick={() => setOpenBudgetModal(true)}>
             Setup Budget
           </YButton>
+          <YButton variant="secondary" onClick={() => setOpenActualModal(true)}>Set Actual Income</YButton>
         </MonthYearFilter>
         {transactionsData && (
           <TransactionsTable transactions={transactionsData} />
@@ -85,6 +92,13 @@ export const BudgetPage = () => {
       <BudgetModal
         openModal={openBudgetModal}
         setOpenModal={setOpenBudgetModal}
+      />
+      <ActualIncomeModal
+        openModal={openActualModal}
+        setOpenModal={setOpenActualModal}
+        month={selectedMonth}
+        year={selectedYear}
+        projectedSalary={budget?.salary ?? 0}
       />
     </>
   );

@@ -1,6 +1,7 @@
 import { Transaction } from '@/types';
 import React, { useMemo } from 'react';
 import styles from './TransactionsTable.module.css';
+import { formatPlaidCategory, formatPlaidDetailedCategory } from '@/utils/format';
 import {
   flexRender,
   getCoreRowModel,
@@ -29,7 +30,10 @@ const columns = [
     header: 'Description',
     cell: info => {
       const row = info.row.original;
-      const subDescription = row.subDescription;
+      const subDescription = formatPlaidDetailedCategory(
+        row.subDescription,
+        row.category,
+      );
       const iconUrl = row.logoUrl ?? row.categoryIconUrl;
       return (
         <div className={styles.descriptionWrapper}>
@@ -95,7 +99,7 @@ const columns = [
     cell: info => {
       const value = info.getValue();
       if (!value) return null;
-      return <span className={styles.categoryPill}>{value}</span>;
+      return <span className={styles.categoryPill}>{formatPlaidCategory(value)}</span>;
     },
   }),
 ];
