@@ -12,6 +12,8 @@ import BudgetModal from '@/components/BudgetModal/BudgetModal';
 import { InsightCards, InsightCardItem } from '@/components/InsightCards/InsightCards';
 import { MonthYearFilter } from '@/components/MonthYearFilter/MonthYearFilter';
 import { formatCAD } from '@/utils/format';
+import YmCombobox from '@ui/YmCombobox/YmCombobox';
+import { useAccountFilter } from '@/hooks/useAccountFilter';
 
 export const BudgetPage = () => {
   const now = new Date();
@@ -30,6 +32,13 @@ export const BudgetPage = () => {
   const [openUploadModal, setOpenUploadModal] = useState(false);
   const [openBudgetModal, setOpenBudgetModal] = useState(false);
   const [openActualModal, setOpenActualModal] = useState(false);
+
+  const {
+    options: accountOptions,
+    selectedAccountId,
+    setSelectedAccountId,
+    filteredTransactions,
+  } = useAccountFilter(transactionsData);
 
   const effectiveSalary = override?.salary ?? budget?.salary ?? 0;
   const isActual = !!override;
@@ -75,6 +84,13 @@ export const BudgetPage = () => {
           onMonthChange={setSelectedMonth}
           onYearChange={setSelectedYear}
         >
+          <YmCombobox
+            options={accountOptions}
+            value={selectedAccountId}
+            onChange={setSelectedAccountId}
+            placeholder="All accounts"
+            ariaLabel="Account filter"
+          />
           <YButton onClick={() => setOpenUploadModal(true)}>Upload CSV</YButton>
           <YButton onClick={() => setOpenBudgetModal(true)}>
             Setup Budget
@@ -82,7 +98,7 @@ export const BudgetPage = () => {
           <YButton variant="secondary" onClick={() => setOpenActualModal(true)}>Set Actual Income</YButton>
         </MonthYearFilter>
         {transactionsData && (
-          <TransactionsTable transactions={transactionsData} />
+          <TransactionsTable transactions={filteredTransactions} />
         )}
       </Content>
       <TransactionUploadModal

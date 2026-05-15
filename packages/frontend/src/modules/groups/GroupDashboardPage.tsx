@@ -14,6 +14,8 @@ import { InsightCards, InsightCardItem } from '@/components/InsightCards/Insight
 import { MonthYearFilter } from '@/components/MonthYearFilter/MonthYearFilter';
 import { formatCAD } from '@/utils/format';
 import YButton from '@/ui/Button/Button';
+import YmCombobox from '@ui/YmCombobox/YmCombobox';
+import { useAccountFilter } from '@/hooks/useAccountFilter';
 import { FaRegCopy } from 'react-icons/fa';
 
 const groupExtraColumns: ColumnDef<Transaction, any>[] = [
@@ -78,6 +80,13 @@ const GroupDashboardPage: React.FC = () => {
     },
   ];
 
+  const {
+    options: accountOptions,
+    selectedAccountId,
+    setSelectedAccountId,
+    filteredTransactions,
+  } = useAccountFilter(transactions);
+
   return (
     <>
       <Header title={group?.name ?? 'Group'} />
@@ -89,6 +98,13 @@ const GroupDashboardPage: React.FC = () => {
           onMonthChange={setSelectedMonth}
           onYearChange={setSelectedYear}
         >
+          <YmCombobox
+            options={accountOptions}
+            value={selectedAccountId}
+            onChange={setSelectedAccountId}
+            placeholder="All accounts"
+            ariaLabel="Account filter"
+          />
           {group?.inviteCode && (
             <YButton onClick={() => handleCopy(group.inviteCode)}>
               {copied ? 'Copied!' : 'Copy invite link'} <FaRegCopy />
@@ -97,7 +113,7 @@ const GroupDashboardPage: React.FC = () => {
         </MonthYearFilter>
         {transactions && (
           <TransactionsTable
-            transactions={transactions}
+            transactions={filteredTransactions}
             extraColumns={groupExtraColumns}
           />
         )}

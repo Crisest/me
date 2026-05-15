@@ -121,3 +121,39 @@
     padding: 10px 8px;
   }
 }
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.sortButton:hover {
+  color: var(--color-dark);
+}
+
+.sortIndicator {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.table th.amountHeader .sortButton {
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.emptyRow {
+  text-align: center !important;
+  padding: 32px 16px !important;
+  color: var(--color-grey);
+  font-style: italic;
+}
