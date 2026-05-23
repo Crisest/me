@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useJoinGroupMutation } from '@/services/groupService';
 import { Route } from '@/enums/routerEnum';
 
-const JoinGroupPage: React.FC = () => {
+const JoinSharedPage: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const [joinGroup, { isLoading, isError }] = useJoinGroupMutation();
@@ -13,17 +13,17 @@ const JoinGroupPage: React.FC = () => {
     joinGroup({ code })
       .unwrap()
       .then(group => {
-        navigate(`/groups/${group.id}`);
+        navigate(`/shared/${group.id}`);
       })
       .catch(() => {});
   }, [code]);
 
-  if (isLoading) return <p>Joining group...</p>;
+  if (isLoading) return <p>Joining shared...</p>;
 
   if (isError) {
     return (
       <p>
-        Invalid or expired invite code. <Link to={Route.GROUPS}>Back to groups</Link>
+        Invalid or expired invite code. <Link to={Route.SHARED}>Back to Shared</Link>
       </p>
     );
   }
@@ -31,4 +31,4 @@ const JoinGroupPage: React.FC = () => {
   return null;
 };
 
-export default JoinGroupPage;
+export default JoinSharedPage;

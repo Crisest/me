@@ -1,0 +1,25 @@
+.wrapper {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+}
+
+.brand {
+  flex: 1;
+  background-size: cover;
+  background-position: center;
+}
+
+.formPane {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+}
+
+@media (max-width: 767px) {
+  .brand {
+    display: none;
+  }
+}

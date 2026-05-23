@@ -26,7 +26,7 @@ const groupExtraColumns: ColumnDef<Transaction, any>[] = [
   },
 ];
 
-const GroupDashboardPage: React.FC = () => {
+const SharedDashboardPage: React.FC = () => {
   const { groupId } = useParams<{ groupId: string }>();
   const now = new Date();
   const prevMonthIndex = (now.getMonth() + 11) % 12;
@@ -36,7 +36,7 @@ const GroupDashboardPage: React.FC = () => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback((inviteCode: string) => {
-    const url = `${window.location.origin}/groups/join/${inviteCode}`;
+    const url = `${window.location.origin}/shared/join/${inviteCode}`;
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -89,7 +89,7 @@ const GroupDashboardPage: React.FC = () => {
 
   return (
     <>
-      <Header title={group?.name ?? 'Group'} />
+      <Header title={group?.name ?? 'Shared'} />
       <InsightCards cards={cards} loading={insightsLoading} />
       <Content>
         <MonthYearFilter
@@ -122,4 +122,4 @@ const GroupDashboardPage: React.FC = () => {
   );
 };
 
-export default GroupDashboardPage;
+export default SharedDashboardPage;

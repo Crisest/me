@@ -1,20 +1,30 @@
 .textbox {
   font-family: var(--font-family-body);
-  padding: var(--input-padding-y) var(--input-padding-x);
+  padding: 12px 14px;
   font-size: var(--input-font-size);
-  border: 1px solid var(--color-grey);
-  border-radius: var(--input-border-radius);
-  background-color: var(--color-white);
+  border: 1px solid var(--color-grey-hover);
+  border-radius: var(--border-radius-md);
+  background-color: #f7f8fa;
   color: var(--color-grey);
   outline: none;
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.textbox::placeholder {
+  color: #9aa0a6;
+}
+
+.textbox:hover:not(:disabled):not(:focus) {
+  border-color: #cbd0d6;
 }
 
 .textbox:focus {
-  border-color: var(--color-blue-darker);
-  box-shadow: 0 0 0 2px var(--color-blue-light);
+  border-color: var(--color-blue);
+  background-color: var(--color-white);
+  box-shadow: 0 0 0 3px var(--color-blue-light);
 }
 
 .textbox:disabled {

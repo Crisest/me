@@ -18,20 +18,12 @@ export default useSideBar;
 // Utilities
 export const buttonData: ButtonData[] = [
   {
-    text: 'Home',
+    text: 'Budget',
     to: Route.HOME,
   },
   {
-    text: 'Projects',
-    to: Route.PROJECTS,
-  },
-  {
-    text: 'Budget',
-    to: Route.BUDGET,
-  },
-  {
-    text: 'Groups',
-    to: Route.GROUPS,
+    text: 'Shared',
+    to: Route.SHARED,
   },
 ];
 

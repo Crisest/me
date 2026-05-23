@@ -11,9 +11,9 @@ import YButton from '@ui/Button/Button';
 import Textbox from '@ui/Textbox/Textbox';
 import { FaCirclePlus } from 'react-icons/fa6';
 import { IoClose } from 'react-icons/io5';
-import styles from './GroupPage.module.css';
+import styles from './SharedPage.module.css';
 
-const GroupPage: React.FC = () => {
+const SharedPage: React.FC = () => {
   const { data: groups = [], isLoading } = useGetGroupsQuery();
   const [createGroup] = useCreateGroupMutation();
   const [deleteGroup] = useDeleteGroupMutation();
@@ -30,30 +30,30 @@ const GroupPage: React.FC = () => {
 
   return (
     <>
-      <Header title="Groups" />
+      <Header title="Shared" />
       <Content>
         <div className={styles.createForm}>
           <Textbox
             customClass={styles.input}
-            placeholder="Group name"
+            placeholder="Shared name"
             value={groupName}
             onChange={setGroupName}
             onKeyDown={e => e.key === 'Enter' && handleCreate()}
           />
           <YButton variant="primary" onClick={handleCreate}>
-            <FaCirclePlus /> Create Group
+            <FaCirclePlus /> Create Shared
           </YButton>
         </div>
 
         {groups.length === 0 ? (
-          <p className={styles.empty}>No groups yet. Create one above.</p>
+          <p className={styles.empty}>Nothing shared yet. Create one above.</p>
         ) : (
           <div className={styles.groupList}>
             {groups.map(group => (
               <div
                 key={group.id}
                 className={styles.groupCard}
-                onClick={() => navigate(`/groups/${group.id}`)}
+                onClick={() => navigate(`/shared/${group.id}`)}
               >
                 <button
                   className={styles.deleteBtn}
@@ -61,7 +61,7 @@ const GroupPage: React.FC = () => {
                     e.stopPropagation();
                     deleteGroup(group.id);
                   }}
-                  aria-label="Delete group"
+                  aria-label="Delete shared"
                 >
                   <IoClose />
                 </button>
@@ -79,4 +79,4 @@ const GroupPage: React.FC = () => {
   );
 };
 
-export default GroupPage;
+export default SharedPage;

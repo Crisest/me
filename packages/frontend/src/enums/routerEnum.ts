@@ -1,14 +1,12 @@
 export enum Route {
   LOGIN = '/login',
   REGISTER = '/register',
-  GROUPS = '/groups',
-  PROJECTS = '/projects',
   HOME = '/',
-  CONTACT = '/contact',
   BUDGET = '/budget',
-  GROUP_JOIN = '/groups/join/:code',
-  GROUP_DASHBOARD = '/groups/:groupId',
+  SHARED = '/shared',
+  SHARED_JOIN = '/shared/join/:code',
+  SHARED_DASHBOARD = '/shared/:groupId',
   PROFILE = '/profile',
 }
 
-export const protectedRoutes = [Route.BUDGET, Route.PROFILE];
+export const protectedRoutes = [Route.HOME, Route.BUDGET, Route.PROFILE, Route.SHARED];

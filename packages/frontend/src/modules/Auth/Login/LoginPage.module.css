@@ -3,10 +3,23 @@
   justify-content: center;
   align-items: center;
   flex-direction: column;
-  height: 100%;
-  width: 300px;
-  margin: auto;
+  width: 320px;
+  max-width: 100%;
+  gap: var(--spacing-lg);
+}
+
+.container form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
   gap: var(--spacing-sm);
+}
+
+.title {
+  font-size: var(--font-2xl);
+  margin-bottom: var(--spacing-md);
+  align-self: flex-start;
+  /* color: var(--color-blue); */
 }
 
 .container button:last-of-type {

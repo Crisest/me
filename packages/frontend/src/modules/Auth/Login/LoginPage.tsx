@@ -9,6 +9,7 @@ import { useLazyGetUserQuery, useLoginMutation } from '@/services/authService';
 import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import type { SerializedError } from '@reduxjs/toolkit';
 import { LoginPayload } from '@portfolio/common';
+import AuthLayout from '@/modules/Auth/AuthLayout';
 
 interface LocationState {
   from: string;
@@ -87,35 +88,49 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <Form onSubmit={handleLogin} className={styles.container}>
-      <Textbox
-        type="email"
-        fullWidth
-        placeholder="Email"
-        aria-label="email"
-        isRequired
-        value={credentials.email}
-        onChange={handleInputChange('email')}
-        isDisabled={isLoading}
-      />
-      <Textbox
-        type="password"
-        fullWidth
-        placeholder="Password"
-        aria-label="password"
-        isRequired
-        value={credentials.password}
-        onChange={handleInputChange('password')}
-        isDisabled={isLoading}
-      />
-      <ErrorMessage error={error} />
-      <Button variant="primary" type="submit" fullWidth isDisabled={isLoading}>
-        {isLoading ? 'Logging in...' : 'Login'}
-      </Button>
-      <Button variant="link" onPress={handleRegister} isDisabled={isLoading}>
-        Register
-      </Button>
-    </Form>
+    <AuthLayout>
+      <div className={styles.container}>
+        <h1 className={styles.title}>Welcome back</h1>
+        <Form onSubmit={handleLogin}>
+          <Textbox
+            type="email"
+            fullWidth
+            placeholder="Email"
+            aria-label="email"
+            isRequired
+            value={credentials.email}
+            onChange={handleInputChange('email')}
+            isDisabled={isLoading}
+          />
+          <Textbox
+            type="password"
+            fullWidth
+            placeholder="Password"
+            aria-label="password"
+            isRequired
+            value={credentials.password}
+            onChange={handleInputChange('password')}
+            isDisabled={isLoading}
+          />
+          <ErrorMessage error={error} />
+          <Button
+            variant="primary"
+            type="submit"
+            fullWidth
+            isDisabled={isLoading}
+          >
+            {isLoading ? 'Logging in...' : 'Login'}
+          </Button>
+          <Button
+            variant="link"
+            onPress={handleRegister}
+            isDisabled={isLoading}
+          >
+            Register
+          </Button>
+        </Form>
+      </div>
+    </AuthLayout>
   );
 };
 

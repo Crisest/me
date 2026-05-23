@@ -3,14 +3,13 @@ import { Route, Routes } from 'react-router-dom';
 import { Route as RouteEnum } from '@/enums/routerEnum';
 import LoginPage from '@/modules/Auth/Login/LoginPage';
 import RegisterPage from '@/modules/Auth/register/RegisterPage';
-import GroupPage from '@/modules/groups/GroupPage';
-import GroupDashboardPage from '@/modules/groups/GroupDashboardPage';
-import JoinGroupPage from '@/modules/groups/JoinGroupPage';
-import HomePage from '@/modules/home/HomePage';
-import ProjectsPage from '@/modules/projects/ProjectPage';
+import SharedPage from '@/modules/shared/SharedPage';
+import SharedDashboardPage from '@/modules/shared/SharedDashboardPage';
+import JoinSharedPage from '@/modules/shared/JoinSharedPage';
 import { BudgetPage } from '@/modules/budget/BudgetPage';
 import { ProfilePage } from '@/modules/profile/ProfilePage';
 import { PrivateRoutes } from '@/components/Auth/PrivateRoute';
+import AppLayout from '@/components/Layout/AppLayout';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -18,16 +17,20 @@ export const AppRoutes: React.FC = () => {
       {/* Public routes */}
       <Route path={RouteEnum.LOGIN} element={<LoginPage />} />
       <Route path={RouteEnum.REGISTER} element={<RegisterPage />} />
-      <Route path={RouteEnum.HOME} element={<HomePage />} />
-      <Route path={RouteEnum.PROJECTS} element={<ProjectsPage />} />
 
       {/* Protected routes */}
       <Route element={<PrivateRoutes />}>
-        <Route path={RouteEnum.BUDGET} element={<BudgetPage />} />
-        <Route path={RouteEnum.PROFILE} element={<ProfilePage />} />
-        <Route path={RouteEnum.GROUPS} element={<GroupPage />} />
-        <Route path={RouteEnum.GROUP_JOIN} element={<JoinGroupPage />} />
-        <Route path={RouteEnum.GROUP_DASHBOARD} element={<GroupDashboardPage />} />
+        <Route element={<AppLayout />}>
+          <Route path={RouteEnum.HOME} element={<BudgetPage />} />
+          <Route path={RouteEnum.BUDGET} element={<BudgetPage />} />
+          <Route path={RouteEnum.PROFILE} element={<ProfilePage />} />
+          <Route path={RouteEnum.SHARED} element={<SharedPage />} />
+          <Route path={RouteEnum.SHARED_JOIN} element={<JoinSharedPage />} />
+          <Route
+            path={RouteEnum.SHARED_DASHBOARD}
+            element={<SharedDashboardPage />}
+          />
+        </Route>
       </Route>
     </Routes>
   );

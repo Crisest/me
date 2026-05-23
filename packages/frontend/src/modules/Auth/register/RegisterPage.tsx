@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { useRegisterMutation } from '@/services/authService';
 import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import type { SerializedError } from '@reduxjs/toolkit';
+import AuthLayout from '@/modules/Auth/AuthLayout';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -62,48 +63,56 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <Form onSubmit={handleRegister} className={styles.container}>
-      <Textbox
-        type="email"
-        fullWidth
-        placeholder="Email"
-        aria-label="email"
-        isRequired
-        value={formData.email}
-        onChange={handleInputChange('email')}
-        isDisabled={isLoading}
-      />
-      <Textbox
-        type="text"
-        fullWidth
-        placeholder="Name"
-        aria-label="name"
-        value={formData.name}
-        onChange={handleInputChange('name')}
-        isDisabled={isLoading}
-      />
-      <Textbox
-        type="password"
-        fullWidth
-        placeholder="Password"
-        aria-label="password"
-        isRequired
-        value={formData.password}
-        onChange={handleInputChange('password')}
-        isDisabled={isLoading}
-      />
-      <ErrorMessage error={error} />
-      <Button variant="primary" type="submit" fullWidth isDisabled={isLoading}>
-        {isLoading ? 'Registering...' : 'Register'}
-      </Button>
-      <Button
-        variant="link"
-        onPress={() => navigate(Route.LOGIN)}
-        isDisabled={isLoading}
-      >
-        Back to Login
-      </Button>
-    </Form>
+    <AuthLayout>
+      <Form onSubmit={handleRegister} className={styles.container}>
+        <h1 className={styles.title}>Create your account</h1>
+        <Textbox
+          type="email"
+          fullWidth
+          placeholder="Email"
+          aria-label="email"
+          isRequired
+          value={formData.email}
+          onChange={handleInputChange('email')}
+          isDisabled={isLoading}
+        />
+        <Textbox
+          type="text"
+          fullWidth
+          placeholder="Name"
+          aria-label="name"
+          value={formData.name}
+          onChange={handleInputChange('name')}
+          isDisabled={isLoading}
+        />
+        <Textbox
+          type="password"
+          fullWidth
+          placeholder="Password"
+          aria-label="password"
+          isRequired
+          value={formData.password}
+          onChange={handleInputChange('password')}
+          isDisabled={isLoading}
+        />
+        <ErrorMessage error={error} />
+        <Button
+          variant="primary"
+          type="submit"
+          fullWidth
+          isDisabled={isLoading}
+        >
+          {isLoading ? 'Registering...' : 'Register'}
+        </Button>
+        <Button
+          variant="link"
+          onPress={() => navigate(Route.LOGIN)}
+          isDisabled={isLoading}
+        >
+          Back to Login
+        </Button>
+      </Form>
+    </AuthLayout>
   );
 };
 
