@@ -6,7 +6,7 @@ import {
   ComboboxOptions,
 } from '@headlessui/react';
 import React, { useState } from 'react';
-import { IoChevronDownCircleOutline, IoCheckmark, IoSearchOutline, IoCloseOutline } from 'react-icons/io5';
+import { IoChevronDown, IoCheckmark, IoSearchOutline, IoCloseOutline } from 'react-icons/io5';
 import { AiOutlineLoading3Quarters } from 'react-icons/ai';
 import styles from './YmCombobox.module.css';
 import YButton from '../Button/Button';
@@ -100,7 +100,7 @@ const YmCombobox = <T,>({
           {isLoading ? (
             <AiOutlineLoading3Quarters className={styles.loadingIcon} />
           ) : (
-            <IoChevronDownCircleOutline />
+            <IoChevronDown />
           )}
         </ComboboxButton>
 
