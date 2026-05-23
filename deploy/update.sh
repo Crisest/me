@@ -17,16 +17,17 @@ APP_DIR="/opt/portfolio"
 cd "$APP_DIR" || msg_error "App directory not found"
 
 msg_info "Pulling latest changes"
-git pull &>/dev/null
+git fetch --quiet origin master
+git reset --hard origin/master >/dev/null
 msg_ok "Repository updated"
 
 msg_info "Installing dependencies"
-pnpm install &>/dev/null
+pnpm install
 msg_ok "Dependencies installed"
 
 msg_info "Building application"
-pnpm run common:build &>/dev/null
-pnpm run build &>/dev/null
+pnpm run common:build
+pnpm run build
 msg_ok "Application built"
 
 msg_info "Restarting service"
