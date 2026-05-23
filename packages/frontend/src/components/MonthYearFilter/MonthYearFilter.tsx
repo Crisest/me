@@ -19,7 +19,7 @@ export function MonthYearFilter({
   children,
 }: MonthYearFilterProps) {
   return (
-    <YmFlex justify="end" align="center" gap={30}>
+    <YmFlex justify="end" align="center" gap={15}>
       <YmCombobox
         options={months}
         value={selectedMonth}

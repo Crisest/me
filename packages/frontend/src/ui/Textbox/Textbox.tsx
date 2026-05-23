@@ -13,10 +13,14 @@ type TextBoxAriaProps = AriaTextFieldProps & TextBoxProps;
 const Textbox: React.FC<TextBoxAriaProps> = ({
   customClass,
   fullWidth,
+  label,
   ...rest
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const { inputProps } = useTextField(rest as AriaTextFieldProps, inputRef);
+  const { labelProps, inputProps } = useTextField(
+    { ...rest, label } as AriaTextFieldProps,
+    inputRef,
+  );
   const classNames = [
     styles.textbox,
     customClass,
@@ -25,7 +29,24 @@ const Textbox: React.FC<TextBoxAriaProps> = ({
     .filter(Boolean)
     .join(' ');
 
-  return <input type="text" className={classNames} {...inputProps} />;
+  const input = (
+    <input ref={inputRef} type="text" className={classNames} {...inputProps} />
+  );
+
+  if (!label) return input;
+
+  const wrapperClass = [styles.field, fullWidth ? styles.fullWidth : undefined]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <div className={wrapperClass}>
+      <label {...labelProps} className={styles.label}>
+        {label}
+      </label>
+      {input}
+    </div>
+  );
 };
 
 export default Textbox;

@@ -37,3 +37,16 @@
   width: 100%;
   box-sizing: border-box;
 }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.label {
+  font-family: var(--font-family-button);
+  font-size: var(--font-xs);
+  color: var(--color-grey);
+  letter-spacing: 0.02em;
+}

@@ -68,6 +68,7 @@ const YmCombobox = <T,>({
 
   return (
     <Combobox
+      immediate
       value={value}
       onChange={onChange}
       onClose={() => (onQueryChange ? onQueryChange('') : setInternalQuery(''))}

@@ -1,19 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
-import YButton from '@ui/Button/Button';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { IoAdd } from 'react-icons/io5';
 import YmFlex from '@ui/YmFlex/YmFlex';
 import Textbox from '@ui/Textbox/Textbox';
 import YmDialog from '@ui/YmDialog/YmDialog';
-import { useGetBudgetQuery, useUpsertBudgetMutation } from '@/services/budgetService';
+import { formatCAD } from '@/utils/format';
+import {
+  useGetBudgetQuery,
+  useUpsertBudgetMutation,
+} from '@/services/budgetService';
+import styles from './BudgetModal.module.css';
+import DisplayExpenseRow from './components/DisplayExpenseRow';
+import EditExpenseRow from './components/EditExpenseRow';
+import type { Draft, FixedExpenseInput } from './types';
 
 type BudgetModalProps = {
   openModal: boolean;
   setOpenModal: (open: boolean) => void;
-};
-
-type FixedExpenseInput = {
-  id: string;
-  name: string;
-  amount: string;
 };
 
 const BudgetModal: React.FC<BudgetModalProps> = ({
@@ -22,6 +24,9 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
 }) => {
   const [salary, setSalary] = useState('');
   const [expenses, setExpenses] = useState<FixedExpenseInput[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Draft>({ name: '', amount: '' });
+  const [newRowId, setNewRowId] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -36,40 +41,75 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
           id: crypto.randomUUID(),
           name: e.name,
           amount: String(e.amount),
-        }))
+        })),
       );
+      setEditingId(null);
+      setNewRowId(null);
+      setMutationError(null);
     }
   }, [openModal, budget]);
 
-  const addExpense = () => {
-    setExpenses([
-      ...expenses,
-      { id: crypto.randomUUID(), name: '', amount: '' },
-    ]);
+  const totalExpenses = useMemo(
+    () => expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0),
+    [expenses],
+  );
+  const remaining = (Number(salary) || 0) - totalExpenses;
+
+  const startEdit = (expense: FixedExpenseInput) => {
+    setEditingId(expense.id);
+    setDraft({ name: expense.name, amount: expense.amount });
+  };
+
+  const cancelEdit = () => {
+    if (newRowId && editingId === newRowId) {
+      setExpenses(expenses.filter(e => e.id !== newRowId));
+      setNewRowId(null);
+    }
+    setEditingId(null);
+    setDraft({ name: '', amount: '' });
+  };
+
+  const saveEdit = () => {
+    if (!editingId) return;
+    if (!draft.name.trim() || !draft.amount) return;
+    setExpenses(
+      expenses.map(e =>
+        e.id === editingId
+          ? { ...e, name: draft.name.trim(), amount: draft.amount }
+          : e,
+      ),
+    );
+    setNewRowId(null);
+    setEditingId(null);
+    setDraft({ name: '', amount: '' });
   };
 
   const removeExpense = (id: string) => {
     setExpenses(expenses.filter(e => e.id !== id));
+    if (editingId === id) cancelEdit();
   };
 
-  const updateExpense = (
-    id: string,
-    field: 'name' | 'amount',
-    value: string,
-  ) => {
-    setExpenses(
-      expenses.map(e => (e.id === id ? { ...e, [field]: value } : e)),
-    );
+  const addExpense = () => {
+    if (editingId) return;
+    const id = crypto.randomUUID();
+    setExpenses([...expenses, { id, name: '', amount: '' }]);
+    setEditingId(id);
+    setNewRowId(id);
+    setDraft({ name: '', amount: '' });
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setMutationError(null);
 
+    const finalExpenses = expenses.filter(
+      ex => ex.id !== newRowId && ex.name.trim() && ex.amount,
+    );
+
     try {
       await upsertBudget({
         salary: Number(salary),
-        fixedExpenses: expenses.map(e => ({
+        fixedExpenses: finalExpenses.map(e => ({
           name: e.name,
           amount: Number(e.amount),
         })),
@@ -94,74 +134,86 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
       footerButtonDisabled={isLoading}
     >
       <form onSubmit={handleSubmit} ref={formRef}>
-        <YmFlex direction="column" gap={20}>
-          <Textbox
-            type="number"
-            aria-label="salary input"
-            fullWidth
-            placeholder="Enter your monthly salary"
-            value={salary}
-            onChange={setSalary}
-          />
-
-          {expenses.map(expense => (
-            <FixedExpenseItem
-              key={expense.id}
-              expense={expense}
-              onUpdate={updateExpense}
-              onRemove={removeExpense}
+        <YmFlex direction="column" gap={24}>
+          <div className={styles.section}>
+            <Textbox
+              type="number"
+              label="Monthly salary"
+              fullWidth
+              placeholder="Enter your monthly salary"
+              value={salary}
+              onChange={setSalary}
             />
-          ))}
+          </div>
 
-          <YButton type="button" onClick={addExpense} variant="primary">
-            + Add fixed expense
-          </YButton>
+          <div className={styles.section}>
+            <div className={styles.sectionHeader}>
+              <h3 className={styles.sectionTitle}>Fixed expenses</h3>
+              <span className={styles.sectionCount}>
+                {expenses.length} {expenses.length === 1 ? 'item' : 'items'}
+              </span>
+            </div>
 
-          {mutationError && (
-            <p style={{ color: 'red', margin: 0 }}>{mutationError}</p>
-          )}
+            {expenses.length === 0 ? (
+              <p className={styles.emptyMessage}>No fixed expenses yet.</p>
+            ) : (
+              <div className={styles.list}>
+                {expenses.map(expense =>
+                  editingId === expense.id ? (
+                    <EditExpenseRow
+                      key={expense.id}
+                      draft={draft}
+                      onChange={setDraft}
+                      onSave={saveEdit}
+                      onCancel={cancelEdit}
+                    />
+                  ) : (
+                    <DisplayExpenseRow
+                      key={expense.id}
+                      expense={expense}
+                      onEdit={() => startEdit(expense)}
+                      onRemove={() => removeExpense(expense.id)}
+                    />
+                  ),
+                )}
+              </div>
+            )}
+
+            {!editingId && (
+              <button
+                type="button"
+                onClick={addExpense}
+                className={styles.addButton}
+              >
+                <IoAdd size={16} />
+                Add expense
+              </button>
+            )}
+          </div>
+
+          <div className={styles.summary}>
+            <div className={styles.summaryRow}>
+              <span>Salary</span>
+              <span>{formatCAD(Number(salary) || 0)}</span>
+            </div>
+            <div className={styles.summaryRow}>
+              <span>Fixed expenses</span>
+              <span>-{formatCAD(totalExpenses)}</span>
+            </div>
+            <div
+              className={`${styles.summaryRow} ${styles.summaryTotal} ${
+                remaining < 0 ? styles.summaryTotalNegative : ''
+              }`}
+            >
+              <span>Remaining</span>
+              <span>{formatCAD(remaining)}</span>
+            </div>
+          </div>
+
+          {mutationError && <p className={styles.error}>{mutationError}</p>}
         </YmFlex>
       </form>
     </YmDialog>
-  );
-};
-
-type FixedExpenseItemProps = {
-  expense: FixedExpenseInput;
-  onUpdate: (id: string, field: 'name' | 'amount', value: string) => void;
-  onRemove: (id: string) => void;
-};
-
-const FixedExpenseItem: React.FC<FixedExpenseItemProps> = ({
-  expense,
-  onUpdate,
-  onRemove,
-}) => {
-  return (
-    <YmFlex gap={10} align="center">
-      <Textbox
-        placeholder="Expense name"
-        value={expense.name}
-        onChange={value => onUpdate(expense.id, 'name', value)}
-        fullWidth
-        aria-label="expense name"
-      />
-      <Textbox
-        type="number"
-        placeholder="Amount"
-        value={expense.amount}
-        onChange={value => onUpdate(expense.id, 'amount', value)}
-        fullWidth
-        aria-label="expense amount"
-      />
-      <YButton
-        type="button"
-        onClick={() => onRemove(expense.id)}
-        variant="secondary"
-      >
-        Remove
-      </YButton>
-    </YmFlex>
   );
 };
 

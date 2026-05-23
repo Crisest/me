@@ -30,7 +30,7 @@ const SharedPage: React.FC = () => {
 
   return (
     <>
-      <Header title="Shared" />
+      {/* <Header title="Shared" /> */}
       <Content>
         <div className={styles.createForm}>
           <Textbox
