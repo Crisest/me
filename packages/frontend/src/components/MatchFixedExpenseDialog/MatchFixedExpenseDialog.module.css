@@ -1,0 +1,16 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 320px;
+}
+
+.error {
+  color: var(--color-danger, #d33);
+  font-size: 0.875rem;
+}
+
+.empty {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}

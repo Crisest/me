@@ -60,11 +60,30 @@
   background-color: var(--color-blue-light);
 }
 
+.rowLabelGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .rowLabel {
   color: var(--color-dark);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.matchStatus {
+  font-size: var(--font-xs);
+  color: var(--color-blue);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.matchStatusUnmatched {
+  color: var(--color-muted);
 }
 
 .rowAmount {

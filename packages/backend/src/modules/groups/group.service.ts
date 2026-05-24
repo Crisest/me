@@ -1,7 +1,11 @@
 import { Group, IGroup } from './group.model';
 import { TransactionModel } from '../transactions/transaction.model';
 import { BudgetModel } from '../budget/budget.model';
-import { GroupWithMembers, Transaction, GroupBudgetInsights } from '@portfolio/common';
+import {
+  GroupWithMembers,
+  Transaction,
+  GroupBudgetInsights,
+} from '@portfolio/common';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
 
@@ -46,8 +50,13 @@ export const joinGroupByCode = async (
   return group ? group.toGroupWithMembers() : null;
 };
 
-export const getUserGroups = async (userId: string): Promise<GroupWithMembers[]> => {
-  const groups = await Group.find({ members: userId }).populate('members', 'email');
+export const getUserGroups = async (
+  userId: string
+): Promise<GroupWithMembers[]> => {
+  const groups = await Group.find({ members: userId }).populate(
+    'members',
+    'email'
+  );
   return groups.map(g => g.toGroupWithMembers());
 };
 
@@ -73,8 +82,14 @@ export const removeUserFromGroup = async (
   );
 };
 
-export const deleteGroup = async (groupId: string, userId: string): Promise<boolean> => {
-  const result = await Group.findOneAndDelete({ _id: groupId, createdBy: userId });
+export const deleteGroup = async (
+  groupId: string,
+  userId: string
+): Promise<boolean> => {
+  const result = await Group.findOneAndDelete({
+    _id: groupId,
+    createdBy: userId,
+  });
   return result !== null;
 };
 
@@ -99,7 +114,11 @@ export const getGroupTransactions = async (
 
   const result = await TransactionModel.find(query)
     .populate('createdBy', 'email name')
-    .populate({ path: 'cardId', select: 'name bankId', populate: { path: 'bankId', select: 'name' } })
+    .populate({
+      path: 'cardId',
+      select: 'name bankId',
+      populate: { path: 'bankId', select: 'name' },
+    })
     .sort({ date: -1 });
 
   return result.map(t => {

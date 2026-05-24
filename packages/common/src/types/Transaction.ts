@@ -11,17 +11,18 @@ export interface Transaction {
   updatedAt?: number;
   deletedAt?: number;
   cardId?: string;
-  accountId?: string;          // NEW — Mongo id of the linked Account (Plaid txs)
+  accountId?: string; // NEW — Mongo id of the linked Account (Plaid txs)
   plaidTransactionId?: string;
-  logoUrl?: string;            // NEW — merchant logo from Plaid
-  categoryIconUrl?: string;    // NEW — Plaid PFC category icon (fallback)
+  logoUrl?: string; // NEW — merchant logo from Plaid
+  categoryIconUrl?: string; // NEW — Plaid PFC category icon (fallback)
   // Populated enrichment fields (optional — present when backend populates them)
   cardName?: string;
   bankName?: string;
-  accountName?: string;        // NEW — e.g. "Plaid Checking"
-  accountMask?: string;        // NEW — e.g. "0000"
+  accountName?: string; // NEW — e.g. "Plaid Checking"
+  accountMask?: string; // NEW — e.g. "0000"
   ownerEmail?: string;
   ownerName?: string;
+  fixedExpenseId?: string;
 }
 
 export namespace TransactionPayloads {
@@ -52,5 +53,9 @@ export namespace TransactionPayloads {
   export interface GetMany {
     month?: number;
     year?: number;
+  }
+
+  export interface MatchFixedExpense {
+    fixedExpenseId: string | null; // null = unmatch
   }
 }

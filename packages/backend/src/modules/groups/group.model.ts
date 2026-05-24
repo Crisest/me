@@ -1,5 +1,9 @@
 import mongoose, { Document } from 'mongoose';
-import { Group as CommonGroup, GroupWithMembers, GroupMember } from '@portfolio/common';
+import {
+  Group as CommonGroup,
+  GroupWithMembers,
+  GroupMember,
+} from '@portfolio/common';
 
 export interface IGroup extends Document {
   name: string;
@@ -42,10 +46,12 @@ GroupSchema.methods.toGroupWithMembers = function (): GroupWithMembers {
   return {
     id: this._id.toString(),
     name: this.name,
-    members: this.members.map((member: any): GroupMember => ({
-      id: member._id.toString(),
-      email: member.email,
-    })),
+    members: this.members.map(
+      (member: any): GroupMember => ({
+        id: member._id.toString(),
+        email: member.email,
+      })
+    ),
     createdBy: this.createdBy.toString(),
     createdAt: this.createdAt.toISOString(),
     updatedAt: this.updatedAt.toISOString(),

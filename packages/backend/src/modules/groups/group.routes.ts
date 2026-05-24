@@ -19,19 +19,47 @@ const joinValidation = [
 ];
 
 // Group CRUD
-router.post('/', authMiddleware, validateRequest(createGroupValidation), controller.createGroup);
+router.post(
+  '/',
+  authMiddleware,
+  validateRequest(createGroupValidation),
+  controller.createGroup
+);
 router.delete('/:groupId', authMiddleware, controller.deleteGroup);
 
 // Join by invite code — must be before /:groupId routes
-router.post('/join', authMiddleware, validateRequest(joinValidation), controller.joinGroup);
+router.post(
+  '/join',
+  authMiddleware,
+  validateRequest(joinValidation),
+  controller.joinGroup
+);
 router.get('/', authMiddleware, controller.getGroups);
 
 // Member management
-router.post('/:groupId/members', authMiddleware, validateRequest(addMemberValidation), controller.addMember);
-router.delete('/:groupId/members', authMiddleware, validateRequest(addMemberValidation), controller.removeMember);
+router.post(
+  '/:groupId/members',
+  authMiddleware,
+  validateRequest(addMemberValidation),
+  controller.addMember
+);
+router.delete(
+  '/:groupId/members',
+  authMiddleware,
+  validateRequest(addMemberValidation),
+  controller.removeMember
+);
 
 // Group transactions & insights
-router.get('/:groupId/transactions', authMiddleware, controller.getGroupTransactions);
-router.get('/:groupId/insights/:month', authMiddleware, controller.getGroupInsights);
+router.get(
+  '/:groupId/transactions',
+  authMiddleware,
+  controller.getGroupTransactions
+);
+router.get(
+  '/:groupId/insights/:month',
+  authMiddleware,
+  controller.getGroupInsights
+);
 
 export default router;

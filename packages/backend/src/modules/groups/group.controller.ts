@@ -55,7 +55,10 @@ export const removeMember = async (req: Request, res: Response) => {
   try {
     const { groupId } = req.params;
     const { userId } = req.body;
-    const updatedGroup = await groupService.removeUserFromGroup(groupId, userId);
+    const updatedGroup = await groupService.removeUserFromGroup(
+      groupId,
+      userId
+    );
     res.json(updatedGroup);
   } catch (err) {
     req.log.error({ err }, 'Failed to remove member');
@@ -69,7 +72,9 @@ export const deleteGroup = async (req: Request, res: Response) => {
     const userId = req.user!.id;
     const deleted = await groupService.deleteGroup(groupId, userId);
     if (!deleted) {
-      return res.status(404).json({ error: 'Group not found or not authorized' });
+      return res
+        .status(404)
+        .json({ error: 'Group not found or not authorized' });
     }
     res.status(204).send();
   } catch (err) {
@@ -89,7 +94,10 @@ export const getGroupTransactions = async (req: Request, res: Response) => {
       year: isNaN(year) ? undefined : year,
     };
 
-    const transactions = await groupService.getGroupTransactions(groupId, options);
+    const transactions = await groupService.getGroupTransactions(
+      groupId,
+      options
+    );
     res.json(transactions);
   } catch (err) {
     req.log.error({ err }, 'Failed to fetch group transactions');
@@ -101,7 +109,9 @@ export const getGroupInsights = async (req: Request, res: Response) => {
   try {
     const { groupId } = req.params;
     const month = parseInt(req.params.month);
-    const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+    const year = req.query.year
+      ? parseInt(req.query.year as string)
+      : undefined;
 
     if (isNaN(month) || month < 1 || month > 12) {
       return res.status(400).json({ error: 'Invalid month parameter' });

@@ -4,6 +4,15 @@ import { defineConfig } from 'eslint/config';
 
 export default defineConfig([
   {
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/.eslintrc.cjs',
+      '**/vite.config.ts',
+      '**/eslint.config.mjs',
+    ],
+  },
+  {
     files: ['**/*.{js,mjs,cjs,ts,tsx}'],
     languageOptions: {
       parser: tseslint.parser,

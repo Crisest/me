@@ -11,10 +11,12 @@ import {
   ColumnDef,
   SortingState,
 } from '@tanstack/react-table';
+import YmMenu, { YmMenuItem } from '@/ui/YmMenu/YmMenu';
 
 type transactionTableProps = {
   transactions: Transaction[];
   extraColumns?: ColumnDef<Transaction, any>[];
+  rowActions?: (txn: Transaction) => YmMenuItem[];
 };
 
 const columnHelper = createColumnHelper<Transaction>();
@@ -38,6 +40,7 @@ const buildCellClass = (columnId: string): string | undefined => {
 const TransactionsTable: React.FC<transactionTableProps> = ({
   transactions,
   extraColumns,
+  rowActions,
 }) => {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'date', desc: true },
@@ -137,10 +140,27 @@ const TransactionsTable: React.FC<transactionTableProps> = ({
     [],
   );
 
-  const allColumns = useMemo(
-    () => (extraColumns ? [...extraColumns, ...baseColumns] : baseColumns),
-    [extraColumns, baseColumns],
-  );
+  const allColumns = useMemo<ColumnDef<Transaction, any>[]>(() => {
+    const cols: ColumnDef<Transaction, any>[] = extraColumns
+      ? [...extraColumns, ...baseColumns]
+      : [...baseColumns];
+
+    if (rowActions) {
+      cols.push({
+        id: '_actions',
+        header: '',
+        size: 40,
+        enableSorting: false,
+        cell: ({ row }) => {
+          const items = rowActions(row.original);
+          if (!items.length) return null;
+          return <YmMenu items={items} ariaLabel="Transaction actions" />;
+        },
+      });
+    }
+
+    return cols;
+  }, [baseColumns, extraColumns, rowActions]);
 
   const table = useReactTable({
     data: transactions,

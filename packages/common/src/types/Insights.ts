@@ -6,6 +6,7 @@ export interface TransactionInsights {
   creditCount: number; // Number of credit transactions
   averageDebit: number; // Average debit transaction
   averageCredit: number; // Average credit transaction
+  matchedFixedCount: number;
 }
 
 export interface GetMonthlyInsightsParams {

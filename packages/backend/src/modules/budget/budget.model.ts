@@ -1,9 +1,15 @@
-import mongoose, { Document } from 'mongoose';
-import { Budget, FixedExpense } from '@portfolio/common';
+import mongoose, { Document, Types } from 'mongoose';
+import { Budget } from '@portfolio/common';
+
+export interface FixedExpenseSubdoc {
+  _id: Types.ObjectId;
+  name: string;
+  amount: number;
+}
 
 export interface IBudget extends Document {
   salary: number;
-  fixedExpenses: FixedExpense[];
+  fixedExpenses: Types.DocumentArray<FixedExpenseSubdoc>;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt?: Date;
@@ -11,8 +17,11 @@ export interface IBudget extends Document {
 }
 
 const FixedExpenseSchema = new mongoose.Schema(
-  { name: { type: String, required: true }, amount: { type: Number, required: true } },
-  { _id: false }
+  {
+    name: { type: String, required: true },
+    amount: { type: Number, required: true },
+  },
+  { _id: true }
 );
 
 const BudgetSchema = new mongoose.Schema<IBudget>(
@@ -34,7 +43,8 @@ BudgetSchema.methods.toBudget = function (): Budget {
   return {
     id: this._id.toString(),
     salary: this.salary,
-    fixedExpenses: this.fixedExpenses.map((e: FixedExpense) => ({
+    fixedExpenses: this.fixedExpenses.map((e: FixedExpenseSubdoc) => ({
+      id: e._id.toString(),
       name: e.name,
       amount: e.amount,
     })),

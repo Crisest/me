@@ -66,5 +66,7 @@ export async function findAccountByPlaidId(
 }
 
 export async function deleteAccountsForBank(bankId: string): Promise<void> {
-  await AccountModel.deleteMany({ bankId: new mongoose.Types.ObjectId(bankId) });
+  await AccountModel.deleteMany({
+    bankId: new mongoose.Types.ObjectId(bankId),
+  });
 }

@@ -6,8 +6,14 @@ import type { IBank } from '../banks/bank.model';
 import { TransactionModel } from '../transactions/transaction.model';
 import { encrypt, decrypt } from '@/utils/crypto';
 import { PlaidPayloads, PlaidLinkedBank } from '@portfolio/common';
-import { findPlaidLinkedBanksByUser, findPlaidBankByIdForUser } from '../banks/bank.service';
-import { upsertPlaidAccountsForBank, deleteAccountsForBank } from '../accounts/account.service';
+import {
+  findPlaidLinkedBanksByUser,
+  findPlaidBankByIdForUser,
+} from '../banks/bank.service';
+import {
+  upsertPlaidAccountsForBank,
+  deleteAccountsForBank,
+} from '../accounts/account.service';
 import { AccountModel } from '../accounts/account.model';
 
 export async function createLinkToken(userId: string): Promise<string> {
@@ -55,7 +61,9 @@ export async function exchangePublicToken(
 
 type SyncCounts = PlaidPayloads.SyncResponse;
 
-async function syncAccountsForBank(bank: IBank): Promise<Map<string, mongoose.Types.ObjectId>> {
+async function syncAccountsForBank(
+  bank: IBank
+): Promise<Map<string, mongoose.Types.ObjectId>> {
   const plaid = getPlaidClient();
   const accessToken = decrypt(bank.plaidAccessToken!);
   const userId = bank.createdBy.toString();
@@ -69,7 +77,8 @@ async function syncAccountsForBank(bank: IBank): Promise<Map<string, mongoose.Ty
     createdBy: new mongoose.Types.ObjectId(userId),
   });
   const map = new Map<string, mongoose.Types.ObjectId>();
-  for (const d of docs) map.set(d.plaidAccountId, d._id as mongoose.Types.ObjectId);
+  for (const d of docs)
+    map.set(d.plaidAccountId, d._id as mongoose.Types.ObjectId);
   return map;
 }
 
@@ -121,7 +130,9 @@ async function syncBank(bank: IBank): Promise<SyncCounts> {
 
       if (nonPendingAdded.length > 0) {
         await TransactionModel.insertMany(
-          nonPendingAdded.map(t => mapPlaidTxToDoc(t, userId, accountIdByPlaidId)),
+          nonPendingAdded.map(t =>
+            mapPlaidTxToDoc(t, userId, accountIdByPlaidId)
+          ),
           { ordered: false }
         ).catch(err => {
           // Duplicate key (same plaidTransactionId seen twice) is safe to ignore
@@ -172,7 +183,10 @@ async function syncBank(bank: IBank): Promise<SyncCounts> {
   }
 }
 
-export async function syncOneBankForUser(userId: string, bankId: string): Promise<SyncCounts> {
+export async function syncOneBankForUser(
+  userId: string,
+  bankId: string
+): Promise<SyncCounts> {
   const bank = await findPlaidBankByIdForUser(userId, bankId);
   if (!bank) throw new Error('Plaid-linked bank not found');
   return syncBank(bank);
@@ -194,7 +208,10 @@ export async function syncAllBanksForUser(userId: string): Promise<SyncCounts> {
   return totals;
 }
 
-export async function createUpdateLinkToken(userId: string, bankId: string): Promise<string> {
+export async function createUpdateLinkToken(
+  userId: string,
+  bankId: string
+): Promise<string> {
   const bank = await findPlaidBankByIdForUser(userId, bankId);
   if (!bank) throw new Error('Plaid-linked bank not found');
 
@@ -209,11 +226,16 @@ export async function createUpdateLinkToken(userId: string, bankId: string): Pro
   return response.data.link_token;
 }
 
-export async function resyncBank(userId: string, bankId: string): Promise<SyncCounts> {
+export async function resyncBank(
+  userId: string,
+  bankId: string
+): Promise<SyncCounts> {
   const bank = await findPlaidBankByIdForUser(userId, bankId);
   if (!bank) throw new Error('Plaid-linked bank not found');
 
-  const accountIds = await AccountModel.find({ bankId: bank._id }).distinct('_id');
+  const accountIds = await AccountModel.find({ bankId: bank._id }).distinct(
+    '_id'
+  );
 
   await TransactionModel.deleteMany({
     createdBy: bank.createdBy,
@@ -229,7 +251,10 @@ export async function resyncBank(userId: string, bankId: string): Promise<SyncCo
   return syncBank(bank);
 }
 
-export async function unlinkBank(userId: string, bankId: string): Promise<void> {
+export async function unlinkBank(
+  userId: string,
+  bankId: string
+): Promise<void> {
   const bank = await findPlaidBankByIdForUser(userId, bankId);
   if (!bank) throw new Error('Plaid-linked bank not found');
 

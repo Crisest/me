@@ -10,7 +10,12 @@ const createBankValidation = [
   body('name').isString().notEmpty().withMessage('name is required'),
 ];
 
-router.post('/', authMiddleware, validateRequest(createBankValidation), createBankHandler);
+router.post(
+  '/',
+  authMiddleware,
+  validateRequest(createBankValidation),
+  createBankHandler
+);
 router.get('/', authMiddleware, getBanksByUserHandler);
 
 export default router;

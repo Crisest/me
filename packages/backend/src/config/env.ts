@@ -21,17 +21,22 @@ export const config = {
   plaid: {
     clientId: process.env.PLAID_CLIENT_ID || '',
     secret: process.env.PLAID_SECRET || '',
-    env: (process.env.PLAID_ENV || 'sandbox') as 'sandbox' | 'development' | 'production',
+    env: (process.env.PLAID_ENV || 'sandbox') as
+      | 'sandbox'
+      | 'development'
+      | 'production',
     tokenEncryptionKey: process.env.PLAID_TOKEN_ENCRYPTION_KEY || '',
   },
 };
 
 if (config.nodeEnv === 'production') {
-  const missing = (['clientId', 'secret', 'tokenEncryptionKey'] as const).filter(
-    k => !config.plaid[k]
-  );
+  const missing = (
+    ['clientId', 'secret', 'tokenEncryptionKey'] as const
+  ).filter(k => !config.plaid[k]);
   if (missing.length > 0) {
-    throw new Error(`Missing required Plaid env vars: ${missing.map(k => k.toUpperCase()).join(', ')}`);
+    throw new Error(
+      `Missing required Plaid env vars: ${missing.map(k => k.toUpperCase()).join(', ')}`
+    );
   }
 }
 

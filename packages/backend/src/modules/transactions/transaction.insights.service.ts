@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { TransactionInsights } from '@portfolio/common/src/types/Insights';
+import { TransactionInsights } from '@portfolio/common';
 import { TransactionModel } from './transaction.model';
 
 export const getMonthlyInsights = async (
@@ -12,17 +12,18 @@ export const getMonthlyInsights = async (
   const endDate = new Date(targetYear, month, 1);
 
   const insights = await TransactionModel.aggregate([
-    {
-      $match: {
-        createdBy: userId,
-        date: { $gte: startDate, $lt: endDate },
-      },
-    },
+    { $match: { createdBy: userId, date: { $gte: startDate, $lt: endDate } } },
     {
       $facet: {
         debits: [
           {
-            $match: { amount: { $gt: 0 } },
+            $match: {
+              amount: { $gt: 0 },
+              $or: [
+                { fixedExpenseId: { $exists: false } },
+                { fixedExpenseId: null },
+              ],
+            },
           },
           {
             $group: {
@@ -34,9 +35,7 @@ export const getMonthlyInsights = async (
           },
         ],
         credits: [
-          {
-            $match: { amount: { $lt: 0 } },
-          },
+          { $match: { amount: { $lt: 0 } } },
           {
             $group: {
               _id: null,
@@ -45,6 +44,16 @@ export const getMonthlyInsights = async (
               averageCredit: { $avg: '$amount' },
             },
           },
+        ],
+        matchedFixed: [
+          {
+            $match: {
+              amount: { $gt: 0 },
+              fixedExpenseId: { $ne: null, $exists: true },
+            },
+          },
+          { $group: { _id: '$fixedExpenseId' } },
+          { $count: 'count' },
         ],
       },
     },
@@ -55,12 +64,12 @@ export const getMonthlyInsights = async (
     debitCount: 0,
     averageDebit: 0,
   };
-
   const credits = insights[0].credits[0] || {
     totalIncome: 0,
     creditCount: 0,
     averageCredit: 0,
   };
+  const matchedFixedCount = insights[0].matchedFixed[0]?.count ?? 0;
 
   return {
     totalSpent: debits.totalSpent,
@@ -70,5 +79,6 @@ export const getMonthlyInsights = async (
     creditCount: credits.creditCount,
     averageDebit: debits.averageDebit,
     averageCredit: Math.abs(credits.averageCredit),
+    matchedFixedCount,
   };
 };

@@ -25,7 +25,10 @@ const BudgetOverrideSchema = new mongoose.Schema<IBudgetOverride>(
   { timestamps: true }
 );
 
-BudgetOverrideSchema.index({ createdBy: 1, month: 1, year: 1 }, { unique: true });
+BudgetOverrideSchema.index(
+  { createdBy: 1, month: 1, year: 1 },
+  { unique: true }
+);
 
 BudgetOverrideSchema.methods.toBudgetOverride = function (): BudgetOverride {
   return {

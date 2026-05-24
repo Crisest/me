@@ -11,7 +11,12 @@ const createCardValidation = [
   body('bankId').isString().notEmpty().withMessage('bankId is required'),
 ];
 
-router.post('/', authMiddleware, validateRequest(createCardValidation), createCardHandler);
+router.post(
+  '/',
+  authMiddleware,
+  validateRequest(createCardValidation),
+  createCardHandler
+);
 router.get('/', authMiddleware, getCardsByUserHandler);
 
 export default router;

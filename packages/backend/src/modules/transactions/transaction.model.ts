@@ -14,7 +14,7 @@ export interface ITransaction extends Document {
   toTransaction(): Transaction;
   cardId?: mongoose.Types.ObjectId;
   accountId?: mongoose.Types.ObjectId;
-  fixedTransactionId?: mongoose.Types.ObjectId;
+  fixedExpenseId?: mongoose.Types.ObjectId;
   plaidTransactionId?: string;
   logoUrl?: string;
   categoryIconUrl?: string;
@@ -54,11 +54,16 @@ const TransactionSchema = new mongoose.Schema<ITransaction>(
       ref: 'User',
       required: true,
     },
-    fixedTransactionId: {
+    fixedExpenseId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'FixedTransaction',
+      index: true,
     },
-    plaidTransactionId: { type: String, unique: true, sparse: true, index: true },
+    plaidTransactionId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
     logoUrl: { type: String },
     categoryIconUrl: { type: String },
   },
@@ -79,6 +84,7 @@ TransactionSchema.methods.toTransaction = function (): Transaction {
     createdBy: this.createdBy.toString(),
     createdAt: this.createdAt.getTime(),
     updatedAt: this.updatedAt ? this.updatedAt.getTime() : undefined,
+    fixedExpenseId: this.fixedExpenseId?.toString(),
     plaidTransactionId: this.plaidTransactionId,
     logoUrl: this.logoUrl,
     categoryIconUrl: this.categoryIconUrl,

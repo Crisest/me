@@ -1,4 +1,5 @@
 export interface FixedExpense {
+  id: string; // Mongo subdoc _id, stable across edits
   name: string;
   amount: number;
 }
@@ -15,13 +16,15 @@ export interface Budget {
 export namespace BudgetPayloads {
   export interface Upsert {
     salary: number;
-    fixedExpenses: { name: string; amount: number }[];
+    // id is optional on create; backend preserves it when supplied so existing
+    // matches survive edits, and generates a new _id when omitted.
+    fixedExpenses: { id?: string; name: string; amount: number }[];
   }
 }
 
 export interface BudgetOverride {
   id: string;
-  month: number;        // 1–12
+  month: number; // 1–12
   year: number;
   salary: number;
   createdBy: string;

@@ -15,9 +15,19 @@ import {
 const router: Router = Router();
 
 const exchangeValidation = [
-  body('publicToken').isString().notEmpty().withMessage('publicToken is required'),
-  body('institutionId').isString().notEmpty().withMessage('institutionId is required'),
-  body('institutionName').isString().notEmpty().isLength({ max: 200 }).withMessage('institutionName is required'),
+  body('publicToken')
+    .isString()
+    .notEmpty()
+    .withMessage('publicToken is required'),
+  body('institutionId')
+    .isString()
+    .notEmpty()
+    .withMessage('institutionId is required'),
+  body('institutionName')
+    .isString()
+    .notEmpty()
+    .isLength({ max: 200 })
+    .withMessage('institutionName is required'),
 ];
 
 const bankIdValidation = [
@@ -33,7 +43,12 @@ router.post(
 );
 
 router.post('/sync', authMiddleware, syncAllHandler);
-router.post('/sync/:bankId', authMiddleware, validateRequest(bankIdValidation), syncOneHandler);
+router.post(
+  '/sync/:bankId',
+  authMiddleware,
+  validateRequest(bankIdValidation),
+  syncOneHandler
+);
 router.post(
   '/resync/:bankId',
   authMiddleware,
@@ -41,8 +56,18 @@ router.post(
   resyncBankHandler
 );
 
-router.delete('/bank/:bankId', authMiddleware, validateRequest(bankIdValidation), unlinkBankHandler);
+router.delete(
+  '/bank/:bankId',
+  authMiddleware,
+  validateRequest(bankIdValidation),
+  unlinkBankHandler
+);
 
-router.post('/link-token/update/:bankId', authMiddleware, validateRequest(bankIdValidation), updateLinkTokenHandler);
+router.post(
+  '/link-token/update/:bankId',
+  authMiddleware,
+  validateRequest(bankIdValidation),
+  updateLinkTokenHandler
+);
 
 export default router;

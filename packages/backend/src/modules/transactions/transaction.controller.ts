@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import * as transactionService from './transaction.service';
 import { TransactionPayloads } from '@portfolio/common';
 
@@ -38,5 +38,28 @@ export const postManyTransactionsByUser = async (
   } catch (err) {
     req.log.error({ err }, 'Failed to create transactions in bulk');
     res.status(400).json({ error: 'Failed to create transactions in bulk' });
+  }
+};
+
+export const matchFixedExpense = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user!.id;
+    const { id } = req.params;
+    const fixedExpenseId: string | null = req.body.fixedExpenseId ?? null;
+
+    const updated = await transactionService.setTransactionFixedExpense(
+      userId,
+      id,
+      fixedExpenseId
+    );
+
+    res.json(updated);
+  } catch (err) {
+    req.log.error({ err }, 'Failed to match fixed expense');
+    next(err);
   }
 };

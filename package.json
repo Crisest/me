@@ -18,5 +18,10 @@
     "backend:build": "pnpm --filter backend build",
     "common:build": "pnpm --filter common build",
     "start:all": "pnpm run backend:bunyan & pnpm run frontend:dev"
+  },
+  "devDependencies": {
+    "eslint": "^9.25.1",
+    "globals": "^16.0.0",
+    "typescript-eslint": "^8.31.0"
   }
 }

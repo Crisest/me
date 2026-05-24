@@ -37,7 +37,11 @@ export const getOverride = async (
   try {
     const month = Number(req.query.month);
     const year = Number(req.query.year);
-    const override = await budgetService.getBudgetOverride(req.user!.id, month, year);
+    const override = await budgetService.getBudgetOverride(
+      req.user!.id,
+      month,
+      year
+    );
     res.json({ override });
   } catch (err) {
     next(err);
@@ -51,7 +55,10 @@ export const putOverride = async (
 ) => {
   try {
     const payload = req.body as BudgetOverridePayloads.Upsert;
-    const override = await budgetService.upsertBudgetOverride(req.user!.id, payload);
+    const override = await budgetService.upsertBudgetOverride(
+      req.user!.id,
+      payload
+    );
     res.json({ override });
   } catch (err) {
     next(err);

@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import TransactionsTable from '@/components/TransactionsTable/TransactionsTable';
 import YmMenu from '@ui/YmMenu/YmMenu';
-import { useGetTransactionsQuery } from '@/services/transactionService';
-import { useGetTransactionInsightsQuery } from '@/services/transactionService';
+import {
+  useGetTransactionsQuery,
+  useGetTransactionInsightsQuery,
+  useMatchTransactionFixedExpenseMutation,
+} from '@/services/transactionService';
 import {
   useGetBudgetQuery,
   useGetBudgetOverrideQuery,
@@ -11,6 +14,7 @@ import ActualIncomeModal from '@/components/ActualIncomeModal/ActualIncomeModal'
 import Content from '@ui/Content/Content';
 import TransactionUploadModal from '@/components/TransactionUploadModal/TransactionUploadModal';
 import BudgetModal from '@/components/BudgetModal/BudgetModal';
+import MatchFixedExpenseDialog from '@/components/MatchFixedExpenseDialog/MatchFixedExpenseDialog';
 import {
   InsightCards,
   InsightCardItem,
@@ -19,6 +23,7 @@ import { MonthYearFilter } from '@/components/MonthYearFilter/MonthYearFilter';
 import { formatCAD } from '@/utils/format';
 import YmCombobox from '@ui/YmCombobox/YmCombobox';
 import { useAccountFilter } from '@/hooks/useAccountFilter';
+import type { Transaction } from '@portfolio/common';
 
 export const BudgetPage = () => {
   const now = new Date();
@@ -26,6 +31,7 @@ export const BudgetPage = () => {
   const previousMonth = prevMonthIndex + 1;
   const [selectedMonth, setSelectedMonth] = useState(previousMonth);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [matchTxn, setMatchTxn] = useState<Transaction | null>(null);
   const { data: transactionsData } = useGetTransactionsQuery({
     month: selectedMonth,
     year: selectedYear,
@@ -38,6 +44,7 @@ export const BudgetPage = () => {
   const { data: budget, isLoading: budgetLoading } = useGetBudgetQuery();
   const { data: override, isLoading: overrideLoading } =
     useGetBudgetOverrideQuery({ month: selectedMonth, year: selectedYear });
+  const [unmatchTransaction] = useMatchTransactionFixedExpenseMutation();
   const [openUploadModal, setOpenUploadModal] = useState(false);
   const [openBudgetModal, setOpenBudgetModal] = useState(false);
   const [openActualModal, setOpenActualModal] = useState(false);
@@ -59,6 +66,29 @@ export const BudgetPage = () => {
 
   const loading = insightsLoading || budgetLoading || overrideLoading;
 
+  const rowActions = useCallback(
+    (txn: Transaction) => {
+      if (txn.amount <= 0) return [];
+      if (txn.fixedExpenseId) {
+        const fe = budget?.fixedExpenses.find(e => e.id === txn.fixedExpenseId);
+        return [
+          {
+            label: `Unmatch from "${fe?.name ?? 'fixed expense'}"`,
+            onClick: () =>
+              unmatchTransaction({ id: txn.id, fixedExpenseId: null }),
+          },
+        ];
+      }
+      return [
+        {
+          label: 'Match to fixed expense',
+          onClick: () => setMatchTxn(txn),
+        },
+      ];
+    },
+    [budget?.fixedExpenses, unmatchTransaction]
+  );
+
   const cards: InsightCardItem[] = [
     {
       label: isActual ? 'Actual Income' : 'Projected Income',
@@ -73,7 +103,7 @@ export const BudgetPage = () => {
     {
       label: 'Fixed Expenses',
       amount: `-${formatCAD(totalFixed)}`,
-      subtitle: `${budget?.fixedExpenses.length ?? 0} fixed expenses`,
+      subtitle: `${budget?.fixedExpenses.length ?? 0} fixed expenses · ${insights?.matchedFixedCount ?? 0} matched`,
     },
     {
       label: 'Money Left',
@@ -116,7 +146,10 @@ export const BudgetPage = () => {
           />
         </MonthYearFilter>
         {transactionsData && (
-          <TransactionsTable transactions={filteredTransactions} />
+          <TransactionsTable
+            transactions={filteredTransactions}
+            rowActions={rowActions}
+          />
         )}
       </Content>
       <TransactionUploadModal
@@ -126,6 +159,14 @@ export const BudgetPage = () => {
       <BudgetModal
         openModal={openBudgetModal}
         setOpenModal={setOpenBudgetModal}
+        transactions={transactionsData ?? []}
+      />
+      <MatchFixedExpenseDialog
+        open={matchTxn !== null}
+        onClose={() => setMatchTxn(null)}
+        transaction={matchTxn}
+        month={selectedMonth}
+        year={selectedYear}
       />
       <ActualIncomeModal
         openModal={openActualModal}

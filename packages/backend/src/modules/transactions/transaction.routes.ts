@@ -17,7 +17,24 @@ const bulkCreateValidation = [
 ];
 
 router.get('/', authMiddleware, controller.getTransactionsByUserId);
-router.post('/bulk', authMiddleware, validateRequest(bulkCreateValidation), controller.postManyTransactionsByUser);
+router.post(
+  '/bulk',
+  authMiddleware,
+  validateRequest(bulkCreateValidation),
+  controller.postManyTransactionsByUser
+);
+router.patch(
+  '/:id/fixed-expense',
+  authMiddleware,
+  validateRequest([
+    body('fixedExpenseId')
+      .custom(
+        v => v === null || (typeof v === 'string' && /^[a-f0-9]{24}$/.test(v))
+      )
+      .withMessage('fixedExpenseId must be a 24-char hex string or null'),
+  ]),
+  controller.matchFixedExpense
+);
 router.use(insightsRouter);
 
 export default router;

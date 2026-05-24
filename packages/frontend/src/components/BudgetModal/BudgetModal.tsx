@@ -8,6 +8,7 @@ import {
   useGetBudgetQuery,
   useUpsertBudgetMutation,
 } from '@/services/budgetService';
+import type { Transaction } from '@portfolio/common';
 import styles from './BudgetModal.module.css';
 import DisplayExpenseRow from './components/DisplayExpenseRow';
 import EditExpenseRow from './components/EditExpenseRow';
@@ -16,11 +17,15 @@ import type { Draft, FixedExpenseInput } from './types';
 type BudgetModalProps = {
   openModal: boolean;
   setOpenModal: (open: boolean) => void;
+  transactions: Transaction[];
 };
+
+const isObjectId = (s: string): boolean => /^[a-f0-9]{24}$/.test(s);
 
 const BudgetModal: React.FC<BudgetModalProps> = ({
   openModal,
   setOpenModal,
+  transactions,
 }) => {
   const [salary, setSalary] = useState('');
   const [expenses, setExpenses] = useState<FixedExpenseInput[]>([]);
@@ -33,12 +38,22 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
   const { data: budget } = useGetBudgetQuery();
   const [upsertBudget, { isLoading }] = useUpsertBudgetMutation();
 
+  const matchByFixedId = useMemo(() => {
+    const map = new Map<string, { description: string }>();
+    transactions.forEach(t => {
+      if (t.fixedExpenseId) {
+        map.set(t.fixedExpenseId, { description: t.description });
+      }
+    });
+    return map;
+  }, [transactions]);
+
   useEffect(() => {
     if (openModal && budget) {
       setSalary(String(budget.salary));
       setExpenses(
         budget.fixedExpenses.map(e => ({
-          id: crypto.randomUUID(),
+          id: e.id,
           name: e.name,
           amount: String(e.amount),
         })),
@@ -110,6 +125,7 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
       await upsertBudget({
         salary: Number(salary),
         fixedExpenses: finalExpenses.map(e => ({
+          ...(isObjectId(e.id) ? { id: e.id } : {}),
           name: e.name,
           amount: Number(e.amount),
         })),
@@ -173,6 +189,7 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
                       expense={expense}
                       onEdit={() => startEdit(expense)}
                       onRemove={() => removeExpense(expense.id)}
+                      matchedTxn={matchByFixedId.get(expense.id) ?? null}
                     />
                   ),
                 )}

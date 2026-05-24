@@ -7,15 +7,28 @@ type DisplayExpenseRowProps = {
   expense: FixedExpenseInput;
   onEdit: () => void;
   onRemove: () => void;
+  matchedTxn: { description: string } | null;
 };
 
 const DisplayExpenseRow: React.FC<DisplayExpenseRowProps> = ({
   expense,
   onEdit,
   onRemove,
+  matchedTxn,
 }) => (
   <div className={styles.row}>
-    <span className={styles.rowLabel}>{expense.name}</span>
+    <div className={styles.rowLabelGroup}>
+      <span className={styles.rowLabel}>{expense.name}</span>
+      {matchedTxn ? (
+        <span className={styles.matchStatus}>
+          ● Paid · {matchedTxn.description}
+        </span>
+      ) : (
+        <span className={`${styles.matchStatus} ${styles.matchStatusUnmatched}`}>
+          ○ Not matched
+        </span>
+      )}
+    </div>
     <span className={styles.rowAmount}>
       -{formatCAD(Number(expense.amount) || 0)}
     </span>

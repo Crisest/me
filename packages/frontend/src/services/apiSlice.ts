@@ -11,6 +11,7 @@ const baseUrl =
 export enum tagTypesEnum {
   USER = 'user',
   TRANSACTIONS = 'transactions',
+  TRANSACTION_INSIGHTS = 'transactionInsights',
   BANKS = 'banks',
   CARDS = 'cards',
   BUDGET = 'budget',
@@ -28,6 +29,7 @@ export const apiSlice = createApi({
   tagTypes: [
     tagTypesEnum.USER,
     tagTypesEnum.TRANSACTIONS,
+    tagTypesEnum.TRANSACTION_INSIGHTS,
     tagTypesEnum.BANKS,
     tagTypesEnum.CARDS,
     tagTypesEnum.BUDGET,

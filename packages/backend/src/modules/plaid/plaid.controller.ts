@@ -25,7 +25,10 @@ export const exchangeTokenHandler = async (req: Request, res: Response) => {
 
 export const syncOneHandler = async (req: Request, res: Response) => {
   try {
-    const result = await plaidService.syncOneBankForUser(req.user!.id, req.params.bankId);
+    const result = await plaidService.syncOneBankForUser(
+      req.user!.id,
+      req.params.bankId
+    );
     res.json(result);
   } catch (err) {
     req.log.error({ err }, 'Failed to sync Plaid bank');
@@ -68,7 +71,10 @@ export const updateLinkTokenHandler = async (req: Request, res: Response) => {
 
 export const resyncBankHandler = async (req: Request, res: Response) => {
   try {
-    const result = await plaidService.resyncBank(req.user!.id, req.params.bankId);
+    const result = await plaidService.resyncBank(
+      req.user!.id,
+      req.params.bankId
+    );
     res.json(result);
   } catch (err) {
     req.log.error({ err }, 'Failed to resync Plaid bank');

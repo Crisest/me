@@ -14,7 +14,11 @@ export async function getBanksByUser(userId: string) {
 }
 
 export async function findPlaidBankByIdForUser(userId: string, bankId: string) {
-  return BankModel.findOne({ _id: bankId, createdBy: userId, isPlaidLinked: true });
+  return BankModel.findOne({
+    _id: bankId,
+    createdBy: userId,
+    isPlaidLinked: true,
+  });
 }
 
 export async function findPlaidLinkedBanksByUser(userId: string) {

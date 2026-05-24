@@ -28,30 +28,35 @@ const config = getConfig();
 // Security middleware
 app.use(
   helmet({
-    contentSecurityPolicy: config.nodeEnv === 'production'
-      ? {
-          useDefaults: false,
-          directives: {
-            defaultSrc: ["'self'", 'https://cdn.plaid.com/'],
-            scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.plaid.com/link/v2/stable/link-initialize.js'],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: [
-              "'self'",
-              'data:',
-              'blob:',
-              'https://plaid-merchant-logos.plaid.com',
-              'https://plaid-category-icons.plaid.com',
-            ],
-            connectSrc: ["'self'", `https://${config.plaid.env}.plaid.com/`],
-            fontSrc: ["'self'", 'data:'],
-            frameSrc: ['https://cdn.plaid.com/'],
-            baseUri: ["'self'"],
-            formAction: ["'self'"],
-            frameAncestors: ["'self'"],
-            objectSrc: ["'none'"],
-          },
-        }
-      : false,
+    contentSecurityPolicy:
+      config.nodeEnv === 'production'
+        ? {
+            useDefaults: false,
+            directives: {
+              defaultSrc: ["'self'", 'https://cdn.plaid.com/'],
+              scriptSrc: [
+                "'self'",
+                "'unsafe-inline'",
+                'https://cdn.plaid.com/link/v2/stable/link-initialize.js',
+              ],
+              styleSrc: ["'self'", "'unsafe-inline'"],
+              imgSrc: [
+                "'self'",
+                'data:',
+                'blob:',
+                'https://plaid-merchant-logos.plaid.com',
+                'https://plaid-category-icons.plaid.com',
+              ],
+              connectSrc: ["'self'", `https://${config.plaid.env}.plaid.com/`],
+              fontSrc: ["'self'", 'data:'],
+              frameSrc: ['https://cdn.plaid.com/'],
+              baseUri: ["'self'"],
+              formAction: ["'self'"],
+              frameAncestors: ["'self'"],
+              objectSrc: ["'none'"],
+            },
+          }
+        : false,
     // App is served over HTTP on the LAN via NPM; HSTS would force HTTPS and break loads
     strictTransportSecurity: false,
   })
