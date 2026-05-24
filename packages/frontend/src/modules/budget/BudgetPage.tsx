@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import Header from '@/components/Header/Header';
 import TransactionsTable from '@/components/TransactionsTable/TransactionsTable';
 import YmMenu from '@ui/YmMenu/YmMenu';
 import { useGetTransactionsQuery } from '@/services/transactionService';
@@ -59,12 +58,6 @@ export const BudgetPage = () => {
   const moneyLeft = remainingAfterFixed - (insights?.totalSpent ?? 0);
 
   const loading = insightsLoading || budgetLoading || overrideLoading;
-
-  const monthName = new Date(selectedYear, selectedMonth - 1).toLocaleString(
-    'en-US',
-    { month: 'long' },
-  );
-  const headerTitle = `${monthName} ${selectedYear} Budget`;
 
   const cards: InsightCardItem[] = [
     {

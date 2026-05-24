@@ -5,7 +5,6 @@ import {
   useCreateGroupMutation,
   useDeleteGroupMutation,
 } from '@/services/groupService';
-import Header from '@/components/Header/Header';
 import Content from '@ui/Content/Content';
 import YButton from '@ui/Button/Button';
 import Textbox from '@ui/Textbox/Textbox';
