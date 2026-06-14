@@ -4,7 +4,7 @@ import { config } from '../config/env';
 
 const logger = bunyan.createLogger({
   name: 'portfolio-api',
-  level: config.nodeEnv === 'production' ? 'info' : 'debug',
+  level: config.nodeEnv === 'test' ? 'fatal' : config.nodeEnv === 'production' ? 'info' : 'debug',
   serializers: bunyan.stdSerializers,
 });
 

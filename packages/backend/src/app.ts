@@ -5,7 +5,6 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { requestLogger } from './middleware/requestLogger';
-import { connectToDatabase } from './db/db';
 import transactionsRoutes from './modules/transactions';
 import loginRoutes from './modules/auth';
 import bankRoutes from './modules/banks/bank.routes';
@@ -119,15 +118,5 @@ app.use((req: Request, res: Response) => {
     message: 'Route not found',
   });
 });
-
-// Database connection
-connectToDatabase()
-  .then(() => {
-    console.log('MongoDB connected successfully');
-  })
-  .catch(error => {
-    console.error('Database connection error:', error);
-    process.exit(1);
-  });
 
 export default app;

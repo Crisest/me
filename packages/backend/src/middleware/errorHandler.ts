@@ -18,6 +18,13 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
+  // Map Mongoose CastError (malformed ObjectId, etc.) to a 400 operational error
+  if (err.name === 'CastError') {
+    const cast = err as any;
+    const message = `Invalid ${cast.path}: ${cast.value}`;
+    err = new AppError(message, 400);
+  }
+
   const statusCode = (err as AppError).statusCode || 500;
   const status = (err as AppError).status || 'error';
 

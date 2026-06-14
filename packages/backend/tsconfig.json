@@ -14,9 +14,10 @@
     "paths": {
       "@/*": ["./*"]
     },
-    "composite": true
+    "composite": true,
+    "isolatedModules": true
   },
   "references": [{ "path": "../common" }],
-  "include": ["**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts", "test", "jest.config.ts"]
 }

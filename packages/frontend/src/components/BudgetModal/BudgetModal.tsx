@@ -22,6 +22,14 @@ type BudgetModalProps = {
 
 const isObjectId = (s: string): boolean => /^[a-f0-9]{24}$/.test(s);
 
+// crypto.randomUUID() is only available in secure contexts (HTTPS/localhost),
+// so it throws when the app is served over plain HTTP on the LAN. These ids are
+// throwaway client-side keys (real ids come from the backend on save), so a
+// simple non-crypto temp id is sufficient — and the `temp-` prefix never
+// matches isObjectId, keeping new rows correctly treated as new.
+const tempId = (): string =>
+  `temp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+
 const BudgetModal: React.FC<BudgetModalProps> = ({
   openModal,
   setOpenModal,
@@ -106,7 +114,7 @@ const BudgetModal: React.FC<BudgetModalProps> = ({
 
   const addExpense = () => {
     if (editingId) return;
-    const id = crypto.randomUUID();
+    const id = tempId();
     setExpenses([...expenses, { id, name: '', amount: '' }]);
     setEditingId(id);
     setNewRowId(id);
