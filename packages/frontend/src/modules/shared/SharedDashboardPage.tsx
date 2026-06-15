@@ -9,7 +9,10 @@ import {
 } from '@/services/groupService';
 import Header from '@/components/Header/Header';
 import Content from '@ui/Content/Content';
-import TransactionsTable from '@/components/TransactionsTable/TransactionsTable';
+import TransactionsTable, {
+  SortDirection,
+} from '@/components/TransactionsTable/TransactionsTable';
+import { SortDirectionFilter } from '@/components/TransactionsTable/SortDirectionFilter';
 import { InsightCards, InsightCardItem } from '@/components/InsightCards/InsightCards';
 import { MonthYearFilter } from '@/components/MonthYearFilter/MonthYearFilter';
 import { formatCAD } from '@/utils/format';
@@ -34,6 +37,7 @@ const SharedDashboardPage: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState(previousMonth);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [copied, setCopied] = useState(false);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('newest');
 
   const handleCopy = useCallback((inviteCode: string) => {
     const url = `${window.location.origin}/shared/join/${inviteCode}`;
@@ -105,6 +109,10 @@ const SharedDashboardPage: React.FC = () => {
             placeholder="All accounts"
             ariaLabel="Account filter"
           />
+          <SortDirectionFilter
+            value={sortDirection}
+            onChange={setSortDirection}
+          />
           {group?.inviteCode && (
             <YButton onClick={() => handleCopy(group.inviteCode)}>
               {copied ? 'Copied!' : 'Copy invite link'} <FaRegCopy />
@@ -115,6 +123,7 @@ const SharedDashboardPage: React.FC = () => {
           <TransactionsTable
             transactions={filteredTransactions}
             extraColumns={groupExtraColumns}
+            sortDirection={sortDirection}
           />
         )}
       </Content>

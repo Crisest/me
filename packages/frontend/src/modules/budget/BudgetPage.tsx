@@ -1,5 +1,8 @@
 import { useCallback, useState } from 'react';
-import TransactionsTable from '@/components/TransactionsTable/TransactionsTable';
+import TransactionsTable, {
+  SortDirection,
+} from '@/components/TransactionsTable/TransactionsTable';
+import { SortDirectionFilter } from '@/components/TransactionsTable/SortDirectionFilter';
 import YmMenu from '@ui/YmMenu/YmMenu';
 import {
   useGetTransactionsQuery,
@@ -32,6 +35,7 @@ export const BudgetPage = () => {
   const [selectedMonth, setSelectedMonth] = useState(previousMonth);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [matchTxn, setMatchTxn] = useState<Transaction | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('newest');
   const { data: transactionsData } = useGetTransactionsQuery({
     month: selectedMonth,
     year: selectedYear,
@@ -130,6 +134,10 @@ export const BudgetPage = () => {
             placeholder="All accounts"
             ariaLabel="Account filter"
           />
+          <SortDirectionFilter
+            value={sortDirection}
+            onChange={setSortDirection}
+          />
           <YmMenu
             ariaLabel="Budget actions"
             items={[
@@ -149,6 +157,7 @@ export const BudgetPage = () => {
           <TransactionsTable
             transactions={filteredTransactions}
             rowActions={rowActions}
+            sortDirection={sortDirection}
           />
         )}
       </Content>

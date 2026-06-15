@@ -27,7 +27,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --background-color-white: #f0f2f5;
+  --background-color-white: #eef1f9;
   --color-white: #fbfbfb;
   --color-blue: #5865f2;
   --color-blue-dark: #4150f1;
@@ -38,6 +38,31 @@
   --color-grey-hover: #e3e6ea; /* adjust this value to be just slightly lighter than your --color-grey */
   --color-yello: #ffd147;
   --color-dark: #242424;
+
+  /* Neutral grey ramp — no hue, just clean greys. */
+  --neutral-50: #fafafa;
+  --neutral-100: #f5f5f5;
+  --neutral-200: #e6e6e6;
+  --neutral-300: #d4d4d4;
+  --neutral-500: #737373;
+  --neutral-700: #404040;
+  --neutral-900: #1a1a1a;
+
+  /* Semantic tokens — color carries meaning; surfaces/text stay neutral. */
+  --color-app-bg: #f4f4f5;
+  --color-surface: #ffffff;
+  --color-border-subtle: var(--neutral-200); /* hairline row dividers */
+  --color-border-strong: var(--neutral-300); /* header / section divider */
+  --color-text-primary: var(--neutral-900); /* description, amounts */
+  --color-text-body: var(--neutral-700); /* default cell text */
+  --color-text-secondary: var(--neutral-500); /* headers, sub-text, dates */
+  --color-header-text: var(--neutral-500);
+  --color-day-band: var(--neutral-100);
+  --color-row-hover: var(--neutral-50);
+  --color-positive: #059669; /* emerald-600 — income */
+  --color-negative: #dc2626; /* red-600 — expenses */
+  --shadow-surface: 0 1px 2px rgba(0, 0, 0, 0.04),
+    0 8px 24px -8px rgba(0, 0, 0, 0.08);
 
   /* Gradients */
   --gradient-primary: linear-gradient(135deg, #5b5bf0 0%, #8080ff 100%);
@@ -138,6 +163,8 @@ body {
   box-sizing: border-box;
   overflow-x: hidden;
   overflow-y: scroll;
+  background: var(--color-app-bg);
+  background-attachment: fixed;
 }
 
 /* Below md breakpoint (see src/styles/breakpoints.ts): stack navbar on top */
@@ -155,7 +182,6 @@ h1 {
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
-    background-color: #ffffff;
   }
   a:hover {
     color: #747bff;

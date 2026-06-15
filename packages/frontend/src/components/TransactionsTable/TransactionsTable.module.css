@@ -2,8 +2,9 @@
   width: 100%;
   overflow-x: auto;
   border-radius: var(--border-radius-lg);
-  background-color: var(--color-white);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: var(--shadow-surface);
   display: flex;
   justify-content: center;
 }
@@ -14,34 +15,54 @@
 
 .table th {
   background-color: transparent;
-  color: var(--color-grey);
+  color: var(--color-header-text);
   padding: 14px 16px;
   text-align: left;
   font-weight: 600;
-  font-size: var(--font-sm);
+  font-size: var(--font-xs);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 2px solid var(--color-grey-hover);
+  border-bottom: 2px solid var(--color-border-strong);
+}
+
+.table th:first-child {
+  border-top-left-radius: var(--border-radius-lg);
+}
+
+.table th:last-child {
+  border-top-right-radius: var(--border-radius-lg);
 }
 
 .table td {
   padding: 14px 16px;
   text-align: left;
-  border-bottom: 1px solid var(--color-grey-hover);
-  color: var(--color-grey);
+  color: var(--color-text-body);
   font-size: var(--font-sm);
-}
-
-.table tbody tr:last-child td {
-  border-bottom: none;
 }
 
 .table tbody tr {
   transition: background-color 0.15s ease;
 }
 
+/* Inset divider (doesn't reach the card edges) drawn as a positioned line
+   rather than a full-bleed `td` border. Skipped on the final row. */
+.table tbody tr.dataRow {
+  position: relative;
+}
+
+.table tbody tr.dataRow:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 0;
+  height: 1px;
+  background-color: var(--color-border-subtle);
+  pointer-events: none;
+}
+
 .table tbody tr:hover {
-  background-color: var(--color-grey-light);
+  background-color: var(--color-row-hover);
 }
 
 .table td.amountCell {
@@ -53,12 +74,13 @@
   text-align: right;
 }
 
+/* Color carries direction: green for income, red for expenses. */
 .amountCredit {
-  color: #2e7d32;
+  color: var(--color-positive);
 }
 
 .amountDebit {
-  color: #c62828;
+  color: var(--color-negative);
 }
 
 .categoryPill {
@@ -74,13 +96,13 @@
 
 .descriptionCell {
   font-family: var(--font-family-button);
-  color: var(--color-dark);
+  color: var(--color-text-primary);
 }
 
 .subDescriptionCell {
   display: block;
   font-size: var(--font-xs);
-  color: var(--color-grey);
+  color: var(--color-text-secondary);
   margin-top: 2px;
   max-width: 280px;
   overflow: hidden;
@@ -120,40 +142,72 @@
   .table td {
     padding: 10px 8px;
   }
+
+  .table tbody tr.dataRow:not(:last-child)::after {
+    left: 8px;
+    right: 8px;
+  }
 }
 
-.sortButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  color: inherit;
-  text-transform: inherit;
-  letter-spacing: inherit;
-  cursor: pointer;
-}
-
-.sortButton:hover {
-  color: var(--color-dark);
-}
-
-.sortIndicator {
-  font-size: 10px;
-  opacity: 0.6;
-}
-
-.table th.amountHeader .sortButton {
-  width: 100%;
-  justify-content: flex-end;
-}
 
 .emptyRow {
   text-align: center !important;
   padding: 32px 16px !important;
-  color: var(--color-grey);
+  color: var(--color-text-secondary);
   font-style: italic;
+}
+
+.wrapper {
+  width: 100%;
+}
+
+/* Column headers are redundant in this transaction feed (cells are
+   self-describing, sorting lives in the toolbar), so hide them visually.
+   Kept in the DOM so screen readers still announce column context per cell. */
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* No tinted band: the grouping reads through hierarchy (a real heading) plus
+   the default `.table td` bottom border acting as a hairline divider. */
+.table tbody tr.dayHeaderRow:hover {
+  background-color: transparent;
+}
+
+/* Generous top padding gives each day group room to breathe. No divider under
+   the heading — like the reference, hierarchy and whitespace do the work. */
+.table td.dayHeaderCell {
+  padding-top: 26px;
+  padding-bottom: 8px;
+  border-bottom: none;
+}
+
+.dayHeaderInner {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Darker, normal-case heading — hierarchy carries the grouping, not a fill. */
+.dayHeaderLabel {
+  font-family: var(--font-family-button);
+  font-weight: 600;
+  font-size: var(--font-sm);
+  color: var(--color-text-primary);
+}
+
+.dayHeaderTotal {
+  font-family: var(--font-family-button);
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
 }

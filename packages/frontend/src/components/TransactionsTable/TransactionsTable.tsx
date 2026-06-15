@@ -1,22 +1,23 @@
 import { Transaction } from '@/types';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import styles from './TransactionsTable.module.css';
 import { formatPlaidCategory, formatPlaidDetailedCategory } from '@/utils/format';
 import {
   flexRender,
   getCoreRowModel,
-  getSortedRowModel,
   useReactTable,
   createColumnHelper,
   ColumnDef,
-  SortingState,
 } from '@tanstack/react-table';
 import YmMenu, { YmMenuItem } from '@/ui/YmMenu/YmMenu';
+
+export type SortDirection = 'newest' | 'oldest';
 
 type transactionTableProps = {
   transactions: Transaction[];
   extraColumns?: ColumnDef<Transaction, any>[];
   rowActions?: (txn: Transaction) => YmMenuItem[];
+  sortDirection?: SortDirection;
 };
 
 const columnHelper = createColumnHelper<Transaction>();
@@ -37,25 +38,40 @@ const buildCellClass = (columnId: string): string | undefined => {
   return classes.length ? classes.join(' ') : undefined;
 };
 
+const dayKey = (date: string): string =>
+  new Date(date).toLocaleDateString('en-CA');
+
+const dayLabel = (date: string): string =>
+  new Date(date).toLocaleDateString('en-CA', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+
 const TransactionsTable: React.FC<transactionTableProps> = ({
   transactions,
   extraColumns,
   rowActions,
+  sortDirection = 'newest',
 }) => {
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: 'date', desc: true },
-  ]);
+  const sortedTransactions = useMemo(() => {
+    const sorted = [...transactions].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
+    return sortDirection === 'newest' ? sorted.reverse() : sorted;
+  }, [transactions, sortDirection]);
+
+  const dayTotals = useMemo(() => {
+    const totals = new Map<string, number>();
+    sortedTransactions.forEach(txn => {
+      const key = dayKey(txn.date);
+      totals.set(key, (totals.get(key) ?? 0) + txn.amount);
+    });
+    return totals;
+  }, [sortedTransactions]);
 
   const baseColumns = useMemo<ColumnDef<Transaction, any>[]>(
     () => [
-      columnHelper.accessor('date', {
-        header: 'Date',
-        cell: info =>
-          new Date(info.getValue()).toLocaleDateString('en-CA', {
-            weekday: 'long',
-            day: 'numeric',
-          }),
-      }),
       columnHelper.accessor('description', {
         header: 'Description',
         enableSorting: false,
@@ -163,41 +179,26 @@ const TransactionsTable: React.FC<transactionTableProps> = ({
   }, [baseColumns, extraColumns, rowActions]);
 
   const table = useReactTable({
-    data: transactions,
+    data: sortedTransactions,
     columns: allColumns,
-    state: { sorting },
-    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
   });
 
   return (
-    <div className={styles.tableContainer}>
-      <table className={styles.table}>
-        <thead>
+    <div className={styles.wrapper}>
+      <div className={styles.tableContainer}>
+        <table className={styles.table}>
+        <thead className={styles.visuallyHidden}>
           {table.getHeaderGroups().map(headerGroup => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map(header => (
                 <th key={header.id} className={buildHeaderClass(header.column.id)}>
-                  {header.isPlaceholder ? null : header.column.getCanSort() ? (
-                    <button
-                      type="button"
-                      className={styles.sortButton}
-                      onClick={header.column.getToggleSortingHandler()}
-                      aria-label={`Sort by ${String(header.column.columnDef.header)}`}
-                    >
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                      <span className={styles.sortIndicator} aria-hidden>
-                        {header.column.getIsSorted() === 'asc'
-                          ? '▲'
-                          : header.column.getIsSorted() === 'desc'
-                            ? '▼'
-                            : '⇅'}
-                      </span>
-                    </button>
-                  ) : (
-                    flexRender(header.column.columnDef.header, header.getContext())
-                  )}
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
                 </th>
               ))}
             </tr>
@@ -214,18 +215,55 @@ const TransactionsTable: React.FC<transactionTableProps> = ({
               </td>
             </tr>
           ) : (
-            table.getRowModel().rows.map(row => (
-              <tr key={row.id}>
-                {row.getVisibleCells().map(cell => (
-                  <td key={cell.id} className={buildCellClass(cell.column.id)}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))
+            (() => {
+              const rows = table.getRowModel().rows;
+              const colCount = table.getVisibleFlatColumns().length;
+              let lastKey: string | null = null;
+              const out: React.ReactNode[] = [];
+
+              rows.forEach(row => {
+                const key = dayKey(row.original.date);
+                if (key !== lastKey) {
+                  lastKey = key;
+                  const total = dayTotals.get(key) ?? 0;
+                  out.push(
+                    <tr key={`day-${key}`} className={styles.dayHeaderRow}>
+                      <td colSpan={colCount} className={styles.dayHeaderCell}>
+                        <div className={styles.dayHeaderInner}>
+                          <span className={styles.dayHeaderLabel}>
+                            {dayLabel(row.original.date)}
+                          </span>
+                          <span className={styles.dayHeaderTotal}>
+                            {total.toLocaleString('en-CA', {
+                              style: 'currency',
+                              currency: 'CAD',
+                            })}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>,
+                  );
+                }
+                out.push(
+                  <tr key={row.id} className={styles.dataRow}>
+                    {row.getVisibleCells().map(cell => (
+                      <td
+                        key={cell.id}
+                        className={buildCellClass(cell.column.id)}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>,
+                );
+              });
+
+              return out;
+            })()
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 };
