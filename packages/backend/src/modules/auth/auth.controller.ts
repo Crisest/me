@@ -1,7 +1,7 @@
 // modules/auth/auth.controller.ts
 import { Request, Response } from 'express';
 import * as AuthService from './auth.service';
-import { LoginPayload, RegisterPayload } from '@portfolio/common';
+import { LoginPayload, MeResponse, RegisterPayload } from '@portfolio/common';
 import { getConfig } from '@/config/env';
 import { RequestWithUser } from '@/types/express';
 
@@ -68,7 +68,12 @@ export const me = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
-    res.status(200).json(req.user);
+    const body: MeResponse = {
+      ...req.user,
+      config: { appUrl: getConfig().frontendUrl },
+    };
+
+    res.status(200).json(body);
   } catch (err: any) {
     res.status(500).json({ message: 'Internal server error' });
   }

@@ -7,6 +7,8 @@ import {
   useGetGroupTransactionsQuery,
   useGetGroupInsightsQuery,
 } from '@/services/groupService';
+import { useGetUserQuery } from '@/services/authService';
+import { Route } from '@/enums/routerEnum';
 import Header from '@/components/Header/Header';
 import Content from '@ui/Content/Content';
 import TransactionsTable, {
@@ -39,13 +41,17 @@ const SharedDashboardPage: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [sortDirection, setSortDirection] = useState<SortDirection>('newest');
 
+  const { data: me } = useGetUserQuery();
+  const baseUrl = me?.config.appUrl ?? window.location.origin;
+
   const handleCopy = useCallback((inviteCode: string) => {
-    const url = `${window.location.origin}/shared/join/${inviteCode}`;
+    const path = Route.SHARED_JOIN.replace(':code', inviteCode);
+    const url = `${baseUrl}${path}`;
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
-  }, []);
+  }, [baseUrl]);
 
   const { data: groups = [] } = useGetGroupsQuery();
   const group = groups.find(g => g.id === groupId);

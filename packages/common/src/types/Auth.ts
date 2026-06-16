@@ -26,3 +26,14 @@ export interface AuthError {
     | 'EMAIL_EXISTS'
     | 'VALIDATION_ERROR';
 }
+
+export interface AppConfig {
+  appUrl: string;
+}
+
+export interface MeResponse {
+  id: string;
+  email: string;
+  name?: string;
+  config: AppConfig;
+}

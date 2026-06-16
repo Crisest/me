@@ -2,8 +2,8 @@ import { apiSlice, tagTypesEnum } from './apiSlice';
 import type {
   LoginPayload,
   LoginResponse,
+  MeResponse,
   RegisterPayload,
-  User,
 } from '@portfolio/common';
 
 export const authApi = apiSlice.injectEndpoints({
@@ -23,7 +23,7 @@ export const authApi = apiSlice.injectEndpoints({
         body: userData,
       }),
     }),
-    getUser: builder.query<User | null, void>({
+    getUser: builder.query<MeResponse | null, void>({
       query: () => '/auth/me',
       providesTags: [tagTypesEnum.USER],
     }),
