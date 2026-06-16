@@ -17,8 +17,10 @@ export interface GetMonthlyInsightsParams {
 export interface GroupBudgetInsights {
   totalSpent: number;
   debitCount: number;
-  budget: number; // sum of all members' salaries
+  budget: number; // sum of each member's effective salary (override if set, else base)
   totalFixed: number; // sum of all members' fixed expense amounts
   fixedCount: number; // total number of fixed expense entries across all members
-  moneyLeft: number; // budget - totalFixed - totalSpent
+  matchedFixedCount: number; // distinct fixed expenses matched by transactions this month
+  usingActuals: boolean; // true when at least one member has an actual-income override this month
+  moneyLeft: number; // budget - totalFixed - totalSpent (matched debits excluded from totalSpent)
 }

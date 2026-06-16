@@ -76,9 +76,11 @@ const SharedDashboardPage: React.FC = () => {
 
   const cards: InsightCardItem[] = [
     {
-      label: 'Budget',
+      label: insights?.usingActuals ? 'Actual Budget' : 'Budget',
       amount: `+${formatCAD(insights?.budget ?? 0)}`,
-      subtitle: 'Combined monthly budget',
+      subtitle: insights?.usingActuals
+        ? 'Combined budget (actuals applied)'
+        : 'Combined monthly budget',
     },
     {
       label: 'Total Spent',
@@ -88,7 +90,7 @@ const SharedDashboardPage: React.FC = () => {
     {
       label: 'Fixed Expenses',
       amount: `-${formatCAD(insights?.totalFixed ?? 0)}`,
-      subtitle: `${insights?.fixedCount ?? 0} fixed expenses`,
+      subtitle: `${insights?.fixedCount ?? 0} fixed expenses · ${insights?.matchedFixedCount ?? 0} matched`,
     },
     {
       label: 'Money Left',

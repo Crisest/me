@@ -1,6 +1,7 @@
 import { Group, IGroup } from './group.model';
 import { TransactionModel } from '../transactions/transaction.model';
 import { BudgetModel } from '../budget/budget.model';
+import { BudgetOverrideModel } from '../budget/budgetOverride.model';
 import {
   GroupWithMembers,
   Transaction,
@@ -155,7 +156,9 @@ export const getGroupInsights = async (
     (id: mongoose.Types.ObjectId) => new mongoose.Types.ObjectId(id)
   );
 
-  // Aggregate transaction spending for all members in the given month
+  // Aggregate member spending. Mirror the personal insights logic:
+  // matched fixed-expense debits are excluded from totalSpent (they are
+  // already represented by totalFixed) but counted separately.
   const insights = await TransactionModel.aggregate([
     {
       $match: {
@@ -163,30 +166,69 @@ export const getGroupInsights = async (
         date: { $gte: startDate, $lt: endDate },
       },
     },
-    { $match: { amount: { $gt: 0 } } },
     {
-      $group: {
-        _id: null,
-        totalSpent: { $sum: '$amount' },
-        debitCount: { $sum: 1 },
+      $facet: {
+        debits: [
+          {
+            $match: {
+              amount: { $gt: 0 },
+              $or: [
+                { fixedExpenseId: { $exists: false } },
+                { fixedExpenseId: null },
+              ],
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalSpent: { $sum: '$amount' },
+              debitCount: { $sum: 1 },
+            },
+          },
+        ],
+        matchedFixed: [
+          {
+            $match: {
+              amount: { $gt: 0 },
+              fixedExpenseId: { $ne: null, $exists: true },
+            },
+          },
+          { $group: { _id: '$fixedExpenseId' } },
+          { $count: 'count' },
+        ],
       },
     },
   ]);
 
-  const debits = insights[0] || { totalSpent: 0, debitCount: 0 };
+  const debits = insights[0].debits[0] || { totalSpent: 0, debitCount: 0 };
   const totalSpent = debits.totalSpent;
+  const matchedFixedCount = insights[0].matchedFixed[0]?.count ?? 0;
 
   // Aggregate all members' personal budgets
   const memberBudgets = await BudgetModel.find({
     createdBy: { $in: memberObjectIds },
   });
 
+  // Per-member actual-income overrides for the requested month/year.
+  const overrides = await BudgetOverrideModel.find({
+    createdBy: { $in: memberObjectIds },
+    month,
+    year: targetYear,
+  });
+  const overrideByUser = new Map<string, number>();
+  for (const o of overrides) {
+    overrideByUser.set(o.createdBy.toString(), o.salary);
+  }
+
   let budget = 0;
   let totalFixed = 0;
   let fixedCount = 0;
+  let usingActuals = false;
 
   for (const b of memberBudgets) {
-    budget += b.salary;
+    const override = overrideByUser.get(b.createdBy.toString());
+    if (override !== undefined) usingActuals = true;
+    budget += override ?? b.salary;
     for (const e of b.fixedExpenses) {
       totalFixed += e.amount;
       fixedCount += 1;
@@ -199,6 +241,8 @@ export const getGroupInsights = async (
     budget,
     totalFixed,
     fixedCount,
+    matchedFixedCount,
+    usingActuals,
     moneyLeft: budget - totalFixed - totalSpent,
   };
 };
