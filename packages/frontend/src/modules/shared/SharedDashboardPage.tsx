@@ -18,6 +18,7 @@ import { SortDirectionFilter } from '@/components/TransactionsTable/SortDirectio
 import { InsightCards, InsightCardItem } from '@/components/InsightCards/InsightCards';
 import { MonthYearFilter } from '@/components/MonthYearFilter/MonthYearFilter';
 import { formatCAD } from '@/utils/format';
+import { copyToClipboard } from '@/utils/clipboard';
 import YButton from '@/ui/Button/Button';
 import YmCombobox from '@ui/YmCombobox/YmCombobox';
 import { useAccountFilter } from '@/hooks/useAccountFilter';
@@ -44,14 +45,20 @@ const SharedDashboardPage: React.FC = () => {
   const { data: me } = useGetUserQuery();
   const baseUrl = me?.config.appUrl ?? window.location.origin;
 
-  const handleCopy = useCallback((inviteCode: string) => {
-    const path = Route.SHARED_JOIN.replace(':code', inviteCode);
-    const url = `${baseUrl}${path}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }, [baseUrl]);
+  const handleCopy = useCallback(
+    async (inviteCode: string) => {
+      const path = Route.SHARED_JOIN.replace(':code', inviteCode);
+      const url = `${baseUrl}${path}`;
+      try {
+        await copyToClipboard(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy invite link', err);
+      }
+    },
+    [baseUrl],
+  );
 
   const { data: groups = [] } = useGetGroupsQuery();
   const group = groups.find(g => g.id === groupId);
