@@ -42,24 +42,6 @@ corepack enable &>/dev/null
 corepack prepare pnpm@latest --activate &>/dev/null
 msg_ok "pnpm $(pnpm -v) ready"
 
-# ─── MongoDB 8.0 ─────────────────────────────────────────────────────────────
-if ! command -v mongod &>/dev/null; then
-  msg_info "Installing MongoDB 8.0"
-  curl -fsSL https://www.mongodb.org/static/pgp/server-8.0.asc | \
-    gpg --dearmor -o /usr/share/keyrings/mongodb-server-8.0.gpg
-  echo "deb [signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg] http://repo.mongodb.org/apt/debian bookworm/mongodb-org/8.0 main" \
-    > /etc/apt/sources.list.d/mongodb-org-8.0.list
-  apt-get update -qq &>/dev/null
-  apt-get install -y -qq mongodb-org &>/dev/null
-  systemctl daemon-reload
-  systemctl enable mongod &>/dev/null
-  systemctl start mongod
-  msg_ok "MongoDB 8.0 installed and running"
-else
-  msg_ok "MongoDB already installed"
-  systemctl is-active --quiet mongod || systemctl start mongod
-fi
-
 # ─── Clone or pull repository ────────────────────────────────────────────────
 if [[ -d "${APP_DIR}/.git" ]]; then
   msg_info "Pulling latest changes"
@@ -83,10 +65,14 @@ msg_ok "Dependencies installed"
 LXC_IP=$(hostname -I | awk '{print $1}')
 JWT_SECRET=$(openssl rand -base64 32)
 
+if [[ -z "${MONGODB_URI:-}" ]]; then
+  msg_error "MONGODB_URI must be set (e.g. MONGODB_URI='mongodb://portfolioApp:PASS@192.168.1.162:27017/portfolio?authSource=portfolio' ./setup.sh)"
+fi
+
 msg_info "Writing production .env"
 cat > "${APP_DIR}/packages/backend/.env" <<EOF
 NODE_ENV=production
-MONGODB_URI=mongodb://localhost:27017/portfolio
+MONGODB_URI=${MONGODB_URI}
 JWT_SECRET=${JWT_SECRET}
 FRONTEND_URL=http://me.home
 VITE_API_URL=
@@ -105,7 +91,7 @@ msg_info "Creating systemd service"
 cat > /etc/systemd/system/portfolio.service <<EOF
 [Unit]
 Description=Portfolio App
-After=network.target mongod.service
+After=network.target
 
 [Service]
 Type=simple
