@@ -31,7 +31,15 @@ export const joinGroup = async (req: Request, res: Response) => {
 export const getGroups = async (req: Request, res: Response) => {
   try {
     const userId = req.user!.id;
-    const groups = await groupService.getUserGroups(userId);
+    const now = new Date();
+    const prevMonthIndex = (now.getMonth() + 11) % 12;
+    const month = req.query.month
+      ? parseInt(req.query.month as string)
+      : prevMonthIndex + 1;
+    const year = req.query.year
+      ? parseInt(req.query.year as string)
+      : now.getFullYear();
+    const groups = await groupService.getUserGroups(userId, month, year);
     res.json(groups);
   } catch (err) {
     req.log.error({ err }, 'Failed to fetch groups');

@@ -2,6 +2,13 @@ export function formatCAD(amount: number): string {
   return amount.toLocaleString('en-CA', { style: 'currency', currency: 'CAD' });
 }
 
+export function formatMonthYear(month: number, year: number): string {
+  return new Date(year, month - 1, 1).toLocaleString('en-CA', {
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
 function titleCaseFromSnake(value: string): string {
   return value
     .toLowerCase()

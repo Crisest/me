@@ -8,8 +8,14 @@ import type {
 
 export const groupApi = apiSlice.injectEndpoints({
   endpoints: builder => ({
-    getGroups: builder.query<GroupWithMembers[], void>({
-      query: () => 'groups',
+    getGroups: builder.query<
+      GroupWithMembers[],
+      { month: number; year: number } | void
+    >({
+      query: arg => ({
+        url: 'groups',
+        params: arg ? { month: arg.month, year: arg.year } : undefined,
+      }),
       providesTags: [{ type: tagTypesEnum.GROUPS, id: 'LIST' }],
     }),
     createGroup: builder.mutation<GroupWithMembers, CreateGroupPayload>({

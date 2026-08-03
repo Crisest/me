@@ -1,0 +1,46 @@
+import React from 'react';
+import { GroupMember } from '@portfolio/common';
+import styles from './MemberAvatars.module.css';
+
+const MAX_SHOWN = 4;
+
+function initial(email: string): string {
+  return (email.trim()[0] || '?').toUpperCase();
+}
+
+function hueFromEmail(email: string): number {
+  let hash = 0;
+  for (let i = 0; i < email.length; i++) {
+    hash = (hash * 31 + email.charCodeAt(i)) % 360;
+  }
+  return hash;
+}
+
+interface Props {
+  members: GroupMember[];
+}
+
+const MemberAvatars: React.FC<Props> = ({ members }) => {
+  const shown = members.slice(0, MAX_SHOWN);
+  const overflow = members.length - shown.length;
+
+  return (
+    <div className={styles.row}>
+      {shown.map(member => (
+        <span
+          key={member.id}
+          className={styles.avatar}
+          title={member.email}
+          style={{ backgroundColor: `hsl(${hueFromEmail(member.email)}, 55%, 52%)` }}
+        >
+          {initial(member.email)}
+        </span>
+      ))}
+      {overflow > 0 && (
+        <span className={`${styles.avatar} ${styles.more}`}>+{overflow}</span>
+      )}
+    </div>
+  );
+};
+
+export default MemberAvatars;

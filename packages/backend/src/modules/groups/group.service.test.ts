@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { getGroupInsights } from './group.service';
+import { getGroupInsights, getUserGroups } from './group.service';
 import { Group } from './group.model';
 import { TransactionModel } from '../transactions/transaction.model';
 import { BudgetModel } from '../budget/budget.model';
@@ -102,5 +102,47 @@ it('passes the matched-debit exclusion filter to the aggregation', async () => {
     createdBy: { $in: expect.anything() },
     month: 5,
     year: 2026,
+  });
+});
+
+it('getUserGroups attaches a monthly summary to each group', async () => {
+  const populate = jest.fn().mockResolvedValue([
+    {
+      members: [
+        { _id: MEMBER_A, email: 'a@x.com' },
+        { _id: MEMBER_B, email: 'b@x.com' },
+      ],
+      toGroupWithMembers: () => ({
+        id: GROUP_ID,
+        name: 'G',
+        members: [
+          { id: 'a', email: 'a@x.com' },
+          { id: 'b', email: 'b@x.com' },
+        ],
+        createdBy: 'a',
+        createdAt: '',
+        updatedAt: '',
+        inviteCode: 'code',
+      }),
+    },
+  ]);
+  mockedGroup.find = jest.fn().mockReturnValue({ populate }) as any;
+  mockedTxn.aggregate = jest
+    .fn()
+    .mockResolvedValue(aggregateResult(1200, 5, 0)) as any;
+  mockedBudget.find = jest.fn().mockResolvedValue([
+    { createdBy: MEMBER_A, salary: 5000, fixedExpenses: [{ amount: 1000 }] },
+    { createdBy: MEMBER_B, salary: 3000, fixedExpenses: [] },
+  ]) as any;
+  mockedOverride.find = jest.fn().mockResolvedValue([]) as any;
+
+  const result = await getUserGroups('user-1', 5, 2026);
+
+  expect(result[0].summary).toEqual({
+    month: 5,
+    year: 2026,
+    budget: 8000, // 5000 + 3000
+    totalSpent: 1200,
+    moneyLeft: 5800, // 8000 - 1000 (fixed) - 1200 (spent)
   });
 });

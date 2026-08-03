@@ -23,6 +23,14 @@ export interface GroupMember {
   email: string;
 }
 
+export interface GroupSummary {
+  month: number; // 1-12, the month these numbers cover
+  year: number;
+  budget: number; // combined member budget (overrides applied)
+  totalSpent: number; // combined non-fixed spend for the month
+  moneyLeft: number; // budget - fixed - spent
+}
+
 export interface GroupWithMembers {
   id: string;
   name: string;
@@ -31,4 +39,5 @@ export interface GroupWithMembers {
   createdAt: string;
   updatedAt: string;
   inviteCode: string;
+  summary?: GroupSummary; // present on the group-list response
 }
