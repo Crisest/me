@@ -2,6 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "rootDir": ".",
+    "module": "CommonJS",
     "noEmit": true,
     "composite": false,
     "types": ["jest", "node"]
