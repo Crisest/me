@@ -40,6 +40,16 @@ export default defineConfig([
     },
   },
   {
+    // Test files are excluded from the backend tsconfig, so they aren't part of
+    // any TS project. No type-aware rules are enabled, so parse them without one.
+    files: ['**/*.test.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: {
+        project: null,
+      },
+    },
+  },
+  {
     files: ['**/frontend/**/*.{ts,tsx}'],
     rules: {
       '@typescript-eslint/no-unused-vars': [

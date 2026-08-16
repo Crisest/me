@@ -3,6 +3,7 @@ import { body } from 'express-validator';
 import * as controller from './group.controller';
 import { authMiddleware } from '../auth/auth.middleware';
 import { validateRequest } from '../../middleware/validateRequest';
+import { requireGroupMembership } from './group.middleware';
 
 const router: Router = Router();
 
@@ -60,6 +61,12 @@ router.get(
   '/:groupId/insights/:month',
   authMiddleware,
   controller.getGroupInsights
+);
+router.get(
+  '/:groupId/members/:userId/budget',
+  authMiddleware,
+  requireGroupMembership,
+  controller.getMemberBudget
 );
 
 export default router;

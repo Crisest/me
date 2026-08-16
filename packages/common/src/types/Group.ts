@@ -21,6 +21,7 @@ export interface UpdateGroupPayload {
 export interface GroupMember {
   id: string;
   email: string;
+  name?: string;
 }
 
 export interface GroupSummary {

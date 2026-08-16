@@ -2,10 +2,13 @@ import { Group, IGroup } from './group.model';
 import { TransactionModel } from '../transactions/transaction.model';
 import { BudgetModel } from '../budget/budget.model';
 import { BudgetOverrideModel } from '../budget/budgetOverride.model';
+import * as budgetService from '../budget/budget.service';
+import { AppError } from '../../middleware/errorHandler';
 import {
   GroupWithMembers,
   Transaction,
   GroupBudgetInsights,
+  Budget,
 } from '@portfolio/common';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
@@ -156,7 +159,7 @@ export const getUserGroups = async (
 ): Promise<GroupWithMembers[]> => {
   const groups = await Group.find({ members: userId }).populate(
     'members',
-    'email'
+    'email name'
   );
 
   if (!month) {
@@ -276,4 +279,26 @@ export const getGroupInsights = async (
   );
 
   return computeGroupInsights(memberObjectIds, month, year);
+};
+
+/**
+ * Returns a group member's budget.
+ * `group` is the already-loaded document from requireGroupMembership,
+ * so membership of the *caller* is guaranteed before this runs.
+ * The userId check below prevents using a group you belong to as a
+ * lever to read the budget of someone outside it.
+ */
+export const getMemberBudget = async (
+  group: IGroup,
+  userId: string
+): Promise<Budget | null> => {
+  const isMember = group.members.some(
+    memberId => memberId.toString() === userId
+  );
+
+  if (!isMember) {
+    throw new AppError('Member not found in this group', 404);
+  }
+
+  return await budgetService.getBudgetByUserId(userId);
 };

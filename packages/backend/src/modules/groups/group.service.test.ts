@@ -1,19 +1,22 @@
 import mongoose from 'mongoose';
-import { getGroupInsights, getUserGroups } from './group.service';
+import { getGroupInsights, getUserGroups, getMemberBudget } from './group.service';
 import { Group } from './group.model';
 import { TransactionModel } from '../transactions/transaction.model';
 import { BudgetModel } from '../budget/budget.model';
 import { BudgetOverrideModel } from '../budget/budgetOverride.model';
+import * as budgetService from '../budget/budget.service';
 
 jest.mock('./group.model');
 jest.mock('../transactions/transaction.model');
 jest.mock('../budget/budget.model');
 jest.mock('../budget/budgetOverride.model');
+jest.mock('../budget/budget.service');
 
 const mockedGroup = Group as unknown as jest.Mocked<typeof Group>;
 const mockedTxn = TransactionModel as unknown as jest.Mocked<typeof TransactionModel>;
 const mockedBudget = BudgetModel as unknown as jest.Mocked<typeof BudgetModel>;
 const mockedOverride = BudgetOverrideModel as unknown as jest.Mocked<typeof BudgetOverrideModel>;
+const mockedBudgetService = budgetService as jest.Mocked<typeof budgetService>;
 
 const MEMBER_A = new mongoose.Types.ObjectId();
 const MEMBER_B = new mongoose.Types.ObjectId();
@@ -144,5 +147,41 @@ it('getUserGroups attaches a monthly summary to each group', async () => {
     budget: 8000, // 5000 + 3000
     totalSpent: 1200,
     moneyLeft: 5800, // 8000 - 1000 (fixed) - 1200 (spent)
+  });
+});
+
+describe('getMemberBudget', () => {
+  const group = { members: [MEMBER_A, MEMBER_B] } as any;
+
+  it("returns the member's budget", async () => {
+    const budget = { id: 'b1', salary: 5000, fixedExpenses: [] };
+    mockedBudgetService.getBudgetByUserId = jest
+      .fn()
+      .mockResolvedValue(budget) as any;
+
+    const result = await getMemberBudget(group, MEMBER_A.toString());
+
+    expect(result).toBe(budget);
+    expect(mockedBudgetService.getBudgetByUserId).toHaveBeenCalledWith(
+      MEMBER_A.toString()
+    );
+  });
+
+  it('returns null when the member has no budget document', async () => {
+    mockedBudgetService.getBudgetByUserId = jest
+      .fn()
+      .mockResolvedValue(null) as any;
+
+    await expect(getMemberBudget(group, MEMBER_B.toString())).resolves.toBeNull();
+  });
+
+  it('throws 404 for a userId outside the group', async () => {
+    mockedBudgetService.getBudgetByUserId = jest.fn() as any;
+    const outsider = new mongoose.Types.ObjectId().toString();
+
+    await expect(getMemberBudget(group, outsider)).rejects.toMatchObject({
+      statusCode: 404,
+    });
+    expect(mockedBudgetService.getBudgetByUserId).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import * as groupService from './group.service';
 
 export const createGroup = async (req: Request, res: Response) => {
@@ -130,5 +130,22 @@ export const getGroupInsights = async (req: Request, res: Response) => {
   } catch (err) {
     req.log.error({ err }, 'Failed to fetch group insights');
     res.status(500).json({ error: 'Failed to fetch group insights' });
+  }
+};
+
+export const getMemberBudget = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { userId } = req.params;
+    const group = res.locals.group;
+
+    const budget = await groupService.getMemberBudget(group, userId);
+    res.json({ budget });
+  } catch (err) {
+    req.log.error({ err }, 'Failed to fetch member budget');
+    return next(err);
   }
 };

@@ -18,24 +18,47 @@ function hueFromEmail(email: string): number {
 
 interface Props {
   members: GroupMember[];
+  onMemberClick?: (member: GroupMember) => void;
 }
 
-const MemberAvatars: React.FC<Props> = ({ members }) => {
+const MemberAvatars: React.FC<Props> = ({ members, onMemberClick }) => {
   const shown = members.slice(0, MAX_SHOWN);
   const overflow = members.length - shown.length;
 
   return (
     <div className={styles.row}>
-      {shown.map(member => (
-        <span
-          key={member.id}
-          className={styles.avatar}
-          title={member.email}
-          style={{ backgroundColor: `hsl(${hueFromEmail(member.email)}, 55%, 52%)` }}
-        >
-          {initial(member.email)}
-        </span>
-      ))}
+      {shown.map(member => {
+        const style = {
+          backgroundColor: `hsl(${hueFromEmail(member.email)}, 55%, 52%)`,
+        };
+        const label = member.name ?? member.email;
+
+        if (!onMemberClick) {
+          return (
+            <span
+              key={member.id}
+              className={styles.avatar}
+              title={label}
+              style={style}
+            >
+              {initial(member.email)}
+            </span>
+          );
+        }
+
+        return (
+          <button
+            key={member.id}
+            type="button"
+            className={`${styles.avatar} ${styles.clickable}`}
+            title={`View ${label}'s budget`}
+            style={style}
+            onClick={() => onMemberClick(member)}
+          >
+            {initial(member.email)}
+          </button>
+        );
+      })}
       {overflow > 0 && (
         <span className={`${styles.avatar} ${styles.more}`}>+{overflow}</span>
       )}

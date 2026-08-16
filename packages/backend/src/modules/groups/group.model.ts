@@ -50,6 +50,7 @@ GroupSchema.methods.toGroupWithMembers = function (): GroupWithMembers {
       (member: any): GroupMember => ({
         id: member._id.toString(),
         email: member.email,
+        name: member.name,
       })
     ),
     createdBy: this.createdBy.toString(),

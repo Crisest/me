@@ -23,6 +23,10 @@ import YButton from '@/ui/Button/Button';
 import YmCombobox from '@ui/YmCombobox/YmCombobox';
 import { useAccountFilter } from '@/hooks/useAccountFilter';
 import { FaRegCopy } from 'react-icons/fa';
+import MemberAvatars from './MemberAvatars';
+import MemberBudgetModal from './MemberBudgetModal';
+import styles from './SharedDashboardPage.module.css';
+import type { GroupMember } from '@portfolio/common';
 
 const groupExtraColumns: ColumnDef<Transaction, any>[] = [
   {
@@ -41,6 +45,7 @@ const SharedDashboardPage: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [copied, setCopied] = useState(false);
   const [sortDirection, setSortDirection] = useState<SortDirection>('newest');
+  const [selectedMember, setSelectedMember] = useState<GroupMember | null>(null);
 
   const { data: me } = useGetUserQuery();
   const baseUrl = me?.config.appUrl ?? window.location.origin;
@@ -111,6 +116,15 @@ const SharedDashboardPage: React.FC = () => {
       <Header title={group?.name ?? 'Shared'} />
       <InsightCards cards={cards} loading={insightsLoading} />
       <Content>
+        {group && group.members.length > 0 && (
+          <div className={styles.membersRow}>
+            <span className={styles.membersLabel}>Members</span>
+            <MemberAvatars
+              members={group.members}
+              onMemberClick={setSelectedMember}
+            />
+          </div>
+        )}
         <MonthYearFilter
           selectedMonth={selectedMonth}
           selectedYear={selectedYear}
@@ -142,6 +156,14 @@ const SharedDashboardPage: React.FC = () => {
           />
         )}
       </Content>
+      {selectedMember && groupId && (
+        <MemberBudgetModal
+          isOpen={!!selectedMember}
+          onClose={() => setSelectedMember(null)}
+          groupId={groupId}
+          member={selectedMember}
+        />
+      )}
     </>
   );
 };
