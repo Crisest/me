@@ -34,12 +34,27 @@ describe('audit checks', () => {
 
   it('flags legacy fields the target schema does not model', () => {
     const findings = checkUnknownFields('budgets', [
-      { _id: 'b1', salary: 100, createdBy: 'u1', fixedExpenses: [{ name: 'Rent' }] },
+      { _id: 'b1', salary: 100, createdBy: 'u1', retiredField: 'x' },
     ]);
     expect(findings).toHaveLength(1);
     expect(findings[0].kind).toBe('unknown-field');
-    expect(findings[0].detail).toContain('fixedExpenses');
+    expect(findings[0].detail).toContain('retiredField');
     expect(findings[0].severity).toBe('halt');
+  });
+
+  // fixedExpenses is not an unmapped field: the loader turns each entry into a
+  // budget_categories row, so flagging it would halt a load that loses nothing.
+  it('does not flag fixedExpenses, which the loader maps to categories', () => {
+    expect(
+      checkUnknownFields('budgets', [
+        {
+          _id: 'b1',
+          salary: 100,
+          createdBy: 'u1',
+          fixedExpenses: [{ _id: 'f1', name: 'Rent', amount: 3300 }],
+        },
+      ])
+    ).toEqual([]);
   });
 
   it('flags money that numeric(12,2) would round', () => {
@@ -70,6 +85,21 @@ describe('audit checks', () => {
     // u3 claims membership the group does not list
     expect(details).toContain('u3');
     expect(findings.every(f => f.kind === 'membership-drift')).toBe(true);
+  });
+
+  // The loader unions both arrays, so drift costs nothing and must not block
+  // the load — otherwise a dataset with drift can never be migrated at all.
+  it('reports drift as informational, never as blocking', () => {
+    const findings = checkMembershipDrift(
+      [{ _id: 'g1', members: ['u1', 'u2'] }],
+      [
+        { _id: 'u1', groups: ['g1'] },
+        { _id: 'u2', groups: [] },
+        { _id: 'u3', groups: ['g1'] },
+      ]
+    );
+    expect(findings.length).toBeGreaterThan(0);
+    expect(findings.every(f => f.severity === 'info')).toBe(true);
   });
 
   it('finds no drift when both sides agree', () => {

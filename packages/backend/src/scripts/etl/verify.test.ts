@@ -158,6 +158,63 @@ describe('runVerify', () => {
     await mongoDb.collection('uploads').insertOne({});
   };
 
+  /**
+   * Adds two fixed expenses to the seeded Mongo budget and the two categories
+   * they load into. Production's categories come only from this embedded
+   * array — the `budgetcategories` collection was never written to — so the
+   * count check has to derive its expectation from here or it compares
+   * against a number that has nothing to do with the data.
+   */
+  const seedFixedExpenses = async (categoriesToWrite: number) => {
+    const [user] = await db.select().from(schema.users);
+    await mongoDb
+      .collection('budgets')
+      .updateOne(
+        {},
+        {
+          $set: {
+            fixedExpenses: [
+              { _id: new ObjectId(), name: 'Rent', amount: 3300 },
+              { _id: new ObjectId(), name: 'gym', amount: 280 },
+            ],
+          },
+        }
+      );
+    const rows = [
+      { name: 'Rent', kind: 'fixed' as const, plannedAmount: 3300 },
+      { name: 'gym', kind: 'fixed' as const, plannedAmount: 280 },
+    ].slice(0, categoriesToWrite);
+    for (const r of rows) {
+      await db.insert(schema.budgetCategories).values({
+        ...r,
+        createdBy: user.id,
+      });
+    }
+  };
+
+  it('counts categories that came from fixedExpenses, not just the collection', async () => {
+    await seedMatchingDataset();
+    await seedFixedExpenses(2);
+
+    const checks = await runVerify();
+    const categories = checks.find(c => c.name === 'count budget_categories');
+    expect(categories?.detail).toBe('mongo=3 postgres=3');
+    expect(categories?.passed).toBe(true);
+  });
+
+  // The failure this check exists for: a load that writes the budget but drops
+  // its embedded fixed expenses. Counting the `budgetcategories` collection
+  // alone would report 1 == 1 and wave it through.
+  it('fails when a fixedExpense was dropped by the load', async () => {
+    await seedMatchingDataset();
+    await seedFixedExpenses(1);
+
+    const checks = await runVerify();
+    const categories = checks.find(c => c.name === 'count budget_categories');
+    expect(categories?.passed).toBe(false);
+    expect(categories?.detail).toBe('mongo=3 postgres=2');
+  });
+
   it('reports every check passing for a consistent dataset seeded in both databases', async () => {
     await seedMatchingDataset();
 
@@ -181,6 +238,9 @@ describe('runVerify', () => {
         'budget_overrides',
         'budget_category_overrides',
         'groups',
+        // Built from the members arrays rather than a collection of its own,
+        // so it needs a count check derived the same way.
+        'group_members',
         'transactions',
         'uploads',
       ]

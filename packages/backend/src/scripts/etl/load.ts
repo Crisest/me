@@ -123,7 +123,16 @@ export const runLoad = async (
       count('accounts', accountDocs.length, accountRows.length);
 
       // --- budget_categories -----------------------------------------------------
+      // Two sources. `budgetcategories` is the collection the feature would
+      // write to, which production has never had — categories shipped only
+      // after the Postgres branch. The data that became categories lives in
+      // production as a `fixedExpenses` array embedded on each budget, so
+      // those entries are mapped here too. Each entry carries its own _id,
+      // which is what the id map keys on, so the mapping stays stable and
+      // traceable back to the source document.
+      const budgetDocs = await read('budgets');
       const categoryDocs = await read('budgetcategories');
+
       const categoryRows = categoryDocs.map(d => ({
         id: ids.assign('budgetcategories', String(d._id)),
         name: d.name as string,
@@ -134,12 +143,46 @@ export const runLoad = async (
         createdAt: (d.createdAt as Date) ?? new Date(),
         updatedAt: (d.updatedAt as Date) ?? (d.createdAt as Date) ?? new Date(),
       }));
-      if (categoryRows.length)
-        await tx.insert(budgetCategories).values(categoryRows);
-      count('budgetcategories', categoryDocs.length, categoryRows.length);
+
+      type FixedExpense = { _id: unknown; name: unknown; amount: unknown };
+      const fixedExpenseRows = budgetDocs.flatMap(b => {
+        const entries = (b.fixedExpenses ?? []) as FixedExpense[];
+        const owner = ids.resolve('users', String(b.createdBy));
+        return entries.map(e => {
+          const amount = e.amount as number;
+          // budget_categories_planned_amount_kind_ck requires a positive
+          // amount for 'fixed'. Fail by name rather than letting Postgres
+          // roll the whole transaction back on an opaque constraint error.
+          if (typeof amount !== 'number' || !(amount > 0)) {
+            throw new Error(
+              `budgets/${String(b._id)} fixedExpense ${String(e.name)}: ` +
+                `amount must be a positive number, got ${String(amount)}`
+            );
+          }
+          return {
+            id: ids.assign('budgetcategories', String(e._id)),
+            name: String(e.name),
+            kind: 'fixed' as const,
+            plannedAmount: amount,
+            // Unused by the UI today, and the source has no equivalent.
+            color: null,
+            createdBy: owner,
+            createdAt: (b.createdAt as Date) ?? new Date(),
+            updatedAt: (b.updatedAt as Date) ?? (b.createdAt as Date) ?? new Date(),
+          };
+        });
+      });
+
+      const allCategoryRows = [...categoryRows, ...fixedExpenseRows];
+      if (allCategoryRows.length)
+        await tx.insert(budgetCategories).values(allCategoryRows);
+      count(
+        'budgetcategories',
+        categoryDocs.length + fixedExpenseRows.length,
+        allCategoryRows.length
+      );
 
       // --- budgets -----------------------------------------------------------
-      const budgetDocs = await read('budgets');
       const budgetRows = budgetDocs.map(d => ({
         id: ids.assign('budgets', String(d._id)),
         salary: d.salary as number,

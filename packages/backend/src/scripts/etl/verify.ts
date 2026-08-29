@@ -66,13 +66,36 @@ export const runVerify = async (): Promise<Check[]> => {
   const checks: Check[] = [];
 
   try {
+    const pgCountOf = async (table: string): Promise<number> => {
+      const [{ count }] = (await db.execute(
+        sql.raw(`SELECT COUNT(*)::int AS count FROM ${table}`)
+      )).rows as unknown as { count: number }[];
+      return count;
+    };
+
     // 1. Row counts, per collection against its table.
     for (const collection of COLLECTIONS) {
       const table = COLLECTION_TO_TABLE[collection];
-      const mongoCount = await mongo.collection(collection).countDocuments();
-      const [{ count: pgCount }] = (await db.execute(
-        sql.raw(`SELECT COUNT(*)::int AS count FROM ${table}`)
-      )).rows as unknown as { count: number }[];
+      let mongoCount = await mongo.collection(collection).countDocuments();
+
+      // budget_categories has two sources, and in production only the second
+      // one exists: the `budgetcategories` collection was never written to,
+      // while every category comes from a `fixedExpenses` entry embedded on a
+      // budget. Counting the collection alone would compare 0 against the
+      // loaded rows and fail a correct load — or, worse, pass a load that
+      // silently dropped every fixed expense.
+      if (collection === 'budgetcategories') {
+        const embedded = await mongo
+          .collection('budgets')
+          .aggregate([
+            { $project: { n: { $size: { $ifNull: ['$fixedExpenses', []] } } } },
+            { $group: { _id: null, total: { $sum: '$n' } } },
+          ])
+          .toArray();
+        mongoCount += (embedded[0]?.total as number) ?? 0;
+      }
+
+      const pgCount = await pgCountOf(table);
 
       checks.push({
         name: `count ${table}`,
@@ -80,6 +103,25 @@ export const runVerify = async (): Promise<Check[]> => {
         detail: `mongo=${mongoCount} postgres=${pgCount}`,
       });
     }
+
+    // group_members has no collection of its own — it is built from the
+    // `members` array on each group, which the audit treats as the
+    // authoritative side of the old two-sided relationship. Without this the
+    // membership decision would go entirely unverified.
+    const memberAgg = await mongo
+      .collection('groups')
+      .aggregate([
+        { $project: { n: { $size: { $ifNull: ['$members', []] } } } },
+        { $group: { _id: null, total: { $sum: '$n' } } },
+      ])
+      .toArray();
+    const mongoMembers = (memberAgg[0]?.total as number) ?? 0;
+    const pgMembers = await pgCountOf('group_members');
+    checks.push({
+      name: 'count group_members',
+      passed: mongoMembers === pgMembers,
+      detail: `mongo=${mongoMembers} postgres=${pgMembers}`,
+    });
 
     // 2. Financial checksums: SUM(amount) per user per month, to the cent.
     //

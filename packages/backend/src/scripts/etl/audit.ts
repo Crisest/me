@@ -16,8 +16,13 @@ export type Finding = {
   documentId: string;
   kind: FindingKind;
   detail: string;
-  /** 'halt' blocks the load outright. 'resolve' needs an explicit decision. */
-  severity: 'halt' | 'resolve';
+  /**
+   * 'halt' blocks the load outright. 'resolve' needs an explicit decision.
+   * 'info' is reported but does not block: the loader already handles it in a
+   * way that loses nothing, and the finding exists so the handling is visible
+   * rather than silent.
+   */
+  severity: 'halt' | 'resolve' | 'info';
 };
 
 type RefSpec = Record<string, { ids: Set<string>; required: boolean }>;
@@ -117,6 +122,10 @@ export const checkMembershipDrift = (
     const gid = String(g._id);
     const listed = new Set((g.members ?? []).map(String));
 
+    // Both directions are 'info': the loader unions the two arrays, so a pair
+    // recorded on either side survives and neither direction loses a
+    // membership. These are reported so the disagreement is visible in the
+    // audit output, not because anything needs deciding before the load.
     for (const uid of listed) {
       if (!userGroups.get(uid)?.has(gid)) {
         out.push({
@@ -124,7 +133,7 @@ export const checkMembershipDrift = (
           documentId: gid,
           kind: 'membership-drift',
           detail: `group lists ${uid} but user.groups does not list the group`,
-          severity: 'resolve',
+          severity: 'info',
         });
       }
     }
@@ -135,7 +144,7 @@ export const checkMembershipDrift = (
           documentId: gid,
           kind: 'membership-drift',
           detail: `user ${uid} claims membership the group does not list`,
-          severity: 'resolve',
+          severity: 'info',
         });
       }
     }
@@ -306,12 +315,7 @@ export const runAudit = async (): Promise<Finding[]> => {
 if (require.main === module) {
   runAudit()
     .then(findings => {
-      if (findings.length === 0) {
-        console.log('AUDIT PASSED: no findings. Safe to proceed to etl:load.');
-        process.exit(0);
-      }
-
-      const bySeverity = { halt: 0, resolve: 0 };
+      const bySeverity = { halt: 0, resolve: 0, info: 0 };
       for (const f of findings) {
         bySeverity[f.severity] += 1;
         console.log(
@@ -319,9 +323,20 @@ if (require.main === module) {
             `${f.kind}: ${f.detail}`
         );
       }
+
+      const blocking = bySeverity.halt + bySeverity.resolve;
+      if (blocking === 0) {
+        console.log(
+          `\nAUDIT PASSED: ${bySeverity.info} informational finding(s), ` +
+            'none blocking. Safe to proceed to etl:load.'
+        );
+        process.exit(0);
+      }
+
       console.log(
-        `\nAUDIT FAILED: ${findings.length} finding(s) — ` +
-          `${bySeverity.halt} halt, ${bySeverity.resolve} to resolve.`
+        `\nAUDIT FAILED: ${blocking} blocking finding(s) — ` +
+          `${bySeverity.halt} halt, ${bySeverity.resolve} to resolve` +
+          `${bySeverity.info ? `, plus ${bySeverity.info} informational` : ''}.`
       );
       console.log('Every finding needs an explicit decision before etl:load.');
       process.exit(1);

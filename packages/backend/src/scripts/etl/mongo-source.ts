@@ -81,7 +81,17 @@ export const KNOWN_FIELDS: Record<string, string[]> = {
     'createdAt',
     'updatedAt',
   ],
-  budgets: ['_id', '__v', 'salary', 'createdBy', 'createdAt', 'updatedAt'],
+  // `fixedExpenses` is the pre-categories shape of budget_categories. The
+  // loader maps each entry to a category row, so it is mapped, not dropped.
+  budgets: [
+    '_id',
+    '__v',
+    'salary',
+    'fixedExpenses',
+    'createdBy',
+    'createdAt',
+    'updatedAt',
+  ],
   budgetoverrides: [
     '_id',
     '__v',

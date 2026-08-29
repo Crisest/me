@@ -126,6 +126,79 @@ describe('runLoad', () => {
 
   const oid = () => new ObjectId();
 
+  // Production has no `budgetcategories` collection at all — categories are a
+  // post-Mongo feature. Every category there has to come from the
+  // `fixedExpenses` array embedded on a budget, or the migration loses them.
+  it('maps each embedded fixedExpense to a fixed budget category', async () => {
+    const userId = oid();
+    const budgetId = oid();
+    const rentId = oid();
+    const gymId = oid();
+
+    await mongoDb.collection('users').insertOne({
+      _id: userId,
+      email: 'a@example.com',
+      passwordHash: 'h',
+      name: 'A',
+      createdAt: new Date(),
+    });
+    await mongoDb.collection('budgets').insertOne({
+      _id: budgetId,
+      salary: 8000,
+      createdBy: userId,
+      fixedExpenses: [
+        { _id: rentId, name: 'Rent', amount: 3300 },
+        { _id: gymId, name: 'gym', amount: 280 },
+      ],
+      createdAt: new Date(),
+    });
+
+    const report = await runLoad();
+    expect(report.budgetcategories).toEqual({ read: 2, written: 2 });
+
+    const rows = await db.select().from(schema.budgetCategories);
+    expect(rows).toHaveLength(2);
+
+    const byName = Object.fromEntries(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      rows.map((r: any) => [r.name, r])
+    );
+    expect(byName.Rent.plannedAmount).toBe(3300);
+    expect(byName.Rent.kind).toBe('fixed');
+    expect(byName.Rent.color).toBeNull();
+    expect(byName.gym.plannedAmount).toBe(280);
+
+    const userRows = await db.select().from(schema.users);
+    expect(byName.Rent.createdBy).toBe(userRows[0].id);
+    // The budget itself still loads, minus the embedded array.
+    const budgetRows = await db.select().from(schema.budgets);
+    expect(budgetRows).toHaveLength(1);
+    expect(budgetRows[0].salary).toBe(8000);
+  });
+
+  // The check constraint would reject this anyway, but an opaque constraint
+  // violation rolls back the whole load without saying which row caused it.
+  it('fails by name on a fixedExpense with a non-positive amount', async () => {
+    const userId = oid();
+    await mongoDb.collection('users').insertOne({
+      _id: userId,
+      email: 'a@example.com',
+      passwordHash: 'h',
+      name: 'A',
+      createdAt: new Date(),
+    });
+    await mongoDb.collection('budgets').insertOne({
+      _id: oid(),
+      salary: 8000,
+      createdBy: userId,
+      fixedExpenses: [{ _id: oid(), name: 'Broken', amount: 0 }],
+      createdAt: new Date(),
+    });
+
+    await expect(runLoad()).rejects.toThrow(/Broken.*positive number/s);
+    expect(await db.select().from(schema.budgetCategories)).toHaveLength(0);
+  });
+
   it('loads a full dataset in FK order, resolving every reference through the id map', async () => {
     const userId = oid();
     const bankId = oid();
