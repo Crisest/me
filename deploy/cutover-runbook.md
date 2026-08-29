@@ -6,7 +6,28 @@ task in `.superpowers/sdd/2026-08-23-mongo-to-postgres-drizzle/` is merged to
 `feat/postgres`, the branch is rebased on `master`, and the Postgres LXC is
 already provisioned per `deploy/provision-postgres.md`.
 
-**Nothing in this document has been executed.** It was written, not run.
+## Executed — 2026-08-29
+
+This cutover ran on 2026-08-29 and succeeded. Deployed commit: `183c01e`.
+Downtime was roughly 50 minutes. `etl:verify` passed all 28 checks: every row
+count, 13 monthly financial checksums matching to the cent, and both orphan
+checks. Migrated: 2 users, 5 banks, 4 accounts, 2 budgets, 2 budget_overrides,
+1 group, 2 group_members, 489 transactions, 7 budget_categories, 0 cards,
+0 uploads, 0 budget_category_overrides. Production (CT101, 192.168.1.127) now
+runs against PostgreSQL 17.11 on CT110 (192.168.1.115), database `portfolio`,
+role `portfolio_app`. The auto-deploy cron on CT101 has been re-enabled.
+
+During the cutover, `etl:audit` caught that production budgets stored fixed
+costs in an embedded `fixedExpenses` array with no equivalent in the new
+schema — budget categories are a newer feature Mongo never had, and the ETL
+originally had no mapping for it, which would have silently dropped all 7
+entries. It was fixed (commit `183c01e`) by mapping each `fixedExpenses`
+entry to a `budget_categories` row with `kind='fixed'` and `plannedAmount`
+taken from the entry.
+
+The T-0 steps below reflect the order actually executed, not the order this
+document originally specified — see git history if the original ordering is
+needed for reference.
 
 ## Preconditions — confirm all of these before starting T-1
 
@@ -23,7 +44,7 @@ already provisioned per `deploy/provision-postgres.md`.
 - CT101 has room to build. Its root fs is 4 GB and was at 92% (331 MB free)
   on 2026-08-26 — `pnpm install` for the Postgres branch will not fit. Reclaim
   first with `apt clean`, `journalctl --vacuum-size=64M`, and
-  `pnpm store prune`, and confirm with `df -h /` before T-0 step 8. A build
+  `pnpm store prune`, and confirm with `df -h /` before T-0 step 6. A build
   that dies on ENOSPC halfway leaves `/opt/portfolio` in a state
   `update.sh` cannot recover from on its own.
 - CT101 (`portfolio`, `/opt/portfolio`) has `DATABASE_URI` added to
@@ -37,7 +58,7 @@ already provisioned per `deploy/provision-postgres.md`.
   `ssh root@192.168.1.50 "pct exec 101 -- node -v"`. **`deploy/update.sh` does
   not check this itself** — only `deploy/setup.sh` does, and `update.sh` is
   the script T-0 actually runs. If CT101 is still on 22.5.x, upgrade Node on
-  the container by hand before T-0 step 8, or the build/migrate/restart will
+  the container by hand before T-0 step 6, or the build/migrate/restart will
   run under the wrong runtime with no warning.
 - CT101's per-minute auto-deploy cron must be paused before any push or merge
   to `master`. Master is continuously deployed by default: root's crontab
@@ -133,7 +154,7 @@ disposable copy of production data, and measure how long it takes.
    and at least one budget override.
 7. Record wall-clock time for steps 4–5 (`etl:load` + `etl:verify` only, not
    the dump/restore or parity check). **That elapsed time is the maintenance
-   window you announce for T-0.** Pad it — production step 4 (`etl:audit`
+   window you announce for T-0.** Pad it — production step 8 (`etl:audit`
    against live data) also has to run and pass before `etl:load` starts, and
    that's additional downtime the rehearsal's audit-against-a-stale-dump
    doesn't fully represent.
@@ -170,7 +191,43 @@ problem.
    `pg_dump` cron, or another host entirely. This is the last full Mongo
    snapshot before anything changes; keep it regardless of how the cutover
    goes.
-4. Against **live production** (`.env` on CT101 already has both
+4. Pause CT101's per-minute auto-deploy cron, if it isn't already (see the
+   precondition above — it should be, but confirm here since this is the
+   point of no return for it):
+   ```
+   ssh root@192.168.1.127 'crontab -l > /root/crontab.backup-cutover && sed "s|^\* \* \* \* \* /opt/portfolio|#&|" /root/crontab.backup-cutover > /root/crontab.paused'
+   ssh root@192.168.1.127 'crontab /root/crontab.paused; crontab -l'
+   ```
+   Confirm the printed crontab shows the `/opt/portfolio` line commented out.
+5. Merge `feat/postgres` into `master` and push. (This is a normal git
+   operation on whatever machine you have push access from — it does not
+   need to happen on CT101.) Master is continuously deployed by default —
+   without the previous step, CT101's cron would pick this push up and run
+   `update.sh` unattended within a minute, against the still-empty CT110
+   database. With the cron paused, this push does nothing on its own; the
+   deploy happens explicitly in the next step instead.
+6. ```bash
+   ssh root@192.168.1.50 "pct exec 101 -- bash /opt/portfolio/deploy/update.sh"
+   ```
+   Run by hand here only because the auto-deploy cron is paused for the
+   cutover window — normally the push in the previous step would have
+   triggered this on its own. `update.sh` does, in order: `git fetch` +
+   `git reset --hard origin/master`,
+   `pnpm install`, `pnpm run common:build`, `pnpm run build`,
+   `pnpm --filter backend db:migrate` (via `cd packages/backend && pnpm run
+   db:migrate`, i.e. `drizzle-kit migrate` — **never** `drizzle-kit push`
+   against this or any environment), then `systemctl restart portfolio`. This
+   is the migration that actually creates Postgres's schema — before this
+   point CT110 has zero tables; the ETL scripts this deploy brings in under
+   `packages/backend/src/scripts/etl/` need that schema in place before
+   `etl:audit`/`etl:load` can run against it.
+7. `update.sh` ends with `systemctl restart portfolio`, which leaves the app
+   live against a Postgres database that has a schema but no data yet. Stop
+   it again before anyone can hit it:
+   ```bash
+   ssh root@192.168.1.50 "pct exec 101 -- systemctl stop portfolio"
+   ```
+8. Against **live production** (`.env` on CT101 already has both
    `MONGODB_URI` and `DATABASE_URI` set per the precondition above):
    ```bash
    ssh root@192.168.1.50 "pct exec 101 -- bash -c 'cd /opt/portfolio && pnpm --filter backend etl:audit'"
@@ -181,7 +238,7 @@ problem.
    app just needs to come back up on the stack it was already running.
    Investigate the finding, fix it in Mongo or update the ETL's mapping, and
    reschedule.
-5. ```bash
+9. ```bash
    ssh root@192.168.1.50 "pct exec 101 -- bash -c 'cd /opt/portfolio && pnpm --filter backend etl:load'"
    ```
    Confirm the printed table shows `read === written` for every collection
@@ -189,44 +246,17 @@ problem.
    (`LOAD FAILED`), the transaction rolled back — Postgres has nothing from
    this run. Restart the service on the Mongo stack and treat it the same as
    an aborted audit: investigate, do not retry blindly.
-6. ```bash
-   ssh root@192.168.1.50 "pct exec 101 -- bash -c 'cd /opt/portfolio && pnpm --filter backend etl:verify'"
-   ```
-   If any check fails: **STOP and roll back** (see below) — do not proceed to
-   step 7. Remember the orphan checks can't fail regardless; it's the row
-   count and checksum checks that gate this decision (see "What `etl:verify`
-   actually proves" above).
-7. Pause CT101's per-minute auto-deploy cron, if it isn't already (see the
-   precondition above — it should be, but confirm here since this is the
-   point of no return for it):
-   ```
-   ssh root@192.168.1.127 'crontab -l > /root/crontab.backup-cutover && sed "s|^\* \* \* \* \* /opt/portfolio|#&|" /root/crontab.backup-cutover > /root/crontab.paused'
-   ssh root@192.168.1.127 'crontab /root/crontab.paused; crontab -l'
-   ```
-   Confirm the printed crontab shows the `/opt/portfolio` line commented out.
-8. Merge `feat/postgres` into `master` and push. (This is a normal git
-   operation on whatever machine you have push access from — it does not
-   need to happen on CT101.) Master is continuously deployed by default —
-   without the previous step, CT101's cron would pick this push up and run
-   `update.sh` unattended within a minute, against the still-empty CT110
-   database. With the cron paused, this push does nothing on its own; the
-   deploy happens explicitly in the next step instead.
-9. ```bash
-   ssh root@192.168.1.50 "pct exec 101 -- bash /opt/portfolio/deploy/update.sh"
-   ```
-   Run by hand here only because the auto-deploy cron is paused for the
-   cutover window — normally the push in the previous step would have
-   triggered this on its own. `update.sh` does, in order: `git fetch` +
-   `git reset --hard origin/master`,
-   `pnpm install`, `pnpm run common:build`, `pnpm run build`,
-   `pnpm --filter backend db:migrate` (via `cd packages/backend && pnpm run
-   db:migrate`, i.e. `drizzle-kit migrate` — **never** `drizzle-kit push`
-   against this or any environment), then `systemctl restart portfolio`. At
-   this point Postgres already has its schema from the migration that ran
-   before `etl:load` in the precondition/setup phase; this `db:migrate` call
-   is idempotent and just confirms there's nothing new to apply — the initial
-   migration is already committed under `packages/backend/src/db/`.
-10. Smoke test against the live URL:
+10. ```bash
+    ssh root@192.168.1.50 "pct exec 101 -- bash -c 'cd /opt/portfolio && pnpm --filter backend etl:verify'"
+    ```
+    If any check fails: **STOP and roll back** (see below) — do not proceed to
+    step 11. Remember the orphan checks can't fail regardless; it's the row
+    count and checksum checks that gate this decision (see "What `etl:verify`
+    actually proves" above).
+11. Start the app, then smoke test against the live URL:
+    ```bash
+    ssh root@192.168.1.50 "pct exec 101 -- systemctl start portfolio"
+    ```
     - Log in with a real account (a fresh login is REQUIRED — see below).
     - Load the transactions list for a month with known data.
     - Load insights for that same month.
@@ -237,8 +267,8 @@ problem.
     between rolling back (before anyone else has logged in and written new
     data) and fixing forward, based on what broke. A cosmetic UI bug is fix-
     forward; missing transactions is roll back.
-11. Re-enable CT101's auto-deploy cron — only now that both `etl:verify`
-    (step 6) and the smoke test (step 10) have passed:
+12. Re-enable CT101's auto-deploy cron — only now that both `etl:verify`
+    (step 10) and the smoke test (step 11) have passed:
     ```
     ssh root@192.168.1.127 'crontab /root/crontab.backup-cutover; crontab -l'
     ```
@@ -246,7 +276,7 @@ problem.
     line uncommented again. Re-enabling it before `etl:verify` has passed, or
     before the smoke test above is green, reintroduces the exact race this
     pause exists to prevent — do not restore it early to save a step.
-12. Announce completion, and repeat the "everyone must log in again" notice
+13. Announce completion, and repeat the "everyone must log in again" notice
     for anyone who missed the pre-announcement.
 
 ## Users must log in again
@@ -274,7 +304,7 @@ before the cutover, not as a bug report after it.
 ## Rollback
 
 Valid only before users resume writing on the Postgres stack — i.e. only
-between T-0 step 8 and however far into step 9/10 you are before real
+between T-0 step 5 and however far into step 11 you are before real
 traffic starts hitting it. Once someone has written new data to Postgres,
 rolling back discards it.
 
@@ -300,7 +330,7 @@ rolling back discards it.
    ```bash
    ssh root@192.168.1.50 "pct exec 101 -- bash -c 'cd /opt/portfolio && pnpm install && pnpm run common:build && pnpm run build && systemctl start portfolio'"
    ```
-5. Smoke test the same four checks from T-0 step 9 against the reverted
+5. Smoke test the same four checks from T-0 step 11 against the reverted
    (Mongo) stack.
 
 Mongo was never modified — every ETL script (`audit.ts`, `load.ts`,
@@ -309,7 +339,7 @@ Mongo was never modified — every ETL script (`audit.ts`, `load.ts`,
 `packages/backend/src/scripts/etl/mongo-source.ts`) — so its data is
 byte-identical to what it was at T-0 step 2, when the service stopped. Users
 who log in again after a rollback see exactly what they had before the
-cutover attempt. Anything written to Postgres between T-0 step 8 and the
+cutover attempt. Anything written to Postgres between T-0 step 5 and the
 moment you stop the service for rollback is lost — that's the whole reason
 the rollback window closes as soon as users resume writing.
 

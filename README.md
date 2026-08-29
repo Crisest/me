@@ -6,6 +6,8 @@ A full-stack application using TypeScript, React, and Node.js, organized as a mo
 
 - Node.js v22.5.1 (specified in .nvmrc)
 - pnpm v8.15.4 or higher
+- A PostgreSQL database, with its connection string set as `DATABASE_URI` in `packages/backend/.env`. Migrations are applied with `pnpm --filter backend db:migrate`.
+- Docker, required to run the backend test suite — tests spin up a real PostgreSQL instance via Testcontainers (`postgres:17-alpine`) rather than mocking the database.
 
 ## Project Structure
 
@@ -30,7 +32,13 @@ pnpm install
 pnpm run common:build
 ```
 
-3. Start all services in development mode:
+3. Set `DATABASE_URI` in `packages/backend/.env` to point at your PostgreSQL database, then apply migrations:
+
+```bash
+pnpm --filter backend db:migrate
+```
+
+4. Start all services in development mode:
 
 ```bash
 pnpm run start:all

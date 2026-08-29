@@ -50,7 +50,7 @@ pnpm --filter backend db:studio    # browse the database
 
 ### Backend (`packages/backend`)
 
-Module-based structure under `src/modules/`. Each domain module (auth, banks, cards, budget, transactions, groups, fixedTransactions) follows the pattern:
+Module-based structure under `src/modules/`. Each domain module (accounts, auth, banks, cards, budget, transactions, groups, plaid, uploads, users) follows the pattern:
 
 ```
 module/
