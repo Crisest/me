@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: portfolio-pg-dev
+    environment:
+      POSTGRES_USER: portfolio_app
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: portfolio
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - '5432:5432'
+    volumes:
+      - portfolio-pg-data:/var/lib/postgresql/data
+
+volumes:
+  portfolio-pg-data:

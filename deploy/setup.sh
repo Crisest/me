@@ -27,13 +27,17 @@ apt-get install -y -qq curl git openssl gnupg ca-certificates &>/dev/null
 msg_ok "Base packages installed"
 
 # ─── Node.js v22 LTS ─────────────────────────────────────────────────────────
-if ! command -v node &>/dev/null; then
-  msg_info "Installing Node.js v22 LTS"
+# Minimum matches .nvmrc: testcontainers' undici needs worker_threads.markAsUncloneable,
+# added after Node 22.7. If an older 22.x is already installed, upgrade it.
+REQUIRED_NODE_VERSION="22.20.0"
+if command -v node &>/dev/null && \
+   printf '%s\n%s\n' "$REQUIRED_NODE_VERSION" "$(node -v | sed 's/^v//')" | sort -C -V; then
+  msg_ok "Node.js $(node -v) already installed"
+else
+  msg_info "Installing Node.js v22 LTS (>= ${REQUIRED_NODE_VERSION})"
   curl -fsSL https://deb.nodesource.com/setup_22.x | bash - &>/dev/null
   apt-get install -y -qq nodejs &>/dev/null
   msg_ok "Node.js $(node -v) installed"
-else
-  msg_ok "Node.js $(node -v) already installed"
 fi
 
 # ─── pnpm via corepack ───────────────────────────────────────────────────────
@@ -65,14 +69,16 @@ msg_ok "Dependencies installed"
 LXC_IP=$(hostname -I | awk '{print $1}')
 JWT_SECRET=$(openssl rand -base64 32)
 
-if [[ -z "${MONGODB_URI:-}" ]]; then
-  msg_error "MONGODB_URI must be set (e.g. MONGODB_URI='mongodb://portfolioApp:PASS@192.168.1.162:27017/portfolio?authSource=portfolio' ./setup.sh)"
+if [[ -z "${DATABASE_URI:-}" ]]; then
+  msg_error "DATABASE_URI must be set (e.g. DATABASE_URI='postgres://portfolio_app:PASS@192.168.1.NNN:5432/portfolio' ./setup.sh)"
+  exit 1
 fi
 
 msg_info "Writing production .env"
 cat > "${APP_DIR}/packages/backend/.env" <<EOF
 NODE_ENV=production
-MONGODB_URI=${MONGODB_URI}
+DATABASE_URI=${DATABASE_URI}
+DB_POOL_MAX=10
 JWT_SECRET=${JWT_SECRET}
 FRONTEND_URL=http://me.home
 VITE_API_URL=
@@ -85,6 +91,11 @@ cd "$APP_DIR"
 pnpm run common:build &>/dev/null
 pnpm run build &>/dev/null
 msg_ok "Application built"
+
+# ─── Database migrations ─────────────────────────────────────────────────────
+msg_info "Applying database migrations"
+cd "${APP_DIR}/packages/backend" && pnpm run db:migrate
+msg_ok "Migrations applied"
 
 # ─── systemd service ─────────────────────────────────────────────────────────
 msg_info "Creating systemd service"

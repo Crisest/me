@@ -1,6 +1,6 @@
 import Logger from 'bunyan';
 // types/express/index.d.ts
-import { IUser } from '../../modules/users/user.model';
+import { UserRow } from '../../db/schema';
 import { AuthUser } from '../auth';
 
 declare global {
@@ -14,5 +14,5 @@ declare global {
 }
 
 export interface RequestWithUser extends Request {
-  user: IUser; // Note: This is non-optional in RequestWithUser
+  user: UserRow; // Note: This is non-optional in RequestWithUser
 }

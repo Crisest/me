@@ -1,28 +1,30 @@
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
-process.env.NODE_ENV = 'test';
+import { sql } from 'drizzle-orm';
+import { db, closeDb } from '../src/db/client';
 
-import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+/**
+ * Every table, in no particular order — CASCADE handles the dependencies.
+ * RESTART IDENTITY is harmless here (all keys are uuids) but keeps the
+ * statement correct if a serial column is ever added.
+ */
+const TABLES = [
+  'transactions',
+  'uploads',
+  'group_members',
+  'groups',
+  'budget_category_overrides',
+  'budget_overrides',
+  'budgets',
+  'budget_categories',
+  'accounts',
+  'cards',
+  'banks',
+  'users',
+];
 
-let memoryServer: MongoMemoryServer | undefined;
-
-export async function connectMemoryMongo(): Promise<void> {
-  memoryServer = await MongoMemoryServer.create();
-  const uri = memoryServer.getUri();
-  await mongoose.connect(uri);
-}
-
-export async function disconnectMemoryMongo(): Promise<void> {
-  await mongoose.disconnect();
-  if (memoryServer) {
-    await memoryServer.stop();
-    memoryServer = undefined;
-  }
-}
-
-export async function clearAllCollections(): Promise<void> {
-  const { collections } = mongoose.connection;
-  await Promise.all(
-    Object.values(collections).map(c => c.deleteMany({}))
+export const truncateAll = async (): Promise<void> => {
+  await db.execute(
+    sql.raw(`TRUNCATE TABLE ${TABLES.join(', ')} RESTART IDENTITY CASCADE`)
   );
-}
+};
+
+export const closeTestDb = closeDb;

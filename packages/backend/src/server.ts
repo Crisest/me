@@ -2,9 +2,10 @@ import https from 'https';
 import http from 'http';
 import fs from 'fs';
 import app from './app';
-import mongoose from 'mongoose';
 import { config } from './config/env';
 import { connectToDatabase } from './db/db';
+import { closeDb } from './db/client';
+import logger from './utils/logger';
 
 const PORT = config.port;
 
@@ -15,7 +16,7 @@ let server: http.Server | https.Server | undefined;
 async function bootstrap() {
   try {
     await connectToDatabase();
-    console.log('MongoDB connected successfully');
+    console.log('Database connected successfully');
   } catch (error) {
     console.error('Database connection error:', error);
     process.exit(1);
@@ -39,11 +40,12 @@ async function bootstrap() {
 bootstrap();
 
 // Graceful shutdown
-const shutdown = async () => {
+const shutdown = async (signal: string) => {
   console.log('Shutting down gracefully...');
+  logger.info({ signal }, 'Shutting down, draining database pool');
 
-  // Close DB connection
-  await mongoose.disconnect();
+  // Close DB connections
+  await closeDb();
 
   // Close HTTP server
   server?.close(() => {
@@ -59,5 +61,5 @@ const shutdown = async () => {
 };
 
 // Catch termination signals and call the shutdown function
-process.on('SIGINT', shutdown); // Ctrl+C
-process.on('SIGTERM', shutdown); // System signals
+process.on('SIGINT', () => void shutdown('SIGINT')); // Ctrl+C
+process.on('SIGTERM', () => void shutdown('SIGTERM')); // System signals

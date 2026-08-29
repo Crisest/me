@@ -31,7 +31,7 @@ const exchangeValidation = [
 ];
 
 const bankIdValidation = [
-  param('bankId').isMongoId().withMessage('bankId must be a valid id'),
+  param('bankId').isUUID().withMessage('bankId must be a valid id'),
 ];
 
 router.post('/link-token', authMiddleware, createLinkTokenHandler);

@@ -3,6 +3,7 @@ import Content from '@ui/Content/Content';
 import { BudgetBreakdown } from '@/components/BudgetBreakdown/BudgetBreakdown';
 import { useGetUserQuery } from '@/services/authService';
 import { useGetBudgetQuery } from '@/services/budgetService';
+import { useGetBudgetCategoriesQuery } from '@/services/budgetCategoryService';
 import { FaPencilAlt } from 'react-icons/fa';
 import { ConnectedAccounts } from './ConnectedAccounts/ConnectedAccounts';
 import styles from './ProfilePage.module.css';
@@ -22,6 +23,7 @@ function getInitials(name?: string, email?: string): string {
 export const ProfilePage = () => {
   const { data: user } = useGetUserQuery();
   const { data: budget } = useGetBudgetQuery();
+  const { data: categories } = useGetBudgetCategoriesQuery();
 
   const displayName = user?.name || 'User';
 
@@ -47,7 +49,7 @@ export const ProfilePage = () => {
         </div>
 
         <div className={styles.section}>
-          <BudgetBreakdown budget={budget} />
+          <BudgetBreakdown categories={categories} salary={budget?.salary} />
         </div>
 
         <div className={styles.section}>

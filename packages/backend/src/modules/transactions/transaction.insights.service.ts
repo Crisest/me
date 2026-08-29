@@ -1,84 +1,45 @@
-import mongoose from 'mongoose';
 import { TransactionInsights } from '@portfolio/common';
-import { TransactionModel } from './transaction.model';
+import { aggregateSpend, getCategoryIdsByKind } from '../shared/insights.query';
 
 export const getMonthlyInsights = async (
-  userId: mongoose.Types.ObjectId,
+  userId: string,
   month: number,
   year?: number
 ): Promise<TransactionInsights> => {
   const targetYear = year || new Date().getFullYear();
+  // Preserved exactly as-is: LOCAL-time month boundaries (not UTC) — see
+  // transaction.service.ts's getAllTransactions for the same convention.
   const startDate = new Date(targetYear, month - 1, 1);
   const endDate = new Date(targetYear, month, 1);
 
-  const insights = await TransactionModel.aggregate([
-    { $match: { createdBy: userId, date: { $gte: startDate, $lt: endDate } } },
-    {
-      $facet: {
-        debits: [
-          {
-            $match: {
-              amount: { $gt: 0 },
-              $or: [
-                { fixedExpenseId: { $exists: false } },
-                { fixedExpenseId: null },
-              ],
-            },
-          },
-          {
-            $group: {
-              _id: null,
-              totalSpent: { $sum: '$amount' },
-              debitCount: { $sum: 1 },
-              averageDebit: { $avg: '$amount' },
-            },
-          },
-        ],
-        credits: [
-          { $match: { amount: { $lt: 0 } } },
-          {
-            $group: {
-              _id: null,
-              totalIncome: { $sum: '$amount' },
-              creditCount: { $sum: 1 },
-              averageCredit: { $avg: '$amount' },
-            },
-          },
-        ],
-        matchedFixed: [
-          {
-            $match: {
-              amount: { $gt: 0 },
-              fixedExpenseId: { $ne: null, $exists: true },
-            },
-          },
-          { $group: { _id: '$fixedExpenseId' } },
-          { $count: 'count' },
-        ],
-      },
-    },
+  const [ignoredIds, fixedIds] = await Promise.all([
+    getCategoryIdsByKind([userId], 'ignored'),
+    getCategoryIdsByKind([userId], 'fixed'),
   ]);
 
-  const debits = insights[0].debits[0] || {
-    totalSpent: 0,
-    debitCount: 0,
-    averageDebit: 0,
-  };
-  const credits = insights[0].credits[0] || {
-    totalIncome: 0,
-    creditCount: 0,
-    averageCredit: 0,
-  };
-  const matchedFixedCount = insights[0].matchedFixed[0]?.count ?? 0;
+  const agg = await aggregateSpend({
+    userIds: [userId],
+    startDate,
+    endDate,
+    excludedCategoryIds: ignoredIds,
+    fixedCategoryIds: fixedIds,
+  });
+
+  // aggregateSpend reproduces the raw SUM/AVG over (possibly negative)
+  // credit amounts, same as the old $facet pipeline did. The old service
+  // applied Math.abs() at this boundary and derived netAmount from the
+  // absolute income value — preserved exactly here.
+  const totalIncome = Math.abs(agg.totalIncome);
+  const averageCredit = Math.abs(agg.averageCredit);
 
   return {
-    totalSpent: debits.totalSpent,
-    totalIncome: Math.abs(credits.totalIncome),
-    netAmount: Math.abs(credits.totalIncome) - debits.totalSpent,
-    debitCount: debits.debitCount,
-    creditCount: credits.creditCount,
-    averageDebit: debits.averageDebit,
-    averageCredit: Math.abs(credits.averageCredit),
-    matchedFixedCount,
+    totalSpent: agg.totalSpent,
+    totalIncome,
+    netAmount: totalIncome - agg.totalSpent,
+    debitCount: agg.debitCount,
+    creditCount: agg.creditCount,
+    averageDebit: agg.averageDebit,
+    averageCredit,
+    matchedFixedCount: agg.matchedFixedCount,
   };
 };

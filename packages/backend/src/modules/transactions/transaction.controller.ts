@@ -32,7 +32,7 @@ export const postManyTransactionsByUser = async (
     const payload = req.body as TransactionPayloads.CreateMany;
     const userId = req.user!.id;
 
-    await transactionService.createManyTransactionsByUser(payload, userId);
+    await transactionService.createManyTransactionsByUser(userId, payload);
 
     res.status(201).json();
   } catch (err) {
@@ -41,25 +41,24 @@ export const postManyTransactionsByUser = async (
   }
 };
 
-export const matchFixedExpense = async (
+export const setCategory = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const userId = req.user!.id;
-    const { id } = req.params;
-    const fixedExpenseId: string | null = req.body.fixedExpenseId ?? null;
-
-    const updated = await transactionService.setTransactionFixedExpense(
-      userId,
-      id,
-      fixedExpenseId
+    const categoryId: string | null = req.body.categoryId ?? null;
+    const transaction = await transactionService.setTransactionCategory(
+      req.user!.id,
+      req.params.id,
+      { categoryId }
     );
-
-    res.json(updated);
+    req.log.info(
+      { transactionId: req.params.id, categoryId },
+      'transaction category set'
+    );
+    res.json(transaction);
   } catch (err) {
-    req.log.error({ err }, 'Failed to match fixed expense');
     next(err);
   }
 };

@@ -60,16 +60,20 @@ export const transactionApi = apiSlice.injectEndpoints({
         { type: tagTypesEnum.TRANSACTION_INSIGHTS, id: `${arg.year}-${arg.month}` },
       ],
     }),
-    matchTransactionFixedExpense: builder.mutation<
+    setTransactionCategory: builder.mutation<
       Transaction,
-      { id: string; fixedExpenseId: string | null }
+      { id: string; categoryId: string | null }
     >({
-      query: ({ id, fixedExpenseId }) => ({
-        url: `/transactions/${id}/fixed-expense`,
+      query: ({ id, categoryId }) => ({
+        url: `/transactions/${id}/category`,
         method: 'PATCH',
-        body: { fixedExpenseId },
+        body: { categoryId },
       }),
-      invalidatesTags: [tagTypesEnum.TRANSACTIONS, tagTypesEnum.TRANSACTION_INSIGHTS],
+      invalidatesTags: [
+        tagTypesEnum.TRANSACTIONS,
+        tagTypesEnum.TRANSACTION_INSIGHTS,
+        tagTypesEnum.BUDGET_SUMMARY,
+      ],
     }),
   }),
 });
@@ -79,5 +83,5 @@ export const {
   useCreateTransactionMutation,
   useCreateManyTransactionsMutation,
   useGetTransactionInsightsQuery,
-  useMatchTransactionFixedExpenseMutation,
+  useSetTransactionCategoryMutation,
 } = transactionApi;

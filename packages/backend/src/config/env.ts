@@ -7,7 +7,10 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '3000', 10),
-  mongoUri: process.env.MONGODB_URI || 'mongodb://localhost:27017/portfolio',
+  databaseUri: process.env.DATABASE_URI || '',
+  dbPoolMax: parseInt(process.env.DB_POOL_MAX || '10', 10),
+  // Read only by src/scripts/etl/*. Delete once the ETL is retired.
+  mongoUri: process.env.MONGODB_URI || '',
   jwtSecret: process.env.JWT_SECRET || 'your-secret-key',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
   cookieSecure: (process.env.FRONTEND_URL || '').startsWith('https://'),
@@ -28,6 +31,10 @@ export const config = {
     tokenEncryptionKey: process.env.PLAID_TOKEN_ENCRYPTION_KEY || '',
   },
 };
+
+if (!config.databaseUri) {
+  throw new Error('DATABASE_URI must be set');
+}
 
 if (config.nodeEnv === 'production') {
   const missing = (

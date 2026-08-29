@@ -4,6 +4,8 @@ import * as AuthService from './auth.service';
 import { LoginPayload, MeResponse, RegisterPayload } from '@portfolio/common';
 import { getConfig } from '@/config/env';
 import { RequestWithUser } from '@/types/express';
+import { toUser } from '../users/user.mapper';
+import { getGroupIdsForUser } from '../users/user.service';
 
 export const register = async (req: Request, res: Response) => {
   const log = req.log.child({ action: 'register' });
@@ -14,8 +16,11 @@ export const register = async (req: Request, res: Response) => {
 
     const user = await AuthService.register(email, password, name);
 
-    log.info({ userId: user._id }, 'User registration successful');
-    res.status(201).json({ message: 'User created', user: user.toUser() });
+    log.info({ userId: user.id }, 'User registration successful');
+    const groupIds = await getGroupIdsForUser(user.id);
+    res
+      .status(201)
+      .json({ message: 'User created', user: toUser(user, groupIds) });
   } catch (err: any) {
     log.error({ err }, 'User registration failed');
     res.status(400).json({ message: err.message });
@@ -41,8 +46,9 @@ export const login = async (req: Request, res: Response) => {
       path: '/',
     });
 
-    log.info({ userId: user._id }, 'User login successful');
-    res.status(200).json({ user: user.toUser() });
+    log.info({ userId: user.id }, 'User login successful');
+    const groupIds = await getGroupIdsForUser(user.id);
+    res.status(200).json({ user: toUser(user, groupIds) });
   } catch (err: any) {
     log.error({ err, email: req.body.email }, 'User login failed');
     res.status(401).json({ message: err.message });

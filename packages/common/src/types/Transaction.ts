@@ -22,7 +22,7 @@ export interface Transaction {
   accountMask?: string; // NEW — e.g. "0000"
   ownerEmail?: string;
   ownerName?: string;
-  fixedExpenseId?: string;
+  categoryId?: string;
 }
 
 export namespace TransactionPayloads {
@@ -55,7 +55,7 @@ export namespace TransactionPayloads {
     year?: number;
   }
 
-  export interface MatchFixedExpense {
-    fixedExpenseId: string | null; // null = unmatch
+  export interface SetCategory {
+    categoryId: string | null; // null = untag
   }
 }

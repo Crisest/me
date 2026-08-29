@@ -1,14 +1,19 @@
-import type { Budget } from '@portfolio/common';
+import type { BudgetCategory } from '@portfolio/common';
 import { formatCAD } from '@/utils/format';
 import styles from './BudgetBreakdown.module.css';
 
 interface BudgetBreakdownProps {
-  budget: Budget | null | undefined;
+  categories: BudgetCategory[] | undefined;
+  salary: number | undefined;
   title?: string;
 }
 
-export function BudgetBreakdown({ budget, title = 'Budget Breakdown' }: BudgetBreakdownProps) {
-  if (!budget) {
+export function BudgetBreakdown({
+  categories,
+  salary,
+  title = 'Budget Breakdown',
+}: BudgetBreakdownProps) {
+  if (salary === undefined) {
     return (
       <div className={styles.container}>
         <div className={styles.header}>{title}</div>
@@ -17,8 +22,10 @@ export function BudgetBreakdown({ budget, title = 'Budget Breakdown' }: BudgetBr
     );
   }
 
-  const totalFixed = budget.fixedExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const remaining = budget.salary - totalFixed;
+  // `ignored` categories are not spending, so they never appear in a breakdown.
+  const planned = (categories ?? []).filter(c => c.kind !== 'ignored');
+  const totalPlanned = planned.reduce((sum, c) => sum + c.plannedAmount, 0);
+  const remaining = salary - totalPlanned;
 
   return (
     <div className={styles.container}>
@@ -27,15 +34,15 @@ export function BudgetBreakdown({ budget, title = 'Budget Breakdown' }: BudgetBr
       <div className={styles.row}>
         <span className={styles.rowLabel}>Monthly Income</span>
         <span className={`${styles.rowAmount} ${styles.positive}`}>
-          +{formatCAD(budget.salary)}
+          +{formatCAD(salary)}
         </span>
       </div>
 
-      {budget.fixedExpenses.map((expense, i) => (
-        <div className={styles.row} key={i}>
-          <span className={styles.rowLabel}>{expense.name}</span>
+      {planned.map(category => (
+        <div className={styles.row} key={category.id}>
+          <span className={styles.rowLabel}>{category.name}</span>
           <span className={`${styles.rowAmount} ${styles.negative}`}>
-            -{formatCAD(expense.amount)}
+            -{formatCAD(category.plannedAmount)}
           </span>
         </div>
       ))}

@@ -4,7 +4,12 @@ import { useLocation } from 'react-router-dom';
 // Routes a sidebar entry can highlight for. The active tab is the longest
 // one that matches the current path, so nested routes like
 // `/shared/:groupId` still light up the `Shared` tab.
-const navRoutes: Route[] = [Route.HOME, Route.SHARED, Route.PROFILE];
+const navRoutes: Route[] = [
+  Route.HOME,
+  Route.TRANSACTIONS,
+  Route.SHARED,
+  Route.PROFILE,
+];
 
 const useSideBar = () => {
   const { pathname } = useLocation();
@@ -28,6 +33,10 @@ export const buttonData: ButtonData[] = [
   {
     text: 'Budget',
     to: Route.HOME,
+  },
+  {
+    text: 'Transactions',
+    to: Route.TRANSACTIONS,
   },
   {
     text: 'Shared',

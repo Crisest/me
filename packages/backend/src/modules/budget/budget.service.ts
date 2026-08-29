@@ -1,60 +1,49 @@
-import mongoose from 'mongoose';
 import {
   Budget,
   BudgetPayloads,
   BudgetOverride,
   BudgetOverridePayloads,
+  BudgetCategoryOverride,
+  BudgetCategoryPayloads,
 } from '@portfolio/common';
-import { BudgetModel, FixedExpenseSubdoc } from './budget.model';
-import { BudgetOverrideModel } from './budgetOverride.model';
-import { TransactionModel } from '../transactions/transaction.model';
+import { and, eq } from 'drizzle-orm';
+import { db } from '../../db/client';
+import {
+  budgets,
+  budgetOverrides,
+  budgetCategories,
+  budgetCategoryOverrides,
+} from '../../db/schema';
+import {
+  toBudget,
+  toBudgetOverride,
+  toBudgetCategoryOverride,
+} from './budget.mapper';
+import { AppError } from '../../middleware/errorHandler';
 
 export const getBudgetByUserId = async (
   userId: string
 ): Promise<Budget | null> => {
-  const result = await BudgetModel.findOne({ createdBy: userId });
-  return result ? result.toBudget() : null;
+  const row = await db.query.budgets.findFirst({
+    where: eq(budgets.createdBy, userId),
+  });
+  return row ? toBudget(row) : null;
 };
 
 export const upsertBudget = async (
   userId: string,
   payload: BudgetPayloads.Upsert
 ): Promise<Budget> => {
-  const nextSubdocs = payload.fixedExpenses.map(e => ({
-    ...(e.id ? { _id: new mongoose.Types.ObjectId(e.id) } : {}),
-    name: e.name,
-    amount: e.amount,
-  }));
-  const nextIds = new Set(
-    payload.fixedExpenses.map(e => e.id).filter((id): id is string => !!id)
-  );
+  const [row] = await db
+    .insert(budgets)
+    .values({ createdBy: userId, salary: payload.salary })
+    .onConflictDoUpdate({
+      target: budgets.createdBy,
+      set: { salary: payload.salary, updatedAt: new Date() },
+    })
+    .returning();
 
-  // Atomic swap: returns the pre-update doc so removedIds can't be invalidated
-  // by a racing upsert between read and write.
-  const prior = await BudgetModel.findOneAndUpdate(
-    { createdBy: userId },
-    { salary: payload.salary, fixedExpenses: nextSubdocs, createdBy: userId },
-    { upsert: true, new: false, runValidators: true, setDefaultsOnInsert: true }
-  );
-
-  const removedIds = (prior?.fixedExpenses ?? [])
-    .map((e: FixedExpenseSubdoc) => e._id.toString())
-    .filter(id => !nextIds.has(id));
-
-  if (removedIds.length > 0) {
-    await TransactionModel.updateMany(
-      {
-        createdBy: userId,
-        fixedExpenseId: {
-          $in: removedIds.map(id => new mongoose.Types.ObjectId(id)),
-        },
-      },
-      { $unset: { fixedExpenseId: '' } }
-    );
-  }
-
-  const updated = await BudgetModel.findOne({ createdBy: userId });
-  return updated!.toBudget();
+  return toBudget(row);
 };
 
 export const getBudgetOverride = async (
@@ -62,22 +51,92 @@ export const getBudgetOverride = async (
   month: number,
   year: number
 ): Promise<BudgetOverride | null> => {
-  const result = await BudgetOverrideModel.findOne({
-    createdBy: userId,
-    month,
-    year,
+  const row = await db.query.budgetOverrides.findFirst({
+    where: and(
+      eq(budgetOverrides.createdBy, userId),
+      eq(budgetOverrides.month, month),
+      eq(budgetOverrides.year, year)
+    ),
   });
-  return result ? result.toBudgetOverride() : null;
+  return row ? toBudgetOverride(row) : null;
 };
 
 export const upsertBudgetOverride = async (
   userId: string,
   payload: BudgetOverridePayloads.Upsert
 ): Promise<BudgetOverride> => {
-  const result = await BudgetOverrideModel.findOneAndUpdate(
-    { createdBy: userId, month: payload.month, year: payload.year },
-    { ...payload, createdBy: userId },
-    { upsert: true, new: true, runValidators: true }
-  );
-  return result.toBudgetOverride();
+  const [row] = await db
+    .insert(budgetOverrides)
+    .values({
+      createdBy: userId,
+      month: payload.month,
+      year: payload.year,
+      salary: payload.salary,
+    })
+    .onConflictDoUpdate({
+      target: [
+        budgetOverrides.createdBy,
+        budgetOverrides.month,
+        budgetOverrides.year,
+      ],
+      set: { salary: payload.salary, updatedAt: new Date() },
+    })
+    .returning();
+  return toBudgetOverride(row);
+};
+
+export const upsertCategoryOverride = async (
+  userId: string,
+  categoryId: string,
+  payload: BudgetCategoryPayloads.SetOverride
+): Promise<BudgetCategoryOverride> => {
+  const category = await db.query.budgetCategories.findFirst({
+    where: and(
+      eq(budgetCategories.id, categoryId),
+      eq(budgetCategories.createdBy, userId)
+    ),
+  });
+  if (!category) throw new AppError('Category not found', 404);
+  if (category.kind === 'ignored') {
+    throw new AppError('Ignored categories cannot have a monthly target', 400);
+  }
+
+  const [row] = await db
+    .insert(budgetCategoryOverrides)
+    .values({
+      createdBy: userId,
+      categoryId,
+      month: payload.month,
+      year: payload.year,
+      plannedAmount: payload.plannedAmount,
+    })
+    .onConflictDoUpdate({
+      target: [
+        budgetCategoryOverrides.createdBy,
+        budgetCategoryOverrides.categoryId,
+        budgetCategoryOverrides.month,
+        budgetCategoryOverrides.year,
+      ],
+      set: { plannedAmount: payload.plannedAmount, updatedAt: new Date() },
+    })
+    .returning();
+  return toBudgetCategoryOverride(row);
+};
+
+export const deleteCategoryOverride = async (
+  userId: string,
+  categoryId: string,
+  month: number,
+  year: number
+): Promise<void> => {
+  await db
+    .delete(budgetCategoryOverrides)
+    .where(
+      and(
+        eq(budgetCategoryOverrides.createdBy, userId),
+        eq(budgetCategoryOverrides.categoryId, categoryId),
+        eq(budgetCategoryOverrides.month, month),
+        eq(budgetCategoryOverrides.year, year)
+      )
+    );
 };

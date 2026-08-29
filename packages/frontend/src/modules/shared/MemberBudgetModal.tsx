@@ -29,7 +29,13 @@ const MemberBudgetModal: React.FC<Props> = ({
       {isLoading && <p>Loading budget…</p>}
       {isError && <p>Could not load this member's budget.</p>}
       {!isLoading && !isError && (
-        <BudgetBreakdown budget={data} title={`${label}'s Budget`} />
+        /* Per-member category sharing is deliberately out of scope — see the
+           spec's Deferred section. Only the member's income is shown. */
+        <BudgetBreakdown
+          categories={[]}
+          salary={data?.salary}
+          title={`${label}'s Budget`}
+        />
       )}
     </YmDialog>
   );

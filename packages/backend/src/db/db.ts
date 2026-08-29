@@ -1,13 +1,18 @@
-import mongoose from 'mongoose';
-import { config } from '../config/env';
+import { sql } from 'drizzle-orm';
+import { db } from './client';
+import logger from '../utils/logger';
 
-export const connectToDatabase = async () => {
+/**
+ * Verifies database connectivity at boot. Does not run migrations —
+ * `drizzle-kit migrate` runs as a separate deploy step so a failed
+ * migration never leaves a half-started process.
+ */
+export const connectToDatabase = async (): Promise<void> => {
   try {
-    console.log('connecting to db');
-    await mongoose.connect(config.mongoUri, {});
-    console.log(`Connected to MongoDB with Mongoose`);
+    await db.execute(sql`select 1`);
+    logger.info('Connected to Postgres');
   } catch (error) {
-    console.error('Error connecting to MongoDB with Mongoose:', error);
+    logger.error({ err: error }, 'Failed to connect to Postgres');
     throw error;
   }
 };

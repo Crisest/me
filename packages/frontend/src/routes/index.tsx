@@ -6,7 +6,8 @@ import RegisterPage from '@/modules/Auth/register/RegisterPage';
 import SharedPage from '@/modules/shared/SharedPage';
 import SharedDashboardPage from '@/modules/shared/SharedDashboardPage';
 import JoinSharedPage from '@/modules/shared/JoinSharedPage';
-import { BudgetPage } from '@/modules/budget/BudgetPage';
+import { BudgetOverviewPage } from '@/modules/budget/BudgetOverviewPage';
+import { TransactionsPage } from '@/modules/transactions/TransactionsPage';
 import { ProfilePage } from '@/modules/profile/ProfilePage';
 import { PrivateRoutes } from '@/components/Auth/PrivateRoute';
 import AppLayout from '@/components/Layout/AppLayout';
@@ -21,8 +22,9 @@ export const AppRoutes: React.FC = () => {
       {/* Protected routes */}
       <Route element={<PrivateRoutes />}>
         <Route element={<AppLayout />}>
-          <Route path={RouteEnum.HOME} element={<BudgetPage />} />
-          <Route path={RouteEnum.BUDGET} element={<BudgetPage />} />
+          <Route path={RouteEnum.HOME} element={<BudgetOverviewPage />} />
+          <Route path={RouteEnum.BUDGET} element={<BudgetOverviewPage />} />
+          <Route path={RouteEnum.TRANSACTIONS} element={<TransactionsPage />} />
           <Route path={RouteEnum.PROFILE} element={<ProfilePage />} />
           <Route path={RouteEnum.SHARED} element={<SharedPage />} />
           <Route path={RouteEnum.SHARED_JOIN} element={<JoinSharedPage />} />

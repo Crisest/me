@@ -1,39 +1,38 @@
-import mongoose from 'mongoose';
 import { requireGroupMembership } from './group.middleware';
-import { Group } from './group.model';
 import { AppError } from '../../middleware/errorHandler';
+import { truncateAll, closeTestDb } from '../../../test/setup';
+import { makeUser, makeGroup } from '../../../test/helpers/factories';
+import { db } from '../../db/client';
+import { groupMembers } from '../../db/schema';
 
-jest.mock('./group.model');
+afterEach(truncateAll);
+afterAll(closeTestDb);
 
-const mockedGroup = Group as unknown as jest.Mocked<typeof Group>;
-
-const MEMBER_A = new mongoose.Types.ObjectId();
-const OUTSIDER = new mongoose.Types.ObjectId();
-const GROUP_ID = new mongoose.Types.ObjectId().toString();
-
-const buildCtx = (userId: string) => {
-  const req: any = { params: { groupId: GROUP_ID }, user: { id: userId } };
+const buildCtx = (groupId: string, userId: string) => {
+  const req: any = { params: { groupId }, user: { id: userId } };
   const res: any = { locals: {} };
   const next = jest.fn();
   return { req, res, next };
 };
 
-beforeEach(() => jest.clearAllMocks());
-
 it('calls next with no error and stashes the group for a member', async () => {
-  const group = { members: [MEMBER_A] };
-  mockedGroup.findById = jest.fn().mockResolvedValue(group) as any;
-  const { req, res, next } = buildCtx(MEMBER_A.toString());
+  const owner = await makeUser();
+  const group = await makeGroup(owner.id);
+  await db.insert(groupMembers).values({ groupId: group.id, userId: owner.id });
+  const { req, res, next } = buildCtx(group.id, owner.id);
 
   await requireGroupMembership(req, res, next);
 
   expect(next).toHaveBeenCalledWith();
-  expect(res.locals.group).toBe(group);
+  expect(res.locals.group).toEqual({ id: group.id, members: [owner.id] });
 });
 
 it('rejects a non-member with 403', async () => {
-  mockedGroup.findById = jest.fn().mockResolvedValue({ members: [MEMBER_A] }) as any;
-  const { req, res, next } = buildCtx(OUTSIDER.toString());
+  const owner = await makeUser();
+  const outsider = await makeUser();
+  const group = await makeGroup(owner.id);
+  await db.insert(groupMembers).values({ groupId: group.id, userId: owner.id });
+  const { req, res, next } = buildCtx(group.id, outsider.id);
 
   await requireGroupMembership(req, res, next);
 
@@ -44,8 +43,8 @@ it('rejects a non-member with 403', async () => {
 });
 
 it('rejects an unknown group with 404', async () => {
-  mockedGroup.findById = jest.fn().mockResolvedValue(null) as any;
-  const { req, res, next } = buildCtx(MEMBER_A.toString());
+  const owner = await makeUser();
+  const { req, res, next } = buildCtx('00000000-0000-0000-0000-000000000000', owner.id);
 
   await requireGroupMembership(req, res, next);
 

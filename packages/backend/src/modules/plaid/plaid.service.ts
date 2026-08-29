@@ -1,20 +1,19 @@
-import mongoose from 'mongoose';
+import { and, eq, inArray, isNotNull, isNull, or } from 'drizzle-orm';
 import { CountryCode, Products, Transaction as PlaidTransaction } from 'plaid';
 import { getPlaidClient } from './plaid.client';
-import { BankModel } from '../banks/bank.model';
-import type { IBank } from '../banks/bank.model';
-import { TransactionModel } from '../transactions/transaction.model';
+import { db, type Tx } from '../../db/client';
+import { accounts, banks, transactions, type BankRow } from '../../db/schema';
 import { encrypt, decrypt } from '@/utils/crypto';
 import { PlaidPayloads, PlaidLinkedBank } from '@portfolio/common';
 import {
   findPlaidLinkedBanksByUser,
   findPlaidBankByIdForUser,
 } from '../banks/bank.service';
+import { toBank } from '../banks/bank.mapper';
 import {
   upsertPlaidAccountsForBank,
   deleteAccountsForBank,
 } from '../accounts/account.service';
-import { AccountModel } from '../accounts/account.model';
 
 export async function createLinkToken(userId: string): Promise<string> {
   const plaid = getPlaidClient();
@@ -40,15 +39,18 @@ export async function exchangePublicToken(
   const accessToken = exchange.data.access_token;
   const itemId = exchange.data.item_id;
 
-  const bank = await BankModel.create({
-    name: payload.institutionName,
-    createdBy: userId,
-    isPlaidLinked: true,
-    plaidAccessToken: encrypt(accessToken),
-    plaidItemId: itemId,
-    plaidInstitutionId: payload.institutionId,
-    plaidStatus: 'connected',
-  });
+  const [bank] = await db
+    .insert(banks)
+    .values({
+      name: payload.institutionName,
+      createdBy: userId,
+      isPlaidLinked: true,
+      plaidAccessToken: encrypt(accessToken),
+      plaidItemId: itemId,
+      plaidInstitutionId: payload.institutionId,
+      plaidStatus: 'connected',
+    })
+    .returning();
 
   try {
     await syncAccountsForBank(bank);
@@ -56,36 +58,47 @@ export async function exchangePublicToken(
     // Account sync failure shouldn't block the link — txs sync will retry.
   }
 
-  return bank.toBank() as PlaidLinkedBank;
+  return toBank(bank) as PlaidLinkedBank;
 }
 
 type SyncCounts = PlaidPayloads.SyncResponse;
 
-async function syncAccountsForBank(
-  bank: IBank
-): Promise<Map<string, mongoose.Types.ObjectId>> {
-  const plaid = getPlaidClient();
-  const accessToken = decrypt(bank.plaidAccessToken!);
-  const userId = bank.createdBy.toString();
-  const bankId = (bank._id as mongoose.Types.ObjectId).toString();
+/**
+ * Persists a set of accounts already fetched from Plaid. Pure DB write, no
+ * network I/O — safe to run inside a db.transaction().
+ */
+async function upsertAccounts(
+  bank: BankRow,
+  plaidAccounts: Parameters<typeof upsertPlaidAccountsForBank>[2],
+  executor: Tx | typeof db = db
+): Promise<Map<string, string>> {
+  const rows = await upsertPlaidAccountsForBank(
+    bank.createdBy,
+    bank.id,
+    plaidAccounts,
+    executor
+  );
 
-  const response = await plaid.accountsGet({ access_token: accessToken });
-  await upsertPlaidAccountsForBank(userId, bankId, response.data.accounts);
-
-  const docs = await AccountModel.find({
-    bankId: new mongoose.Types.ObjectId(bankId),
-    createdBy: new mongoose.Types.ObjectId(userId),
-  });
-  const map = new Map<string, mongoose.Types.ObjectId>();
-  for (const d of docs)
-    map.set(d.plaidAccountId, d._id as mongoose.Types.ObjectId);
+  const map = new Map<string, string>();
+  for (const row of rows) map.set(row.plaidAccountId, row.id);
   return map;
 }
 
-function mapPlaidTxToDoc(
+async function syncAccountsForBank(
+  bank: BankRow,
+  executor: Tx | typeof db = db
+): Promise<Map<string, string>> {
+  const plaid = getPlaidClient();
+  const accessToken = decrypt(bank.plaidAccessToken!);
+
+  const response = await plaid.accountsGet({ access_token: accessToken });
+  return upsertAccounts(bank, response.data.accounts, executor);
+}
+
+function mapPlaidTxToRow(
   tx: PlaidTransaction,
   userId: string,
-  accountIdByPlaidId: Map<string, mongoose.Types.ObjectId>
+  accountIdByPlaidId: Map<string, string>
 ) {
   return {
     amount: tx.amount,
@@ -97,27 +110,40 @@ function mapPlaidTxToDoc(
     accountId: accountIdByPlaidId.get(tx.account_id),
     logoUrl: tx.logo_url ?? undefined,
     categoryIconUrl: tx.personal_finance_category_icon_url ?? undefined,
-    createdBy: new mongoose.Types.ObjectId(userId),
+    createdBy: userId,
   };
 }
 
-async function syncBank(bank: IBank): Promise<SyncCounts> {
+async function syncBank(bank: BankRow): Promise<SyncCounts> {
   if (!bank.isPlaidLinked || !bank.plaidAccessToken) {
-    throw new Error(`Bank ${bank._id} is not Plaid-linked`);
+    throw new Error(`Bank ${bank.id} is not Plaid-linked`);
   }
 
   const plaid = getPlaidClient();
   const accessToken = decrypt(bank.plaidAccessToken);
-  const userId = bank.createdBy.toString();
-  const accountIdByPlaidId = await syncAccountsForBank(bank);
+  const userId = bank.createdBy;
 
   let cursor = bank.plaidSyncCursor || undefined;
   let added = 0;
   let modified = 0;
   let removed = 0;
-  let hasMore = true;
 
   try {
+    // Drain every Plaid round-trip (accounts + all transaction pages) into
+    // memory FIRST, with no DB transaction open. A pool connection must
+    // never sit pinned across network I/O — see the plaid.service module
+    // docs / final-review fix report. Only the DB writes below run inside
+    // db.transaction(), so the atomicity guarantee (all writes + cursor
+    // commit or roll back together) is unchanged.
+    const accountsResponse = await plaid.accountsGet({
+      access_token: accessToken,
+    });
+
+    const pendingAdded: PlaidTransaction[] = [];
+    const pendingModified: PlaidTransaction[] = [];
+    const pendingRemovedIds: string[] = [];
+
+    let hasMore = true;
     while (hasMore) {
       const response = await plaid.transactionsSync({
         access_token: accessToken,
@@ -125,60 +151,84 @@ async function syncBank(bank: IBank): Promise<SyncCounts> {
       });
       const data = response.data;
 
-      const nonPendingAdded = data.added.filter(t => !t.pending);
-      const nonPendingModified = data.modified.filter(t => !t.pending);
-
-      if (nonPendingAdded.length > 0) {
-        await TransactionModel.insertMany(
-          nonPendingAdded.map(t =>
-            mapPlaidTxToDoc(t, userId, accountIdByPlaidId)
-          ),
-          { ordered: false }
-        ).catch(err => {
-          // Duplicate key (same plaidTransactionId seen twice) is safe to ignore
-          if (err?.code !== 11000) throw err;
-        });
-        added += nonPendingAdded.length;
-      }
-
-      for (const t of nonPendingModified) {
-        await TransactionModel.updateOne(
-          { plaidTransactionId: t.transaction_id },
-          { $set: mapPlaidTxToDoc(t, userId, accountIdByPlaidId) },
-          { upsert: true }
-        );
-        modified += 1;
-      }
-
-      if (data.removed.length > 0) {
-        const ids = data.removed
+      pendingAdded.push(...data.added.filter(t => !t.pending));
+      pendingModified.push(...data.modified.filter(t => !t.pending));
+      pendingRemovedIds.push(
+        ...data.removed
           .map(r => r.transaction_id)
-          .filter((id): id is string => !!id);
-        const result = await TransactionModel.deleteMany({
-          plaidTransactionId: { $in: ids },
-          createdBy: bank.createdBy,
-        });
-        removed += result.deletedCount ?? 0;
-      }
+          .filter((id): id is string => !!id)
+      );
 
       cursor = data.next_cursor;
       hasMore = data.has_more;
     }
 
-    bank.plaidSyncCursor = cursor;
-    bank.plaidStatus = 'connected';
-    await bank.save();
+    await db.transaction(async tx => {
+      const accountIdByPlaidId = await upsertAccounts(
+        bank,
+        accountsResponse.data.accounts,
+        tx
+      );
+
+      if (pendingAdded.length > 0) {
+        await tx
+          .insert(transactions)
+          .values(
+            pendingAdded.map(t => mapPlaidTxToRow(t, userId, accountIdByPlaidId))
+          )
+          .onConflictDoNothing({ target: transactions.plaidTransactionId });
+        added = pendingAdded.length;
+      }
+
+      for (const t of pendingModified) {
+        const row = mapPlaidTxToRow(t, userId, accountIdByPlaidId);
+        await tx
+          .insert(transactions)
+          .values(row)
+          .onConflictDoUpdate({
+            target: transactions.plaidTransactionId,
+            set: {
+              amount: row.amount,
+              description: row.description,
+              category: row.category,
+              subDescription: row.subDescription,
+              date: row.date,
+              accountId: row.accountId,
+              logoUrl: row.logoUrl,
+              categoryIconUrl: row.categoryIconUrl,
+            },
+          });
+        modified += 1;
+      }
+
+      if (pendingRemovedIds.length > 0) {
+        const result = await tx
+          .delete(transactions)
+          .where(
+            and(
+              inArray(transactions.plaidTransactionId, pendingRemovedIds),
+              eq(transactions.createdBy, userId)
+            )
+          )
+          .returning({ id: transactions.id });
+        removed = result.length;
+      }
+
+      await tx
+        .update(banks)
+        .set({ plaidSyncCursor: cursor, plaidStatus: 'connected' })
+        .where(eq(banks.id, bank.id));
+    });
 
     return { added, modified, removed };
   } catch (err: any) {
     const plaidCode = err?.response?.data?.error_code;
-    if (plaidCode === 'ITEM_LOGIN_REQUIRED') {
-      bank.plaidStatus = 'login_required';
-      await bank.save();
-    } else {
-      bank.plaidStatus = 'error';
-      await bank.save();
-    }
+    await db
+      .update(banks)
+      .set({
+        plaidStatus: plaidCode === 'ITEM_LOGIN_REQUIRED' ? 'login_required' : 'error',
+      })
+      .where(eq(banks.id, bank.id));
     throw err;
   }
 }
@@ -193,9 +243,9 @@ export async function syncOneBankForUser(
 }
 
 export async function syncAllBanksForUser(userId: string): Promise<SyncCounts> {
-  const banks = await findPlaidLinkedBanksByUser(userId);
+  const linkedBanks = await findPlaidLinkedBanksByUser(userId);
   const totals: SyncCounts = { added: 0, modified: 0, removed: 0 };
-  for (const bank of banks) {
+  for (const bank of linkedBanks) {
     try {
       const r = await syncBank(bank);
       totals.added += r.added;
@@ -233,22 +283,34 @@ export async function resyncBank(
   const bank = await findPlaidBankByIdForUser(userId, bankId);
   if (!bank) throw new Error('Plaid-linked bank not found');
 
-  const accountIds = await AccountModel.find({ bankId: bank._id }).distinct(
-    '_id'
-  );
+  const accountRows = await db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(eq(accounts.bankId, bank.id));
+  const accountIds = accountRows.map(a => a.id);
 
-  await TransactionModel.deleteMany({
-    createdBy: bank.createdBy,
-    $or: [
-      { accountId: { $in: accountIds } },
-      { plaidTransactionId: { $exists: true }, accountId: { $exists: false } },
-    ],
-  });
+  await db
+    .delete(transactions)
+    .where(
+      and(
+        eq(transactions.createdBy, bank.createdBy),
+        or(
+          inArray(transactions.accountId, accountIds),
+          and(
+            isNotNull(transactions.plaidTransactionId),
+            isNull(transactions.accountId)
+          )
+        )
+      )
+    );
 
-  bank.plaidSyncCursor = undefined;
-  await bank.save();
+  const [updated] = await db
+    .update(banks)
+    .set({ plaidSyncCursor: null })
+    .where(eq(banks.id, bank.id))
+    .returning();
 
-  return syncBank(bank);
+  return syncBank(updated);
 }
 
 export async function unlinkBank(
@@ -265,13 +327,17 @@ export async function unlinkBank(
     // If Plaid call fails we still locally unlink — avoids orphaned local state
   }
 
-  bank.isPlaidLinked = false;
-  bank.plaidAccessToken = undefined;
-  bank.plaidItemId = undefined;
-  bank.plaidInstitutionId = undefined;
-  bank.plaidSyncCursor = undefined;
-  bank.plaidStatus = undefined;
-  await bank.save();
+  await db
+    .update(banks)
+    .set({
+      isPlaidLinked: false,
+      plaidAccessToken: null,
+      plaidItemId: null,
+      plaidInstitutionId: null,
+      plaidSyncCursor: null,
+      plaidStatus: null,
+    })
+    .where(eq(banks.id, bank.id));
 
   await deleteAccountsForBank(bankId);
 }

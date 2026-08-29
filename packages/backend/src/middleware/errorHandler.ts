@@ -18,11 +18,24 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  // Map Mongoose CastError (malformed ObjectId, etc.) to a 400 operational error
-  if (err.name === 'CastError') {
-    const cast = err as any;
-    const message = `Invalid ${cast.path}: ${cast.value}`;
-    err = new AppError(message, 400);
+  // SQLSTATE codes surfaced by node-postgres. drizzle-orm wraps the raw pg
+  // error, so the code can land on err.code (raw pg) or err.cause.code
+  // (wrapped by drizzle) depending on the path the error took to get here.
+  const pgCode =
+    (err as unknown as { code?: string }).code ??
+    (err as unknown as { cause?: { code?: string } }).cause?.code;
+  if (pgCode === '22P02') {
+    // invalid_text_representation — a malformed uuid reached a uuid column
+    err = new AppError('Invalid identifier', 400);
+  } else if (pgCode === '23503') {
+    // foreign_key_violation
+    err = new AppError('Referenced resource does not exist', 400);
+  } else if (pgCode === '23505') {
+    // unique_violation
+    err = new AppError('Resource already exists', 409);
+  } else if (pgCode === '23514') {
+    // check_violation
+    err = new AppError('Value violates a constraint', 400);
   }
 
   const statusCode = (err as AppError).statusCode || 500;

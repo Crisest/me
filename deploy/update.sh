@@ -30,6 +30,10 @@ pnpm run common:build
 pnpm run build
 msg_ok "Application built"
 
+msg_info "Applying database migrations"
+cd "${APP_DIR}/packages/backend" && pnpm run db:migrate
+msg_ok "Migrations applied"
+
 msg_info "Restarting service"
 systemctl restart portfolio
 msg_ok "Service restarted"

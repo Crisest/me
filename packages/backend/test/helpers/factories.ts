@@ -1,52 +1,150 @@
-import mongoose from 'mongoose';
-import { User } from '../../src/modules/users/user.model';
-import { BankModel } from '../../src/modules/banks/bank.model';
-import { CardModel } from '../../src/modules/cards/card.model';
-import { TransactionModel } from '../../src/modules/transactions/transaction.model';
+import { v7 as uuidv7 } from 'uuid';
+import { db } from '../../src/db/client';
+import {
+  accounts,
+  banks,
+  budgetCategories,
+  budgetCategoryOverrides,
+  cards,
+  groups,
+  transactions,
+  users,
+  type AccountRow,
+  type BankRow,
+  type BudgetCategoryOverrideRow,
+  type BudgetCategoryRow,
+  type CardRow,
+  type GroupRow,
+  type TransactionRow,
+  type UserRow,
+} from '../../src/db/schema';
 
-let counter = 0;
-const uniq = () => ++counter;
+/** Unique-per-call suffix so factories never collide on unique columns. */
+const uniq = () => uuidv7().slice(-12);
 
-export async function makeUser(overrides: Partial<{ email: string; name: string; passwordHash: string }> = {}) {
-  const n = uniq();
-  const user = await User.create({
-    email: overrides.email ?? `user${n}@test.local`,
-    name: overrides.name ?? `User ${n}`,
-    passwordHash: overrides.passwordHash ?? 'hashed-password-placeholder',
-  });
-  return user;
-}
+export const makeUser = async (
+  overrides: Partial<typeof users.$inferInsert> = {}
+): Promise<UserRow> => {
+  const [row] = await db
+    .insert(users)
+    .values({
+      email: `user-${uniq()}@example.com`,
+      passwordHash: 'hashed',
+      name: 'Test User',
+      ...overrides,
+    })
+    .returning();
+  return row;
+};
 
-export async function makeBank(userId: string, overrides: Partial<{ name: string }> = {}) {
-  const n = uniq();
-  return BankModel.create({
-    name: overrides.name ?? `Bank ${n}`,
-    createdBy: new mongoose.Types.ObjectId(userId),
-    isPlaidLinked: false,
-  });
-}
-
-export async function makeCard(userId: string, bankId: string, overrides: Partial<{ name: string }> = {}) {
-  const n = uniq();
-  return CardModel.create({
-    name: overrides.name ?? `Card ${n}`,
-    bankId: new mongoose.Types.ObjectId(bankId),
-    createdBy: new mongoose.Types.ObjectId(userId),
-  });
-}
-
-export async function makeTransaction(
+export const makeBank = async (
   userId: string,
-  cardId: string,
-  overrides: Partial<{ amount: number; description: string; date: Date; fixedExpenseId: mongoose.Types.ObjectId }> = {}
-) {
-  const n = uniq();
-  return TransactionModel.create({
-    amount: overrides.amount ?? 12.34,
-    description: overrides.description ?? `Tx ${n}`,
-    date: overrides.date ?? new Date('2026-05-10'),
-    cardId: new mongoose.Types.ObjectId(cardId),
-    createdBy: new mongoose.Types.ObjectId(userId),
-    fixedExpenseId: overrides.fixedExpenseId,
-  });
-}
+  overrides: Partial<typeof banks.$inferInsert> = {}
+): Promise<BankRow> => {
+  const [row] = await db
+    .insert(banks)
+    .values({ name: 'Test Bank', createdBy: userId, ...overrides })
+    .returning();
+  return row;
+};
+
+export const makeCard = async (
+  userId: string,
+  bankId: string,
+  overrides: Partial<typeof cards.$inferInsert> = {}
+): Promise<CardRow> => {
+  const [row] = await db
+    .insert(cards)
+    .values({ name: 'Test Card', bankId, createdBy: userId, ...overrides })
+    .returning();
+  return row;
+};
+
+export const makeAccount = async (
+  userId: string,
+  bankId: string,
+  overrides: Partial<typeof accounts.$inferInsert> = {}
+): Promise<AccountRow> => {
+  const [row] = await db
+    .insert(accounts)
+    .values({
+      bankId,
+      createdBy: userId,
+      plaidAccountId: `plaid-acct-${uniq()}`,
+      name: 'Test Checking',
+      type: 'depository',
+      mask: '0000',
+      ...overrides,
+    })
+    .returning();
+  return row;
+};
+
+export const makeGroup = async (
+  userId: string,
+  overrides: Partial<typeof groups.$inferInsert> = {}
+): Promise<GroupRow> => {
+  const [row] = await db
+    .insert(groups)
+    .values({
+      name: 'Test Group',
+      inviteCode: `invite-${uniq()}`,
+      createdBy: userId,
+      ...overrides,
+    })
+    .returning();
+  return row;
+};
+
+export const makeBudgetCategory = async (
+  userId: string,
+  overrides: Partial<typeof budgetCategories.$inferInsert> = {}
+): Promise<BudgetCategoryRow> => {
+  const [row] = await db
+    .insert(budgetCategories)
+    .values({
+      name: 'Groceries',
+      kind: 'flexible',
+      plannedAmount: 100,
+      createdBy: userId,
+      ...overrides,
+    })
+    .returning();
+  return row;
+};
+
+export const makeBudgetCategoryOverride = async (
+  userId: string,
+  categoryId: string,
+  overrides: Partial<typeof budgetCategoryOverrides.$inferInsert> = {}
+): Promise<BudgetCategoryOverrideRow> => {
+  const [row] = await db
+    .insert(budgetCategoryOverrides)
+    .values({
+      categoryId,
+      createdBy: userId,
+      month: 1,
+      year: 2026,
+      plannedAmount: 150,
+      ...overrides,
+    })
+    .returning();
+  return row;
+};
+
+export const makeTransaction = async (
+  userId: string,
+  overrides: Partial<typeof transactions.$inferInsert> = {}
+): Promise<TransactionRow> => {
+  const [row] = await db
+    .insert(transactions)
+    .values({
+      amount: 25.5,
+      description: 'Test transaction',
+      date: new Date('2026-01-15T12:00:00Z'),
+      createdBy: userId,
+      ...overrides,
+    })
+    .returning();
+  return row;
+};

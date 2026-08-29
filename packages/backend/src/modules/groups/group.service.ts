@@ -1,61 +1,106 @@
-import { Group, IGroup } from './group.model';
-import { TransactionModel } from '../transactions/transaction.model';
-import { BudgetModel } from '../budget/budget.model';
-import { BudgetOverrideModel } from '../budget/budgetOverride.model';
+import { and, desc, eq, gte, inArray, lt } from 'drizzle-orm';
+import { db } from '../../db/client';
+import {
+  banks,
+  budgetCategories,
+  budgetCategoryOverrides,
+  budgetOverrides,
+  budgets,
+  cards,
+  groupMembers,
+  groups,
+  transactions,
+  users,
+  type GroupRow,
+} from '../../db/schema';
+import { toGroupWithMembers } from './group.mapper';
+import { toTransaction } from '../transactions/transaction.mapper';
+import { aggregateSpend, getCategoryIdsByKind } from '../shared/insights.query';
 import * as budgetService from '../budget/budget.service';
 import { AppError } from '../../middleware/errorHandler';
 import {
   GroupWithMembers,
+  GroupMember,
   Transaction,
   GroupBudgetInsights,
   Budget,
 } from '@portfolio/common';
-import mongoose from 'mongoose';
 import crypto from 'crypto';
 
 const generateInviteCode = () =>
   crypto.randomBytes(4).toString('base64url').slice(0, 6);
 
+const MAX_INVITE_CODE_ATTEMPTS = 3;
+
+/** Minimal shape `getMemberBudget` needs from a caller-supplied group. */
+export type GroupMembership = { members: string[] };
+
+const fetchMembers = async (groupId: string): Promise<GroupMember[]> => {
+  const rows = await db
+    .select({ id: users.id, email: users.email, name: users.name })
+    .from(groupMembers)
+    .innerJoin(users, eq(users.id, groupMembers.userId))
+    .where(eq(groupMembers.groupId, groupId));
+
+  return rows.map(r => ({ id: r.id, email: r.email, name: r.name ?? undefined }));
+};
+
 export const createGroup = async (
   name: string,
   userId: string
 ): Promise<GroupWithMembers> => {
-  const maxAttempts = 3;
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try {
-      const group = new Group({
-        name,
-        members: [userId],
-        createdBy: userId,
-        inviteCode: generateInviteCode(),
-      });
-      await group.save();
-      await group.populate('members', 'email');
-      return group.toGroupWithMembers();
-    } catch (err: any) {
-      if (attempt < maxAttempts - 1 && err?.code === 11000) {
-        continue;
-      }
-      throw err;
+  for (let attempt = 0; attempt < MAX_INVITE_CODE_ATTEMPTS; attempt++) {
+    const inviteCode = generateInviteCode();
+    const row: GroupRow | undefined = await db.transaction(async tx => {
+      const [group] = await tx
+        .insert(groups)
+        .values({ name, inviteCode, createdBy: userId })
+        .onConflictDoNothing({ target: groups.inviteCode })
+        .returning();
+      if (!group) return undefined;
+
+      await tx.insert(groupMembers).values({ groupId: group.id, userId });
+      return group;
+    });
+
+    if (row) {
+      const members = await fetchMembers(row.id);
+      return toGroupWithMembers(row, members);
     }
   }
-  throw new Error('Failed to generate unique invite code');
+  throw new AppError('Could not generate a unique invite code', 500);
 };
 
 export const joinGroupByCode = async (
   code: string,
   userId: string
 ): Promise<GroupWithMembers | null> => {
-  const group = await Group.findOneAndUpdate(
-    { inviteCode: code },
-    { $addToSet: { members: userId } },
-    { new: true }
-  ).populate('members', 'email');
-  return group ? group.toGroupWithMembers() : null;
+  const [group] = await db
+    .select()
+    .from(groups)
+    .where(eq(groups.inviteCode, code))
+    .limit(1);
+  if (!group) return null;
+
+  await db
+    .insert(groupMembers)
+    .values({ groupId: group.id, userId })
+    .onConflictDoNothing();
+
+  const members = await fetchMembers(group.id);
+  return toGroupWithMembers(group, members);
 };
 
+/**
+ * Mirrors the personal insights logic: matched fixed-category debits are
+ * excluded from totalSpent (they are already represented by totalFixed) but
+ * counted separately via matchedFixedCount, and ignored-category debits are
+ * not spending at all. `excludedCategoryIds` is therefore the UNION of fixed
+ * and ignored category ids — the group case's difference from the personal
+ * one, which only excludes ignored ids.
+ */
 const computeGroupInsights = async (
-  memberObjectIds: mongoose.Types.ObjectId[],
+  memberIds: string[],
   month: number,
   year?: number
 ): Promise<GroupBudgetInsights> => {
@@ -63,92 +108,91 @@ const computeGroupInsights = async (
   const startDate = new Date(targetYear, month - 1, 1);
   const endDate = new Date(targetYear, month, 1);
 
-  // Aggregate member spending. Mirror the personal insights logic:
-  // matched fixed-expense debits are excluded from totalSpent (they are
-  // already represented by totalFixed) but counted separately.
-  const insights = await TransactionModel.aggregate([
-    {
-      $match: {
-        createdBy: { $in: memberObjectIds },
-        date: { $gte: startDate, $lt: endDate },
-      },
-    },
-    {
-      $facet: {
-        debits: [
-          {
-            $match: {
-              amount: { $gt: 0 },
-              $or: [
-                { fixedExpenseId: { $exists: false } },
-                { fixedExpenseId: null },
-              ],
-            },
-          },
-          {
-            $group: {
-              _id: null,
-              totalSpent: { $sum: '$amount' },
-              debitCount: { $sum: 1 },
-            },
-          },
-        ],
-        matchedFixed: [
-          {
-            $match: {
-              amount: { $gt: 0 },
-              fixedExpenseId: { $ne: null, $exists: true },
-            },
-          },
-          { $group: { _id: '$fixedExpenseId' } },
-          { $count: 'count' },
-        ],
-      },
-    },
+  const [ignoredIds, fixedCategories] = await Promise.all([
+    getCategoryIdsByKind(memberIds, 'ignored'),
+    memberIds.length === 0
+      ? Promise.resolve([])
+      : db
+          .select()
+          .from(budgetCategories)
+          .where(
+            and(
+              inArray(budgetCategories.createdBy, memberIds),
+              eq(budgetCategories.kind, 'fixed')
+            )
+          ),
   ]);
+  const fixedIds = fixedCategories.map(c => c.id);
 
-  const debits = insights[0].debits[0] || { totalSpent: 0, debitCount: 0 };
-  const totalSpent = debits.totalSpent;
-  const matchedFixedCount = insights[0].matchedFixed[0]?.count ?? 0;
-
-  const memberBudgets = await BudgetModel.find({
-    createdBy: { $in: memberObjectIds },
+  const { totalSpent, debitCount, matchedFixedCount } = await aggregateSpend({
+    userIds: memberIds,
+    startDate,
+    endDate,
+    excludedCategoryIds: [...fixedIds, ...ignoredIds],
+    fixedCategoryIds: fixedIds,
   });
 
-  const overrides = await BudgetOverrideModel.find({
-    createdBy: { $in: memberObjectIds },
-    month,
-    year: targetYear,
-  });
-  const overrideByUser = new Map<string, number>();
-  for (const o of overrides) {
-    overrideByUser.set(o.createdBy.toString(), o.salary);
+  const memberBudgets =
+    memberIds.length === 0
+      ? []
+      : await db.select().from(budgets).where(inArray(budgets.createdBy, memberIds));
+
+  const overrides =
+    memberIds.length === 0
+      ? []
+      : await db
+          .select()
+          .from(budgetOverrides)
+          .where(
+            and(
+              inArray(budgetOverrides.createdBy, memberIds),
+              eq(budgetOverrides.month, month),
+              eq(budgetOverrides.year, targetYear)
+            )
+          );
+  const overrideByUser = new Map(overrides.map(o => [o.createdBy, o.salary]));
+
+  let budgetTotal = 0;
+  let usingActuals = false;
+  for (const b of memberBudgets) {
+    const override = overrideByUser.get(b.createdBy);
+    if (override !== undefined) usingActuals = true;
+    budgetTotal += override ?? b.salary;
   }
 
-  let budget = 0;
+  const categoryOverrides =
+    fixedIds.length === 0
+      ? []
+      : await db
+          .select()
+          .from(budgetCategoryOverrides)
+          .where(
+            and(
+              inArray(budgetCategoryOverrides.categoryId, fixedIds),
+              eq(budgetCategoryOverrides.month, month),
+              eq(budgetCategoryOverrides.year, targetYear)
+            )
+          );
+  const plannedOverrideByCategory = new Map<string, number>(
+    categoryOverrides.map(o => [o.categoryId, o.plannedAmount])
+  );
+
   let totalFixed = 0;
   let fixedCount = 0;
-  let usingActuals = false;
-
-  for (const b of memberBudgets) {
-    const override = overrideByUser.get(b.createdBy.toString());
-    if (override !== undefined) usingActuals = true;
-    budget += override ?? b.salary;
-    for (const e of b.fixedExpenses) {
-      totalFixed += e.amount;
-      fixedCount += 1;
-    }
+  for (const c of fixedCategories) {
+    totalFixed += plannedOverrideByCategory.get(c.id) ?? c.plannedAmount;
+    fixedCount += 1;
   }
 
   return {
     totalSpent,
-    debitCount: debits.debitCount,
-    budget,
+    debitCount,
+    budget: budgetTotal,
     totalFixed,
     fixedCount,
     matchedFixedCount,
     usingActuals,
-    moneyLeft: budget - totalFixed - totalSpent,
+    moneyLeft: budgetTotal - totalFixed - totalSpent,
   };
 };
 
@@ -157,24 +201,29 @@ export const getUserGroups = async (
   month?: number,
   year?: number
 ): Promise<GroupWithMembers[]> => {
-  const groups = await Group.find({ members: userId }).populate(
-    'members',
-    'email name'
+  const rows = await db
+    .select({ group: groups })
+    .from(groups)
+    .innerJoin(groupMembers, eq(groupMembers.groupId, groups.id))
+    .where(eq(groupMembers.userId, userId));
+
+  const withMembers = await Promise.all(
+    rows.map(async ({ group }) => {
+      const members = await fetchMembers(group.id);
+      return { group, gwm: toGroupWithMembers(group, members) };
+    })
   );
 
   if (!month) {
-    return groups.map(g => g.toGroupWithMembers());
+    return withMembers.map(w => w.gwm);
   }
 
   return Promise.all(
-    groups.map(async g => {
-      const base = g.toGroupWithMembers();
-      const memberObjectIds = g.members.map(
-        (m: any) => new mongoose.Types.ObjectId(m._id ?? m)
-      );
-      const insights = await computeGroupInsights(memberObjectIds, month, year);
+    withMembers.map(async ({ gwm }) => {
+      const memberIds = gwm.members.map(m => m.id);
+      const insights = await computeGroupInsights(memberIds, month, year);
       return {
-        ...base,
+        ...gwm,
         summary: {
           month,
           year: year ?? new Date().getFullYear(),
@@ -190,80 +239,95 @@ export const getUserGroups = async (
 export const addUserToGroup = async (
   groupId: string,
   userId: string
-): Promise<IGroup | null> => {
-  return await Group.findByIdAndUpdate(
-    groupId,
-    { $addToSet: { members: userId } },
-    { new: true }
-  );
+): Promise<GroupWithMembers | null> => {
+  const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
+  if (!group) return null;
+
+  await db
+    .insert(groupMembers)
+    .values({ groupId, userId })
+    .onConflictDoNothing();
+
+  const members = await fetchMembers(groupId);
+  return toGroupWithMembers(group, members);
 };
 
 export const removeUserFromGroup = async (
   groupId: string,
   userId: string
-): Promise<IGroup | null> => {
-  return await Group.findByIdAndUpdate(
-    groupId,
-    { $pull: { members: userId } },
-    { new: true }
-  );
+): Promise<GroupWithMembers | null> => {
+  const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1);
+  if (!group) return null;
+
+  await db
+    .delete(groupMembers)
+    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, userId)));
+
+  const members = await fetchMembers(groupId);
+  return toGroupWithMembers(group, members);
 };
 
 export const deleteGroup = async (
   groupId: string,
   userId: string
 ): Promise<boolean> => {
-  const result = await Group.findOneAndDelete({
-    _id: groupId,
-    createdBy: userId,
-  });
-  return result !== null;
+  // group_members cascades on delete; transactions.groupId is set null on
+  // delete (both FK-level, see db/schema/group-members.ts and transactions.ts).
+  const result = await db
+    .delete(groups)
+    .where(and(eq(groups.id, groupId), eq(groups.createdBy, userId)))
+    .returning({ id: groups.id });
+  return result.length > 0;
 };
 
 export const getGroupTransactions = async (
   groupId: string,
   options: { month?: number; year?: number }
 ): Promise<Transaction[]> => {
-  const group = await Group.findById(groupId);
+  const [group] = await db.select({ id: groups.id }).from(groups).where(eq(groups.id, groupId)).limit(1);
   if (!group) throw new Error('Group not found');
 
-  const query: Record<string, any> = {
-    createdBy: { $in: group.members },
-  };
+  const memberRows = await db
+    .select({ userId: groupMembers.userId })
+    .from(groupMembers)
+    .where(eq(groupMembers.groupId, groupId));
+  const memberIds = memberRows.map(r => r.userId);
+  if (memberIds.length === 0) return [];
+
+  const conditions = [inArray(transactions.createdBy, memberIds)];
 
   const { month, year } = options;
   if (month) {
     const yearSelected = year || new Date().getFullYear();
     const startDate = new Date(yearSelected, month - 1, 1);
     const endDate = new Date(yearSelected, month, 1);
-    query.date = { $gte: startDate, $lt: endDate };
+    conditions.push(gte(transactions.date, startDate));
+    conditions.push(lt(transactions.date, endDate));
   }
 
-  const result = await TransactionModel.find(query)
-    .populate('createdBy', 'email name')
-    .populate({
-      path: 'cardId',
-      select: 'name bankId',
-      populate: { path: 'bankId', select: 'name' },
+  const rows = await db
+    .select({
+      transaction: transactions,
+      cardName: cards.name,
+      bankName: banks.name,
+      ownerEmail: users.email,
+      ownerName: users.name,
     })
-    .sort({ date: -1 });
+    .from(transactions)
+    .innerJoin(users, eq(users.id, transactions.createdBy))
+    .leftJoin(cards, eq(cards.id, transactions.cardId))
+    .leftJoin(banks, eq(banks.id, cards.bankId))
+    .where(and(...conditions))
+    .orderBy(desc(transactions.date));
 
-  return result.map(t => {
-    const tx = t.toTransaction();
-    const card = t.cardId as any;
-    if (card && typeof card === 'object' && card.name) {
-      tx.cardName = card.name;
-      if (card.bankId && typeof card.bankId === 'object') {
-        tx.bankName = card.bankId.name;
-      }
-    }
-    const owner = t.createdBy as any;
-    if (owner && typeof owner === 'object') {
-      tx.ownerEmail = owner.email;
-      tx.ownerName = owner.name;
-    }
-    return tx;
-  });
+  return rows.map(r =>
+    toTransaction(r.transaction, {
+      cardName: r.cardName ?? undefined,
+      bankName: r.bankName ?? undefined,
+      ownerEmail: r.ownerEmail,
+      ownerName: r.ownerName ?? undefined,
+    })
+  );
 };
 
 export const getGroupInsights = async (
@@ -271,30 +335,30 @@ export const getGroupInsights = async (
   month: number,
   year?: number
 ): Promise<GroupBudgetInsights> => {
-  const group = await Group.findById(groupId);
+  const [group] = await db.select({ id: groups.id }).from(groups).where(eq(groups.id, groupId)).limit(1);
   if (!group) throw new Error('Group not found');
 
-  const memberObjectIds = group.members.map(
-    (id: mongoose.Types.ObjectId) => new mongoose.Types.ObjectId(id)
-  );
+  const memberRows = await db
+    .select({ userId: groupMembers.userId })
+    .from(groupMembers)
+    .where(eq(groupMembers.groupId, groupId));
+  const memberIds = memberRows.map(r => r.userId);
 
-  return computeGroupInsights(memberObjectIds, month, year);
+  return computeGroupInsights(memberIds, month, year);
 };
 
 /**
  * Returns a group member's budget.
- * `group` is the already-loaded document from requireGroupMembership,
+ * `group` is the already-loaded membership from requireGroupMembership,
  * so membership of the *caller* is guaranteed before this runs.
  * The userId check below prevents using a group you belong to as a
  * lever to read the budget of someone outside it.
  */
 export const getMemberBudget = async (
-  group: IGroup,
+  group: GroupMembership,
   userId: string
 ): Promise<Budget | null> => {
-  const isMember = group.members.some(
-    memberId => memberId.toString() === userId
-  );
+  const isMember = group.members.includes(userId);
 
   if (!isMember) {
     throw new AppError('Member not found in this group', 404);

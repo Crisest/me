@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { getMonthlyInsights } from './transaction.insights.service';
-import mongoose from 'mongoose';
 
 export const getTransactionInsights = async (req: Request, res: Response) => {
   try {
@@ -17,11 +16,7 @@ export const getTransactionInsights = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid year parameter' });
     }
 
-    const insights = await getMonthlyInsights(
-      new mongoose.Types.ObjectId(req.user!.id),
-      month,
-      year
-    );
+    const insights = await getMonthlyInsights(req.user!.id, month, year);
 
     res.json(insights);
   } catch (error) {
