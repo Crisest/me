@@ -14,7 +14,7 @@
     "frontend:dev": "pnpm --filter frontend dev",
     "frontend:build": "pnpm --filter frontend build",
     "backend:dev": "pnpm --filter backend dev",
-    "backend:bunyan": "pnpm run backend:dev | npx bunyan",
+    "backend:bunyan": "pnpm --filter backend dev:pretty",
     "backend:build": "pnpm --filter backend build",
     "common:build": "pnpm --filter common build",
     "start:all": "pnpm run backend:bunyan & pnpm run frontend:dev"
