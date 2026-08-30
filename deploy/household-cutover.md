@@ -14,7 +14,9 @@ invoke it. Delete the script once production has run it and settled.
 Prep ran on 2026-08-30. Resume at **step 3**.
 
 - The household work is committed on local `master` (`102b655`, `354e2c1`)
-  and **not pushed**. `origin/master` is still `61c34e6`.
+  and **not pushed**. `origin/master` is still `183c01e` — note that
+  `61c34e6` (the Mongo-cutover doc commit) is also unpushed, so the push in
+  step 4 carries four commits, not three.
 - CT101's auto-deploy cron is **paused** — `crontab -l` shows the
   `/opt/portfolio` line commented out, original saved at
   `/root/crontab.backup-household`.
@@ -80,8 +82,17 @@ Confirm the `/opt/portfolio` line is commented out before continuing.
 
 Independently of the nightly cron, and off the box:
 
-    ssh root@192.168.1.115 'sudo -u postgres pg_dump -Fc portfolio > /mnt/backups/portfolio-pre-household.dump'
-    ssh root@192.168.1.115 'ls -la /mnt/backups/portfolio-pre-household.dump'
+CT110 accepts **no direct SSH** — the installer imported only the ed25519 key
+and `pg_hba.conf` restricts Postgres to CT101's `/32`. Reach it through the
+Proxmox host with `pct exec`, here and everywhere below:
+
+    ssh root@192.168.1.50 'pct exec 110 -- bash -c "sudo -u postgres pg_dump -Fc portfolio > /mnt/backups/portfolio-pre-household.dump"'
+    ssh root@192.168.1.50 'pct exec 110 -- ls -la /mnt/backups/portfolio-pre-household.dump'
+
+The bind mount surfaces on the host at `/var/lib/portfolio-backups/`, so the
+off-host copy is a plain `scp` from `192.168.1.50`, not from CT110:
+
+    scp root@192.168.1.50:/var/lib/portfolio-backups/portfolio-pre-household.dump ~/
 
 Then copy it somewhere that is not CT110 and not `external-ssd`. This is the
 last snapshot before the schema changes; `0002` drops a constraint and adds
@@ -181,7 +192,7 @@ user who was not: the budget summary loads, transactions load, and
 
 Confirm no nulls remain:
 
-    ssh root@192.168.1.115 "sudo -u postgres psql portfolio -c 'select count(*) filter (where household_id is null) as nulls, count(*) from budget_categories'"
+    ssh root@192.168.1.50 'pct exec 110 -- sudo -u postgres psql -tA portfolio -c "select count(*) filter (where household_id is null) as nulls, count(*) from budget_categories"'
 
 ### 9. Restore the cron
 
@@ -197,8 +208,14 @@ Revert the push and re-run `update.sh`.
 After step 5, restore the dump from step 2:
 
     ssh root@192.168.1.127 'systemctl stop portfolio'
-    ssh root@192.168.1.115 'sudo -u postgres dropdb portfolio && sudo -u postgres createdb -O portfolio_app portfolio'
-    ssh root@192.168.1.115 'sudo -u postgres pg_restore -d portfolio /mnt/backups/portfolio-pre-household.dump'
+    ssh root@192.168.1.50 'pct exec 110 -- sudo -u postgres dropdb portfolio'
+    ssh root@192.168.1.50 'pct exec 110 -- sudo -u postgres createdb -O portfolio_app portfolio'
+    ssh root@192.168.1.50 'pct exec 110 -- sudo -u postgres pg_restore -d portfolio /mnt/backups/portfolio-pre-household.dump'
+
+`dropdb` fails while anything is connected, which is why the service is
+stopped first. If it still refuses, the app's pool is the likely holder —
+check with `pct exec 110 -- sudo -u postgres psql -tA -c "select count(*)
+from pg_stat_activity where datname='portfolio'"`.
 
 Then `git revert` the household commits, push, and run `update.sh`. Anything
 users wrote after step 7 is lost — that is why the service stays stopped from
