@@ -9,6 +9,24 @@ This is a **one-off**. `backfillHouseholds.ts` runs once per database and is
 deliberately not wired into `package.json` — `deploy/update.sh` must never
 invoke it. Delete the script once production has run it and settled.
 
+## State as of 2026-08-30 — steps 1 and 2 are already done
+
+Prep ran on 2026-08-30. Resume at **step 3**.
+
+- The household work is committed on local `master` (`102b655`, `354e2c1`)
+  and **not pushed**. `origin/master` is still `61c34e6`.
+- CT101's auto-deploy cron is **paused** — `crontab -l` shows the
+  `/opt/portfolio` line commented out, original saved at
+  `/root/crontab.backup-household`.
+- CT110 is dumped to `/mnt/backups/portfolio-pre-household.dump` (99 KB,
+  13 tables, verified with `pg_restore --list`), with an off-host copy at
+  `/home/yor/portfolio-prod-pre-household-2026-08-30.dump` on the dev
+  workstation.
+- Production `drizzle.__drizzle_migrations` holds exactly one row
+  (`0000`, `1787525275772`), so both `0001` and `0002` are pending — the
+  failure mode described below is what a deploy would hit today.
+- The service is still **running** and the app is live. Step 3 stops it.
+
 ## Why this cannot be a normal deploy
 
 `deploy/update.sh` runs `pnpm run db:migrate` unattended, and the per-minute
