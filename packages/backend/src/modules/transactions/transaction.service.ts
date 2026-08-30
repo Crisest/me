@@ -1,18 +1,79 @@
-import { and, desc, eq, gte, lt, ne } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { and, desc, eq, gte, inArray, isNull, lt, ne, or } from 'drizzle-orm';
 import { Transaction, TransactionPayloads } from '@portfolio/common';
-import { db } from '../../db/client';
-import { budgetCategories, transactions } from '../../db/schema';
+import { db, type Tx } from '../../db/client';
+import {
+  accounts,
+  banks,
+  budgetCategories,
+  cards,
+  transactionCategories,
+  transactions,
+  users,
+} from '../../db/schema';
 import { toTransaction, type TransactionEnrichment } from './transaction.mapper';
 import { createUploadRecord } from '../uploads/upload.service';
 import { AppError } from '../../middleware/errorHandler';
+import type { BudgetScope } from '../../middleware/resolveBudgetScope';
+
+const cardBanks = alias(banks, 'card_banks');
+const accountBanks = alias(banks, 'account_banks');
+
+/**
+ * Live tag rows (deletedAt IS NULL) for a set of transactions, scoped to one
+ * household. Returns a map of transactionId -> categoryId.
+ */
+const liveTagsByTransaction = async (
+  transactionIds: string[],
+  householdId: string
+): Promise<Map<string, string>> => {
+  if (transactionIds.length === 0) return new Map();
+
+  const rows = await db
+    .select({
+      transactionId: transactionCategories.transactionId,
+      categoryId: transactionCategories.categoryId,
+    })
+    .from(transactionCategories)
+    .where(
+      and(
+        inArray(transactionCategories.transactionId, transactionIds),
+        eq(transactionCategories.householdId, householdId),
+        isNull(transactionCategories.deletedAt)
+      )
+    );
+
+  return new Map(rows.map(r => [r.transactionId, r.categoryId]));
+};
 
 export const getAllTransactions = async (
   userId: string,
-  options: { month?: number; year?: number }
+  options: {
+    month?: number;
+    year?: number;
+    categoryId?: string;
+    scope?: 'mine' | 'household';
+  },
+  budgetScope: BudgetScope
 ): Promise<Transaction[]> => {
-  const { month, year } = options;
+  const { month, year, categoryId, scope = 'mine' } = options;
 
-  const filters = [eq(transactions.createdBy, userId)];
+  const filters = [];
+
+  if (scope === 'household') {
+    const windows = budgetScope.members.map(m => {
+      const conds = [eq(transactions.createdBy, m.userId), gte(transactions.date, m.from)];
+      if (m.to) conds.push(lt(transactions.date, m.to));
+      return and(...conds);
+    });
+    // An empty member set must match nothing, not everything — return early
+    // rather than build a query with an always-true/always-false filter.
+    if (windows.length === 0) return [];
+    filters.push(or(...windows)!);
+  } else {
+    filters.push(eq(transactions.createdBy, userId));
+  }
+
   if (month) {
     const yearSelected = year || new Date().getFullYear();
     // Preserved exactly as-is: this constructs the boundaries in the server's
@@ -24,31 +85,67 @@ export const getAllTransactions = async (
     filters.push(lt(transactions.date, endDate));
   }
 
-  const rows = await db.query.transactions.findMany({
-    where: and(...filters),
-    with: {
-      card: { columns: { name: true }, with: { bank: { columns: { name: true } } } },
-      account: {
-        columns: { name: true, mask: true },
-        with: { bank: { columns: { name: true } } },
-      },
-    },
-    orderBy: desc(transactions.date),
-  });
+  if (categoryId) {
+    const tagged = await db
+      .select({ transactionId: transactionCategories.transactionId })
+      .from(transactionCategories)
+      .where(
+        and(
+          eq(transactionCategories.categoryId, categoryId),
+          eq(transactionCategories.householdId, budgetScope.householdId),
+          isNull(transactionCategories.deletedAt)
+        )
+      );
+    const taggedIds = tagged.map(t => t.transactionId);
+    if (taggedIds.length === 0) return [];
+    filters.push(inArray(transactions.id, taggedIds));
+  }
 
-  return rows.map(row => {
-    // No `as any` and no typeof guards: `with` narrows these types for us.
-    const enrichment: TransactionEnrichment = {};
-    if (row.card) {
-      enrichment.cardName = row.card.name;
-      enrichment.bankName = row.card.bank?.name;
+  const rows = await db
+    .select({
+      transaction: transactions,
+      cardName: cards.name,
+      cardBankName: cardBanks.name,
+      accountName: accounts.name,
+      accountMask: accounts.mask,
+      accountBankName: accountBanks.name,
+      ownerEmail: users.email,
+      ownerName: users.name,
+    })
+    .from(transactions)
+    .innerJoin(users, eq(users.id, transactions.createdBy))
+    .leftJoin(cards, eq(cards.id, transactions.cardId))
+    .leftJoin(cardBanks, eq(cardBanks.id, cards.bankId))
+    .leftJoin(accounts, eq(accounts.id, transactions.accountId))
+    .leftJoin(accountBanks, eq(accountBanks.id, accounts.bankId))
+    .where(and(...filters))
+    .orderBy(desc(transactions.date));
+
+  const liveTags = await liveTagsByTransaction(
+    rows.map(r => r.transaction.id),
+    budgetScope.householdId
+  );
+
+  return rows.map(r => {
+    const enrichment: TransactionEnrichment = {
+      ownerEmail: r.ownerEmail,
+      ownerName: r.ownerName ?? undefined,
+    };
+    if (r.cardName) {
+      enrichment.cardName = r.cardName;
+      enrichment.bankName = r.cardBankName ?? undefined;
     }
-    if (row.account) {
-      enrichment.accountName = row.account.name;
-      enrichment.accountMask = row.account.mask ?? undefined;
-      enrichment.bankName = row.account.bank?.name ?? enrichment.bankName;
+    if (r.accountName) {
+      enrichment.accountName = r.accountName;
+      enrichment.accountMask = r.accountMask ?? undefined;
+      enrichment.bankName = r.accountBankName ?? enrichment.bankName;
     }
-    return toTransaction(row, enrichment);
+    const tx = toTransaction(r.transaction, enrichment);
+    // The live tag row is the source of truth for categoryId; row.categoryId
+    // (mapped by toTransaction as a fallback) is dormant as of this task.
+    const liveCategoryId = liveTags.get(r.transaction.id);
+    if (liveCategoryId !== undefined) tx.categoryId = liveCategoryId;
+    return tx;
   });
 };
 
@@ -91,12 +188,17 @@ export const createManyTransactionsByUser = async (
 
 /**
  * Tag (or untag) a transaction to a budget category.
- * - Ownership: both the transaction and the category must belong to userId.
+ * - Ownership: the transaction must belong to userId; the category must
+ *   belong to the caller's household (scope.householdId), not to the caller.
  * - Only debits (amount > 0) can be tagged.
  * - `fixed` categories accept at most one transaction per calendar month;
  *   `flexible` and `ignored` accept any number.
+ * - Re-tagging REPLACES: the existing live tag row is closed (deletedAt =
+ *   now) and a new one inserted, in one transaction. Untagging closes the
+ *   live row and inserts nothing.
  */
 export const setTransactionCategory = async (
+  scope: BudgetScope,
   userId: string,
   transactionId: string,
   payload: TransactionPayloads.SetCategory
@@ -110,13 +212,25 @@ export const setTransactionCategory = async (
     throw new AppError('Transaction not found', 404);
   }
 
+  const closeLiveTag = (tx: Tx) =>
+    tx
+      .update(transactionCategories)
+      .set({ deletedAt: new Date() })
+      .where(
+        and(
+          eq(transactionCategories.transactionId, transactionId),
+          eq(transactionCategories.householdId, scope.householdId),
+          isNull(transactionCategories.deletedAt)
+        )
+      );
+
   if (categoryId === null) {
-    const [row] = await db
-      .update(transactions)
-      .set({ categoryId: null })
-      .where(and(eq(transactions.id, transactionId), eq(transactions.createdBy, userId)))
-      .returning();
-    return toTransaction(row);
+    await db.transaction(async tx => {
+      await closeLiveTag(tx);
+    });
+    const result = toTransaction(existing);
+    result.categoryId = undefined;
+    return result;
   }
 
   if (existing.amount <= 0) {
@@ -124,10 +238,18 @@ export const setTransactionCategory = async (
   }
 
   const category = await db.query.budgetCategories.findFirst({
-    where: and(eq(budgetCategories.id, categoryId), eq(budgetCategories.createdBy, userId)),
+    where: and(
+      eq(budgetCategories.id, categoryId),
+      eq(budgetCategories.householdId, scope.householdId),
+      // A deleted category leaves the current plan and stops appearing in
+      // pickers — new tags into it are refused. EXISTING tag rows pointing
+      // at a deleted category are untouched and stay live: a past month
+      // must still resolve its name and kind.
+      isNull(budgetCategories.deletedAt)
+    ),
   });
   if (!category) {
-    throw new AppError('Category not found on your budget', 400);
+    throw new AppError('Category not found in your household', 400);
   }
 
   if (category.kind === 'fixed') {
@@ -141,15 +263,21 @@ export const setTransactionCategory = async (
       existing.date.getMonth() + 1,
       1
     );
-    const conflict = await db.query.transactions.findFirst({
-      where: and(
-        ne(transactions.id, transactionId),
-        eq(transactions.createdBy, userId),
-        eq(transactions.categoryId, categoryId),
-        gte(transactions.date, monthStart),
-        lt(transactions.date, monthEnd)
-      ),
-    });
+    const [conflict] = await db
+      .select({ description: transactions.description })
+      .from(transactionCategories)
+      .innerJoin(transactions, eq(transactions.id, transactionCategories.transactionId))
+      .where(
+        and(
+          ne(transactionCategories.transactionId, transactionId),
+          eq(transactionCategories.categoryId, categoryId),
+          eq(transactionCategories.householdId, scope.householdId),
+          isNull(transactionCategories.deletedAt),
+          gte(transactions.date, monthStart),
+          lt(transactions.date, monthEnd)
+        )
+      )
+      .limit(1);
     if (conflict) {
       throw new AppError(
         `"${category.name}" is already matched to "${conflict.description}" this month`,
@@ -158,10 +286,17 @@ export const setTransactionCategory = async (
     }
   }
 
-  const [row] = await db
-    .update(transactions)
-    .set({ categoryId })
-    .where(and(eq(transactions.id, transactionId), eq(transactions.createdBy, userId)))
-    .returning();
-  return toTransaction(row);
+  await db.transaction(async tx => {
+    await closeLiveTag(tx);
+    await tx.insert(transactionCategories).values({
+      transactionId,
+      categoryId,
+      householdId: scope.householdId,
+      createdBy: userId,
+    });
+  });
+
+  const result = toTransaction(existing);
+  result.categoryId = categoryId;
+  return result;
 };

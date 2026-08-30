@@ -34,12 +34,7 @@ export const budgetCategoryOverrides = pgTable(
   },
   t => [
     index('bco_category_id_idx').on(t.categoryId),
-    unique('bco_user_category_month_year_uq').on(
-      t.createdBy,
-      t.categoryId,
-      t.month,
-      t.year
-    ),
+    unique('bco_category_month_year_uq').on(t.categoryId, t.month, t.year),
     check('bco_month_ck', sql`${t.month} BETWEEN 1 AND 12`),
     check('bco_planned_amount_ck', sql`${t.plannedAmount} >= 0`),
   ]

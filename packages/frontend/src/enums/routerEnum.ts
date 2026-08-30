@@ -8,6 +8,8 @@ export enum Route {
   SHARED_JOIN = '/shared/join/:code',
   SHARED_DASHBOARD = '/shared/:groupId',
   PROFILE = '/profile',
+  HOUSEHOLD = '/household',
+  HOUSEHOLD_JOIN = '/household/join/:code',
 }
 
 export const protectedRoutes = [
@@ -16,4 +18,5 @@ export const protectedRoutes = [
   Route.TRANSACTIONS,
   Route.PROFILE,
   Route.SHARED,
+  Route.HOUSEHOLD,
 ];

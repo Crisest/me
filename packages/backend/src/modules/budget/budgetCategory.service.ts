@@ -1,12 +1,14 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { BudgetCategory, BudgetCategoryPayloads } from '@portfolio/common';
 import { AppError } from '../../middleware/errorHandler';
 import { db } from '../../db/client';
 import {
   budgetCategories,
   budgetCategoryOverrides,
+  transactionCategories,
   transactions,
 } from '../../db/schema';
+import type { BudgetScope } from '../../middleware/resolveBudgetScope';
 import { toBudgetCategory } from './budget.mapper';
 
 /**
@@ -30,16 +32,20 @@ const resolvePlannedAmount = (
 };
 
 export const listCategories = async (
-  userId: string
+  scope: BudgetScope
 ): Promise<BudgetCategory[]> => {
   const rows = await db.query.budgetCategories.findMany({
-    where: eq(budgetCategories.createdBy, userId),
+    where: and(
+      eq(budgetCategories.householdId, scope.householdId),
+      isNull(budgetCategories.deletedAt)
+    ),
     orderBy: (t, { asc }) => [asc(t.kind), asc(t.name)],
   });
   return rows.map(toBudgetCategory);
 };
 
 export const createCategory = async (
+  scope: BudgetScope,
   userId: string,
   payload: BudgetCategoryPayloads.Create
 ): Promise<BudgetCategory> => {
@@ -51,6 +57,8 @@ export const createCategory = async (
       plannedAmount: resolvePlannedAmount(payload.kind, payload.plannedAmount),
       color: payload.color,
       createdBy: userId,
+      updatedBy: userId,
+      householdId: scope.householdId,
     })
     .returning();
   return toBudgetCategory(row);
@@ -58,11 +66,13 @@ export const createCategory = async (
 
 /**
  * A `fixed` category may hold at most one transaction per calendar month.
- * Switching an existing category to `fixed` therefore has to be checked against
- * the transactions already tagged to it.
+ * Switching an existing category to `fixed` therefore has to be checked
+ * against the household's tag rows already pointing at it. Tag rows, not
+ * `transactions.category_id`: categories are household-owned now, and a
+ * transaction's own `category_id` column is legacy.
  */
 const assertFixedIsPossible = async (
-  userId: string,
+  scope: BudgetScope,
   categoryId: string
 ): Promise<void> => {
   const [duplicate] = await db
@@ -75,11 +85,16 @@ const assertFixedIsPossible = async (
       ),
       count: sql<number>`COUNT(*)::int`.as('count'),
     })
-    .from(transactions)
+    .from(transactionCategories)
+    .innerJoin(
+      transactions,
+      eq(transactions.id, transactionCategories.transactionId)
+    )
     .where(
       and(
-        eq(transactions.createdBy, userId),
-        eq(transactions.categoryId, categoryId)
+        eq(transactionCategories.categoryId, categoryId),
+        eq(transactionCategories.householdId, scope.householdId),
+        isNull(transactionCategories.deletedAt)
       )
     )
     .groupBy(
@@ -98,6 +113,7 @@ const assertFixedIsPossible = async (
 };
 
 export const updateCategory = async (
+  scope: BudgetScope,
   userId: string,
   categoryId: string,
   payload: BudgetCategoryPayloads.Update
@@ -105,14 +121,15 @@ export const updateCategory = async (
   const existing = await db.query.budgetCategories.findFirst({
     where: and(
       eq(budgetCategories.id, categoryId),
-      eq(budgetCategories.createdBy, userId)
+      eq(budgetCategories.householdId, scope.householdId),
+      isNull(budgetCategories.deletedAt)
     ),
   });
   if (!existing) throw new AppError('Category not found', 404);
 
   const nextKind = payload.kind ?? existing.kind;
   if (nextKind === 'fixed' && existing.kind !== 'fixed') {
-    await assertFixedIsPossible(userId, existing.id);
+    await assertFixedIsPossible(scope, existing.id);
   }
 
   const nextPlannedAmount = resolvePlannedAmount(
@@ -128,48 +145,49 @@ export const updateCategory = async (
       color: payload.color ?? existing.color,
       kind: nextKind,
       plannedAmount: nextPlannedAmount,
+      updatedBy: userId,
     })
     .where(
       and(
         eq(budgetCategories.id, categoryId),
-        eq(budgetCategories.createdBy, userId)
+        eq(budgetCategories.householdId, scope.householdId),
+        isNull(budgetCategories.deletedAt)
       )
     )
     .returning();
 
   // A category that stops planning also stops having month-specific plans.
+  // Overrides are household-owned now, so every override on this category
+  // goes, regardless of which member created it.
   if (nextKind === 'ignored') {
     await db
       .delete(budgetCategoryOverrides)
-      .where(
-        and(
-          eq(budgetCategoryOverrides.createdBy, userId),
-          eq(budgetCategoryOverrides.categoryId, existing.id)
-        )
-      );
+      .where(eq(budgetCategoryOverrides.categoryId, existing.id));
   }
 
   return toBudgetCategory(row);
 };
 
 export const deleteCategory = async (
-  userId: string,
+  scope: BudgetScope,
   categoryId: string
 ): Promise<void> => {
-  // The ON DELETE rules replace the manual deleteMany + updateMany:
-  //   budget_category_overrides  ON DELETE CASCADE
-  //   transactions.category_id   ON DELETE SET NULL
-  const deleted = await db
-    .delete(budgetCategories)
+  // Soft delete only: transaction_categories rows (and transactions) are
+  // left untouched, so a past month can still resolve a deleted category's
+  // name and kind.
+  const [deleted] = await db
+    .update(budgetCategories)
+    .set({ deletedAt: new Date() })
     .where(
       and(
         eq(budgetCategories.id, categoryId),
-        eq(budgetCategories.createdBy, userId)
+        eq(budgetCategories.householdId, scope.householdId),
+        isNull(budgetCategories.deletedAt)
       )
     )
     .returning();
 
-  if (deleted.length === 0) {
+  if (!deleted) {
     throw new AppError('Category not found', 404);
   }
 };

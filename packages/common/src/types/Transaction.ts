@@ -53,6 +53,10 @@ export namespace TransactionPayloads {
   export interface GetMany {
     month?: number;
     year?: number;
+    /** Filters through the caller's household tag rows. */
+    categoryId?: string;
+    /** `mine` (default) = own transactions; `household` = every member's. */
+    scope?: 'mine' | 'household';
   }
 
   export interface SetCategory {

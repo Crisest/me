@@ -1,5 +1,7 @@
 import { truncateAll, closeTestDb } from '../../../test/setup';
 import { makeUser, makeBudgetCategory } from '../../../test/helpers/factories';
+import { createHousehold } from '../households/household.service';
+import type { BudgetScope } from '../../middleware/resolveBudgetScope';
 import {
   getBudgetByUserId,
   upsertBudget,
@@ -75,16 +77,20 @@ describe('budget.service', () => {
     ).rejects.toThrow();
   });
 
-  it('upsertCategoryOverride is keyed on (user, category, month, year)', async () => {
+  it('upsertCategoryOverride is keyed on (category, month, year)', async () => {
     const user = await makeUser();
-    const category = await makeBudgetCategory(user.id);
+    const household = await createHousehold('Home', user.id);
+    const scope: BudgetScope = { householdId: household.id, members: [] };
+    const category = await makeBudgetCategory(user.id, {
+      householdId: household.id,
+    });
 
-    const first = await upsertCategoryOverride(user.id, category.id, {
+    const first = await upsertCategoryOverride(scope, user.id, category.id, {
       month: 5,
       year: 2026,
       plannedAmount: 200,
     });
-    const second = await upsertCategoryOverride(user.id, category.id, {
+    const second = await upsertCategoryOverride(scope, user.id, category.id, {
       month: 5,
       year: 2026,
       plannedAmount: 250,
@@ -95,23 +101,48 @@ describe('budget.service', () => {
 
   it('upsertCategoryOverride rejects a missing category', async () => {
     const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
+    const scope: BudgetScope = { householdId: household.id, members: [] };
     await expect(
-      upsertCategoryOverride(user.id, '00000000-0000-0000-0000-000000000000', {
-        month: 5,
-        year: 2026,
-        plannedAmount: 200,
-      })
+      upsertCategoryOverride(
+        scope,
+        user.id,
+        '00000000-0000-0000-0000-000000000000',
+        { month: 5, year: 2026, plannedAmount: 200 }
+      )
+    ).rejects.toThrow('Category not found');
+  });
+
+  it("upsertCategoryOverride rejects another household's category", async () => {
+    const a = await makeUser();
+    const b = await makeUser();
+    const mine = await createHousehold('Mine', a.id);
+    const theirs = await createHousehold('Theirs', b.id);
+    const theirCategory = await makeBudgetCategory(b.id, {
+      householdId: theirs.id,
+    });
+
+    await expect(
+      upsertCategoryOverride(
+        { householdId: mine.id, members: [] },
+        a.id,
+        theirCategory.id,
+        { month: 5, year: 2026, plannedAmount: 200 }
+      )
     ).rejects.toThrow('Category not found');
   });
 
   it('upsertCategoryOverride rejects ignored categories', async () => {
     const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
+    const scope: BudgetScope = { householdId: household.id, members: [] };
     const category = await makeBudgetCategory(user.id, {
       kind: 'ignored',
       plannedAmount: 0,
+      householdId: household.id,
     });
     await expect(
-      upsertCategoryOverride(user.id, category.id, {
+      upsertCategoryOverride(scope, user.id, category.id, {
         month: 5,
         year: 2026,
         plannedAmount: 200,
@@ -121,25 +152,48 @@ describe('budget.service', () => {
 
   it('deleteCategoryOverride removes only the targeted month', async () => {
     const user = await makeUser();
-    const category = await makeBudgetCategory(user.id);
-    await upsertCategoryOverride(user.id, category.id, {
+    const household = await createHousehold('Home', user.id);
+    const scope: BudgetScope = { householdId: household.id, members: [] };
+    const category = await makeBudgetCategory(user.id, {
+      householdId: household.id,
+    });
+    await upsertCategoryOverride(scope, user.id, category.id, {
       month: 5,
       year: 2026,
       plannedAmount: 200,
     });
-    await upsertCategoryOverride(user.id, category.id, {
+    await upsertCategoryOverride(scope, user.id, category.id, {
       month: 6,
       year: 2026,
       plannedAmount: 300,
     });
 
-    await deleteCategoryOverride(user.id, category.id, 5, 2026);
+    await deleteCategoryOverride(scope, category.id, 5, 2026);
 
-    const remaining = await upsertCategoryOverride(user.id, category.id, {
+    const remaining = await upsertCategoryOverride(scope, user.id, category.id, {
       month: 6,
       year: 2026,
       plannedAmount: 300,
     });
     expect(remaining.plannedAmount).toBe(300);
+  });
+
+  it("deleteCategoryOverride 404s on another household's category", async () => {
+    const a = await makeUser();
+    const b = await makeUser();
+    const mine = await createHousehold('Mine', a.id);
+    const theirs = await createHousehold('Theirs', b.id);
+    const theirCategory = await makeBudgetCategory(b.id, {
+      householdId: theirs.id,
+    });
+
+    await expect(
+      deleteCategoryOverride(
+        { householdId: mine.id, members: [] },
+        theirCategory.id,
+        5,
+        2026
+      )
+    ).rejects.toMatchObject({ statusCode: 404 });
   });
 });

@@ -8,6 +8,7 @@ import transactionsRoutes from './transaction.routes';
 import { truncateAll, closeTestDb } from '../../../test/setup';
 import { authedAgent } from '../../../test/helpers/auth';
 import { makeUser, makeBudgetCategory, makeTransaction } from '../../../test/helpers/factories';
+import { createHousehold } from '../households/household.service';
 
 const buildApp = (): Application => {
   const app = express();
@@ -22,6 +23,7 @@ const buildApp = (): Application => {
 const app = buildApp();
 
 let userId: string;
+let householdId: string;
 let agent: ReturnType<typeof authedAgent>;
 
 afterEach(truncateAll);
@@ -30,6 +32,11 @@ afterAll(closeTestDb);
 beforeEach(async () => {
   const user = await makeUser();
   userId = user.id;
+  // resolveBudgetScope auto-creates a household for a user with no active
+  // membership; creating it explicitly here lets tests scope categories to
+  // it via householdId.
+  const household = await createHousehold('Home', userId);
+  householdId = household.id;
   agent = authedAgent(app, userId);
 });
 
@@ -54,7 +61,11 @@ describe('PATCH /transactions/:id/category', () => {
   });
 
   it('tags a transaction to a category', async () => {
-    const cat = await makeBudgetCategory(userId, { kind: 'flexible', plannedAmount: 600 });
+    const cat = await makeBudgetCategory(userId, {
+      kind: 'flexible',
+      plannedAmount: 600,
+      householdId,
+    });
     const txn = await makeTransaction(userId, { amount: 50 });
 
     const res = await agent
@@ -76,9 +87,17 @@ describe('PATCH /transactions/:id/category', () => {
   });
 
   it('409s on a second transaction for a fixed category in one month', async () => {
-    const cat = await makeBudgetCategory(userId, { kind: 'fixed', plannedAmount: 1800 });
-    await makeTransaction(userId, { date: new Date('2026-05-03'), categoryId: cat.id });
+    const cat = await makeBudgetCategory(userId, {
+      kind: 'fixed',
+      plannedAmount: 1800,
+      householdId,
+    });
+    const first = await makeTransaction(userId, { date: new Date('2026-05-03') });
     const second = await makeTransaction(userId, { date: new Date('2026-05-20') });
+
+    await agent
+      .patch(`/transactions/${first.id}/category`)
+      .send({ categoryId: cat.id });
 
     const res = await agent
       .patch(`/transactions/${second.id}/category`)

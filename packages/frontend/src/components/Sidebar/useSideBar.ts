@@ -3,11 +3,11 @@ import { useLocation } from 'react-router-dom';
 
 // Routes a sidebar entry can highlight for. The active tab is the longest
 // one that matches the current path, so nested routes like
-// `/shared/:groupId` still light up the `Shared` tab.
+// `/household/join/:code` still light up the `Household` tab.
 const navRoutes: Route[] = [
   Route.HOME,
   Route.TRANSACTIONS,
-  Route.SHARED,
+  Route.HOUSEHOLD,
   Route.PROFILE,
 ];
 
@@ -39,8 +39,8 @@ export const buttonData: ButtonData[] = [
     to: Route.TRANSACTIONS,
   },
   {
-    text: 'Shared',
-    to: Route.SHARED,
+    text: 'Household',
+    to: Route.HOUSEHOLD,
   },
 ];
 

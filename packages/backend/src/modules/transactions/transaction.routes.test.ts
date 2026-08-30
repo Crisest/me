@@ -7,7 +7,16 @@ import { errorHandler } from '../../middleware/errorHandler';
 import transactionsRoutes from './transaction.routes';
 import { truncateAll, closeTestDb } from '../../../test/setup';
 import { authedAgent, signTestJwt } from '../../../test/helpers/auth';
-import { makeUser, makeBank, makeCard, makeTransaction } from '../../../test/helpers/factories';
+import {
+  makeUser,
+  makeBank,
+  makeCard,
+  makeTransaction,
+  makeHousehold,
+  makeHouseholdMember,
+  makeBudgetCategory,
+} from '../../../test/helpers/factories';
+import { setTransactionCategory } from './transaction.service';
 
 /**
  * A minimal app that mounts only the transactions router, rather than the
@@ -134,5 +143,111 @@ describe('Transactions routes — happy path & isolation', () => {
 
     expect([200, 201, 204]).toContain(first.status);
     expect([200, 201, 204, 409, 500]).toContain(second.status);
+  });
+});
+
+describe('GET /transactions — query validation and scope', () => {
+  it('rejects a malformed categoryId with 400', async () => {
+    const user = await makeUser();
+    const agent = authedAgent(app, user.id);
+
+    const res = await agent.get('/transactions?categoryId=not-a-uuid');
+
+    expect(res.status).toBe(400);
+  });
+
+  it('scope=household returns another member\'s transactions with ownerEmail populated', async () => {
+    const userA = await makeUser();
+    const userB = await makeUser();
+    const household = await makeHousehold(userA.id);
+    await makeHouseholdMember(household.id, userA.id);
+    await makeHouseholdMember(household.id, userB.id);
+
+    await makeTransaction(userA.id, { description: 'A-txn', date: new Date() });
+    await makeTransaction(userB.id, { description: 'B-txn', date: new Date() });
+
+    const agentA = authedAgent(app, userA.id);
+    const res = await agentA.get('/transactions?scope=household');
+
+    expect(res.status).toBe(200);
+    const descriptions = (res.body as Array<{ description: string; ownerEmail?: string }>).map(
+      t => t.description
+    );
+    expect(descriptions).toEqual(expect.arrayContaining(['A-txn', 'B-txn']));
+    expect(
+      (res.body as Array<{ ownerEmail?: string }>).every(t => Boolean(t.ownerEmail))
+    ).toBe(true);
+  });
+
+  it('scope=mine returns only the caller\'s transactions', async () => {
+    const userA = await makeUser();
+    const userB = await makeUser();
+    const household = await makeHousehold(userA.id);
+    await makeHouseholdMember(household.id, userA.id);
+    await makeHouseholdMember(household.id, userB.id);
+
+    await makeTransaction(userA.id, { description: 'A-txn', date: new Date() });
+    await makeTransaction(userB.id, { description: 'B-txn', date: new Date() });
+
+    const agentA = authedAgent(app, userA.id);
+    const res = await agentA.get('/transactions?scope=mine');
+
+    expect(res.status).toBe(200);
+    const descriptions = (res.body as Array<{ description: string }>).map(t => t.description);
+    expect(descriptions).toEqual(['A-txn']);
+  });
+
+  it('defaults to scope=mine when no scope is given', async () => {
+    const userA = await makeUser();
+    const userB = await makeUser();
+    const household = await makeHousehold(userA.id);
+    await makeHouseholdMember(household.id, userA.id);
+    await makeHouseholdMember(household.id, userB.id);
+
+    await makeTransaction(userA.id, { description: 'A-txn', date: new Date() });
+    await makeTransaction(userB.id, { description: 'B-txn', date: new Date() });
+
+    const agentA = authedAgent(app, userA.id);
+    const res = await agentA.get('/transactions');
+
+    expect(res.status).toBe(200);
+    const descriptions = (res.body as Array<{ description: string }>).map(t => t.description);
+    expect(descriptions).toEqual(['A-txn']);
+  });
+
+  it('categoryId filters to tagged transactions only', async () => {
+    const user = await makeUser();
+    const household = await makeHousehold(user.id);
+    await makeHouseholdMember(household.id, user.id);
+    const category = await makeBudgetCategory(user.id, {
+      kind: 'flexible',
+      plannedAmount: 100,
+      householdId: household.id,
+    });
+
+    const tagged = await makeTransaction(user.id, {
+      amount: 50,
+      description: 'tagged',
+      date: new Date(),
+    });
+    await makeTransaction(user.id, {
+      amount: 20,
+      description: 'untagged',
+      date: new Date(),
+    });
+
+    await setTransactionCategory(
+      { householdId: household.id, members: [] },
+      user.id,
+      tagged.id,
+      { categoryId: category.id }
+    );
+
+    const agent = authedAgent(app, user.id);
+    const res = await agent.get(`/transactions?categoryId=${category.id}`);
+
+    expect(res.status).toBe(200);
+    const descriptions = (res.body as Array<{ description: string }>).map(t => t.description);
+    expect(descriptions).toEqual(['tagged']);
   });
 });

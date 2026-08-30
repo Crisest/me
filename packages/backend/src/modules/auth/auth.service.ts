@@ -4,6 +4,7 @@ import { getConfig } from '../../config/env';
 import { db } from '../../db/client';
 import { users, type UserRow } from '../../db/schema';
 import { findUserByEmail } from '../users/user.service';
+import { createHousehold } from '../households/household.service';
 
 const SALT_ROUNDS = 10;
 
@@ -16,11 +17,19 @@ export const register = async (
   if (existingUser) throw new Error('User already exists');
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-  const [row] = await db
-    .insert(users)
-    .values({ email, passwordHash, name })
-    .returning();
-  return row;
+
+  // One transaction: a user must never exist without a household, because
+  // every budget read resolves through one.
+  return db.transaction(async tx => {
+    const [row] = await tx
+      .insert(users)
+      .values({ email, passwordHash, name })
+      .returning();
+
+    await createHousehold(`${name ?? email}'s Household`, row.id, tx);
+
+    return row;
+  });
 };
 
 export const login = async (email: string, password: string) => {

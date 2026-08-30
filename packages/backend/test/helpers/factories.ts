@@ -1,4 +1,5 @@
 import { v7 as uuidv7 } from 'uuid';
+import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '../../src/db/client';
 import {
   accounts,
@@ -7,6 +8,9 @@ import {
   budgetCategoryOverrides,
   cards,
   groups,
+  householdMembers,
+  households,
+  transactionCategories,
   transactions,
   users,
   type AccountRow,
@@ -100,6 +104,7 @@ export const makeBudgetCategory = async (
   userId: string,
   overrides: Partial<typeof budgetCategories.$inferInsert> = {}
 ): Promise<BudgetCategoryRow> => {
+  const householdId = overrides.householdId ?? (await resolveHouseholdId(userId));
   const [row] = await db
     .insert(budgetCategories)
     .values({
@@ -108,9 +113,30 @@ export const makeBudgetCategory = async (
       plannedAmount: 100,
       createdBy: userId,
       ...overrides,
+      householdId,
     })
     .returning();
   return row;
+};
+
+/**
+ * `budget_categories.household_id` is NOT NULL. Test fixtures written before
+ * households existed call `makeBudgetCategory` without one, so resolve it
+ * from the user's active membership, creating a household for them if they
+ * don't have one yet.
+ */
+const resolveHouseholdId = async (userId: string): Promise<string> => {
+  const membership = await db.query.householdMembers.findFirst({
+    where: and(
+      eq(householdMembers.userId, userId),
+      isNull(householdMembers.deletedAt)
+    ),
+  });
+  if (membership) return membership.householdId;
+
+  const household = await makeHousehold(userId);
+  await makeHouseholdMember(household.id, userId);
+  return household.id;
 };
 
 export const makeBudgetCategoryOverride = async (
@@ -142,6 +168,54 @@ export const makeTransaction = async (
       amount: 25.5,
       description: 'Test transaction',
       date: new Date('2026-01-15T12:00:00Z'),
+      createdBy: userId,
+      ...overrides,
+    })
+    .returning();
+  return row;
+};
+
+export const makeHousehold = async (
+  userId: string,
+  overrides: Partial<typeof households.$inferInsert> = {}
+) => {
+  const [row] = await db
+    .insert(households)
+    .values({
+      name: `Household ${uniq()}`,
+      inviteCode: uniq().slice(0, 6),
+      createdBy: userId,
+      ...overrides,
+    })
+    .returning();
+  return row;
+};
+
+export const makeHouseholdMember = async (
+  householdId: string,
+  userId: string,
+  overrides: Partial<typeof householdMembers.$inferInsert> = {}
+) => {
+  const [row] = await db
+    .insert(householdMembers)
+    .values({ householdId, userId, ...overrides })
+    .returning();
+  return row;
+};
+
+export const makeTransactionCategory = async (
+  transactionId: string,
+  categoryId: string,
+  householdId: string,
+  userId: string,
+  overrides: Partial<typeof transactionCategories.$inferInsert> = {}
+) => {
+  const [row] = await db
+    .insert(transactionCategories)
+    .values({
+      transactionId,
+      categoryId,
+      householdId,
       createdBy: userId,
       ...overrides,
     })

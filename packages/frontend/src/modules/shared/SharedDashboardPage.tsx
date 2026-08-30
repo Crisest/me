@@ -23,7 +23,7 @@ import YButton from '@/ui/Button/Button';
 import YmCombobox from '@ui/YmCombobox/YmCombobox';
 import { useAccountFilter } from '@/hooks/useAccountFilter';
 import { FaRegCopy } from 'react-icons/fa';
-import MemberAvatars from './MemberAvatars';
+import MemberAvatars from '../household/MemberAvatars';
 import MemberBudgetModal from './MemberBudgetModal';
 import styles from './SharedDashboardPage.module.css';
 import type { GroupMember } from '@portfolio/common';

@@ -10,8 +10,21 @@ import { budgetCategories } from './budget-categories';
 import { budgetCategoryOverrides } from './budget-category-overrides';
 import { budgetOverrides } from './budget-overrides';
 import { budgets } from './budgets';
+import { householdMembers } from './household-members';
+import { households } from './households';
+import { transactionCategories } from './transaction-categories';
 import { transactions } from './transactions';
 import { uploads } from './uploads';
+import { truncateAll, closeTestDb } from '../../../test/setup';
+import {
+  makeUser,
+  makeHousehold,
+  makeHouseholdMember,
+  makeBudgetCategory,
+  makeBudgetCategoryOverride,
+  makeTransaction,
+  makeTransactionCategory,
+} from '../../../test/helpers/factories';
 
 const columnNames = (table: Parameters<typeof getTableConfig>[0]) =>
   getTableConfig(table).columns.map(c => c.name);
@@ -168,10 +181,10 @@ describe('budget tables', () => {
     expect(uq.columns.map(c => c.name)).toEqual(['created_by', 'month', 'year']);
   });
 
-  it('budget_category_overrides has the four-column composite unique', () => {
+  it('budget_category_overrides has the three-column composite unique', () => {
     const uq = getTableConfig(budgetCategoryOverrides).uniqueConstraints[0];
+    expect(uq.name).toBe('bco_category_month_year_uq');
     expect(uq.columns.map(c => c.name)).toEqual([
-      'created_by',
       'category_id',
       'month',
       'year',
@@ -284,5 +297,128 @@ describe('relational query API', () => {
     ]) {
       expect(db.query).toHaveProperty(table);
     }
+  });
+});
+
+describe('household tables', () => {
+  it('households has the expected columns and a unique invite code', () => {
+    const t = getTableConfig(households);
+    expect(columnNames(households)).toEqual(
+      expect.arrayContaining([
+        'id', 'name', 'invite_code', 'archived', 'created_by',
+        'created_at', 'updated_at',
+      ])
+    );
+    const inviteCode = t.columns.find(c => c.name === 'invite_code');
+    expect(inviteCode?.isUnique).toBe(true);
+  });
+
+  it('households.created_by is nullable so a household outlives its creator', () => {
+    const createdBy = getTableConfig(households).columns.find(
+      c => c.name === 'created_by'
+    );
+    expect(createdBy?.notNull).toBe(false);
+  });
+
+  it('household_members carries a surrogate id and soft-delete column', () => {
+    expect(columnNames(householdMembers)).toEqual(
+      expect.arrayContaining([
+        'id', 'household_id', 'user_id', 'created_at', 'updated_at', 'deleted_at',
+      ])
+    );
+    // A composite primary key would make rejoining impossible.
+    const pk = getTableConfig(householdMembers).primaryKeys;
+    expect(pk).toHaveLength(0);
+  });
+
+  it('transaction_categories links a transaction to a category per household', () => {
+    expect(columnNames(transactionCategories)).toEqual(
+      expect.arrayContaining([
+        'id', 'transaction_id', 'category_id', 'household_id',
+        'created_by', 'created_at', 'updated_at', 'deleted_at',
+      ])
+    );
+  });
+
+  it('budget_categories gains household_id, updated_by and deleted_at', () => {
+    expect(columnNames(budgetCategories)).toEqual(
+      expect.arrayContaining(['household_id', 'updated_by', 'deleted_at'])
+    );
+  });
+});
+
+describe('household relational query API', () => {
+  it('exposes the new tables on db.query', () => {
+    expect(db.query.households).toBeDefined();
+    expect(db.query.householdMembers).toBeDefined();
+    expect(db.query.transactionCategories).toBeDefined();
+  });
+});
+
+describe('household constraints', () => {
+  afterEach(truncateAll);
+  afterAll(closeTestDb);
+
+  it('allows only one active membership per user', async () => {
+    const user = await makeUser();
+    const first = await makeHousehold(user.id);
+    const second = await makeHousehold(user.id);
+    await makeHouseholdMember(first.id, user.id);
+
+    await expect(makeHouseholdMember(second.id, user.id)).rejects.toThrow();
+  });
+
+  it('allows a closed membership alongside an active one', async () => {
+    const user = await makeUser();
+    const first = await makeHousehold(user.id);
+    const second = await makeHousehold(user.id);
+    await makeHouseholdMember(first.id, user.id, { deletedAt: new Date() });
+
+    await expect(
+      makeHouseholdMember(second.id, user.id)
+    ).resolves.toBeDefined();
+  });
+
+  it('allows only one live tag per transaction per household', async () => {
+    const user = await makeUser();
+    const household = await makeHousehold(user.id);
+    const category = await makeBudgetCategory(user.id, {
+      householdId: household.id,
+    });
+    const txn = await makeTransaction(user.id, { amount: 10 });
+    await makeTransactionCategory(txn.id, category.id, household.id, user.id);
+
+    await expect(
+      makeTransactionCategory(txn.id, category.id, household.id, user.id)
+    ).rejects.toThrow();
+  });
+
+  it('allows two households to tag the same transaction', async () => {
+    const a = await makeUser();
+    const b = await makeUser();
+    const one = await makeHousehold(a.id);
+    const two = await makeHousehold(b.id);
+    const catOne = await makeBudgetCategory(a.id, { householdId: one.id });
+    const catTwo = await makeBudgetCategory(b.id, { householdId: two.id });
+    const txn = await makeTransaction(a.id, { amount: 10 });
+
+    await makeTransactionCategory(txn.id, catOne.id, one.id, a.id);
+    await expect(
+      makeTransactionCategory(txn.id, catTwo.id, two.id, b.id)
+    ).resolves.toBeDefined();
+  });
+
+  it('allows only one override per category per month', async () => {
+    const a = await makeUser();
+    const b = await makeUser();
+    const household = await makeHousehold(a.id);
+    const category = await makeBudgetCategory(a.id, {
+      householdId: household.id,
+    });
+    await makeBudgetCategoryOverride(a.id, category.id, { month: 5, year: 2026 });
+
+    await expect(
+      makeBudgetCategoryOverride(b.id, category.id, { month: 5, year: 2026 })
+    ).rejects.toThrow();
   });
 });

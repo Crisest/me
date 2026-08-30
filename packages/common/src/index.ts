@@ -1,5 +1,6 @@
 export * from './types/User';
 export * from './types/Group';
+export * from './types/Household';
 export * from './types/Transaction';
 export * from './types/Auth';
 export * from './types/Bank';

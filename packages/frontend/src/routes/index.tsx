@@ -6,6 +6,8 @@ import RegisterPage from '@/modules/Auth/register/RegisterPage';
 import SharedPage from '@/modules/shared/SharedPage';
 import SharedDashboardPage from '@/modules/shared/SharedDashboardPage';
 import JoinSharedPage from '@/modules/shared/JoinSharedPage';
+import HouseholdPage from '@/modules/household/HouseholdPage';
+import JoinHouseholdPage from '@/modules/household/JoinHouseholdPage';
 import { BudgetOverviewPage } from '@/modules/budget/BudgetOverviewPage';
 import { TransactionsPage } from '@/modules/transactions/TransactionsPage';
 import { ProfilePage } from '@/modules/profile/ProfilePage';
@@ -28,6 +30,11 @@ export const AppRoutes: React.FC = () => {
           <Route path={RouteEnum.PROFILE} element={<ProfilePage />} />
           <Route path={RouteEnum.SHARED} element={<SharedPage />} />
           <Route path={RouteEnum.SHARED_JOIN} element={<JoinSharedPage />} />
+          <Route path={RouteEnum.HOUSEHOLD} element={<HouseholdPage />} />
+          <Route
+            path={RouteEnum.HOUSEHOLD_JOIN}
+            element={<JoinHouseholdPage />}
+          />
           <Route
             path={RouteEnum.SHARED_DASHBOARD}
             element={<SharedDashboardPage />}

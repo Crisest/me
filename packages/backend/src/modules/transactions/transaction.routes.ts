@@ -2,7 +2,12 @@ import { Router } from 'express';
 import { z } from 'zod';
 import * as controller from './transaction.controller';
 import { authMiddleware } from '../auth';
-import { validateBody, validateParams } from '../../middleware/validateRequest';
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from '../../middleware/validateRequest';
+import { resolveBudgetScope } from '../../middleware/resolveBudgetScope';
 import insightsRouter from './transaction.insights.routes';
 
 const router: Router = Router();
@@ -28,7 +33,20 @@ const setCategoryBody = z.object({
     .optional(),
 });
 
-router.get('/', authMiddleware, controller.getTransactionsByUserId);
+const listQuery = z.object({
+  month: z.coerce.number().int().min(1).max(12).optional(),
+  year: z.coerce.number().int().min(1970).optional(),
+  categoryId: z.string().uuid().optional(),
+  scope: z.enum(['mine', 'household']).optional(),
+});
+
+router.get(
+  '/',
+  authMiddleware,
+  validateQuery(listQuery),
+  resolveBudgetScope,
+  controller.getTransactionsByUserId
+);
 router.post(
   '/bulk',
   authMiddleware,
@@ -40,6 +58,7 @@ router.patch(
   authMiddleware,
   validateParams(idParam),
   validateBody(setCategoryBody),
+  resolveBudgetScope,
   controller.setCategory
 );
 router.use(insightsRouter);

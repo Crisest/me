@@ -2,7 +2,7 @@ import React from 'react';
 import { GroupWithMembers } from '@portfolio/common';
 import { IoClose } from 'react-icons/io5';
 import { formatCAD, formatMonthYear } from '@/utils/format';
-import MemberAvatars from './MemberAvatars';
+import MemberAvatars from '../household/MemberAvatars';
 import styles from './GroupCard.module.css';
 
 interface Props {

@@ -7,6 +7,7 @@ import { db, closeDb } from '../src/db/client';
  * statement correct if a serial column is ever added.
  */
 const TABLES = [
+  'transaction_categories',
   'transactions',
   'uploads',
   'group_members',
@@ -15,6 +16,8 @@ const TABLES = [
   'budget_overrides',
   'budgets',
   'budget_categories',
+  'household_members',
+  'households',
   'accounts',
   'cards',
   'banks',

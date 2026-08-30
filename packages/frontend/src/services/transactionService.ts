@@ -9,9 +9,14 @@ import type {
 export const transactionApi = apiSlice.injectEndpoints({
   endpoints: builder => ({
     getTransactions: builder.query<Transaction[], TransactionPayloads.GetMany>({
-      query: ({ month, year }) => ({
+      query: ({ month, year, categoryId, scope }) => ({
         url: 'transactions',
-        params: { month, year },
+        params: {
+          ...(month !== undefined && { month }),
+          ...(year !== undefined && { year }),
+          ...(categoryId !== undefined && { categoryId }),
+          ...(scope !== undefined && { scope }),
+        },
       }),
       providesTags: (_r, _e, arg) => [
         { type: tagTypesEnum.TRANSACTIONS, id: 'LIST' },
@@ -50,11 +55,14 @@ export const transactionApi = apiSlice.injectEndpoints({
     }),
     getTransactionInsights: builder.query<
       TransactionInsights,
-      GetMonthlyInsightsParams
+      GetMonthlyInsightsParams & { scope?: 'mine' | 'household' }
     >({
-      query: ({ month, year }) => ({
+      query: ({ month, year, scope }) => ({
         url: `transactions/insights/${month}`,
-        params: { year },
+        params: {
+          ...(year !== undefined && { year }),
+          ...(scope !== undefined && { scope }),
+        },
       }),
       providesTags: (_r, _e, arg) => [
         { type: tagTypesEnum.TRANSACTION_INSIGHTS, id: `${arg.year}-${arg.month}` },

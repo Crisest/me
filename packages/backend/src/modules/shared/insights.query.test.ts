@@ -3,8 +3,14 @@ import {
   makeUser,
   makeBudgetCategory,
   makeTransaction,
+  makeTransactionCategory,
 } from '../../../test/helpers/factories';
-import { aggregateSpend, getCategoryIdsByKind } from './insights.query';
+import { createHousehold } from '../households/household.service';
+import {
+  aggregateSpend,
+  getCategoryIdsByKind,
+  getCategoryIdsByHousehold,
+} from './insights.query';
 
 afterEach(truncateAll);
 afterAll(closeTestDb);
@@ -178,5 +184,130 @@ describe('aggregateSpend', () => {
     await makeBudgetCategory(other.id, { kind: 'ignored', plannedAmount: 0 });
 
     expect(await getCategoryIdsByKind([user.id], 'ignored')).toEqual([ignored.id]);
+  });
+
+  it('getCategoryIdsByHousehold resolves a category authored by ANY household member', async () => {
+    const owner = await makeUser();
+    const partner = await makeUser();
+    const household = await createHousehold('Home', owner.id);
+    const other = await createHousehold('Other', partner.id);
+
+    const ignoredByPartner = await makeBudgetCategory(partner.id, {
+      kind: 'ignored',
+      plannedAmount: 0,
+      householdId: household.id,
+    });
+    await makeBudgetCategory(partner.id, {
+      kind: 'ignored',
+      plannedAmount: 0,
+      householdId: other.id,
+    });
+
+    expect(await getCategoryIdsByHousehold(household.id, 'ignored')).toEqual([
+      ignoredByPartner.id,
+    ]);
+  });
+});
+
+describe('aggregateSpend — householdId param (live tag row resolution)', () => {
+  it('with no householdId, falls back to the legacy transactions.category_id column unchanged', async () => {
+    const user = await makeUser();
+    const ignored = await makeBudgetCategory(user.id, {
+      kind: 'ignored',
+      plannedAmount: 0,
+    });
+    await makeTransaction(user.id, {
+      amount: 500,
+      date: inJan(5),
+      categoryId: ignored.id,
+    });
+    await makeTransaction(user.id, { amount: 100, date: inJan(6) });
+
+    const result = await aggregateSpend({
+      userIds: [user.id],
+      startDate: JAN,
+      endDate: FEB,
+      excludedCategoryIds: [ignored.id],
+      fixedCategoryIds: [],
+    });
+
+    expect(result.totalSpent).toBe(100);
+  });
+
+  it('with householdId, excludes a debit tagged via a LIVE transaction_categories row', async () => {
+    const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
+    const ignored = await makeBudgetCategory(user.id, {
+      kind: 'ignored',
+      plannedAmount: 0,
+      householdId: household.id,
+    });
+    const tagged = await makeTransaction(user.id, { amount: 500, date: inJan(5) });
+    await makeTransaction(user.id, { amount: 100, date: inJan(6) });
+    await makeTransactionCategory(tagged.id, ignored.id, household.id, user.id);
+
+    const result = await aggregateSpend({
+      userIds: [user.id],
+      startDate: JAN,
+      endDate: FEB,
+      excludedCategoryIds: [ignored.id],
+      fixedCategoryIds: [],
+      householdId: household.id,
+    });
+
+    expect(result.totalSpent).toBe(100);
+  });
+
+  it('with householdId, a debit with NO live tag row still counts as spend', async () => {
+    const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
+    const ignored = await makeBudgetCategory(user.id, {
+      kind: 'ignored',
+      plannedAmount: 0,
+      householdId: household.id,
+    });
+    // Legacy column set directly (as a pre-cutover row would carry), but no
+    // live tag row — with householdId supplied, this must NOT be excluded.
+    await makeTransaction(user.id, {
+      amount: 500,
+      date: inJan(5),
+      categoryId: ignored.id,
+    });
+
+    const result = await aggregateSpend({
+      userIds: [user.id],
+      startDate: JAN,
+      endDate: FEB,
+      excludedCategoryIds: [ignored.id],
+      fixedCategoryIds: [],
+      householdId: household.id,
+    });
+
+    expect(result.totalSpent).toBe(500);
+  });
+
+  it('with householdId, a closed (deleted) tag row does not count toward matchedFixedCount', async () => {
+    const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
+    const rent = await makeBudgetCategory(user.id, {
+      kind: 'fixed',
+      plannedAmount: 1800,
+      householdId: household.id,
+    });
+    const txn = await makeTransaction(user.id, { amount: 1800, date: inJan(5) });
+    await makeTransactionCategory(txn.id, rent.id, household.id, user.id, {
+      deletedAt: new Date(),
+    });
+
+    const result = await aggregateSpend({
+      userIds: [user.id],
+      startDate: JAN,
+      endDate: FEB,
+      excludedCategoryIds: [],
+      fixedCategoryIds: [rent.id],
+      householdId: household.id,
+    });
+
+    expect(result.matchedFixedCount).toBe(0);
   });
 });

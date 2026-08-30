@@ -23,6 +23,15 @@ export interface BudgetCategoryOverride {
   updatedAt?: number;
 }
 
+/** One member's contribution to a category's actual spend in a month. */
+export interface CategoryMemberActual {
+  userId: string;
+  name?: string;
+  email: string;
+  actual: number;
+  transactionCount: number;
+}
+
 /** One category's planned-vs-actual position for a single month. */
 export interface BudgetCategorySummary {
   categoryId: string;
@@ -37,6 +46,8 @@ export interface BudgetCategorySummary {
   /** fixed: max(planned, actual) · flexible: actual · ignored: 0 */
   cost: number;
   transactionCount: number;
+  /** Always populated. One entry in a solo household. API-only — no UI renders it. */
+  byMember: CategoryMemberActual[];
 }
 
 export interface BudgetSummary {
@@ -46,7 +57,11 @@ export interface BudgetSummary {
   income: number;
   usingActualIncome: boolean;
   categories: BudgetCategorySummary[];
-  untagged: { amount: number; transactionCount: number };
+  untagged: {
+    amount: number;
+    transactionCount: number;
+    byMember: CategoryMemberActual[];
+  };
   /** Sum of `planned` over fixed + flexible categories. */
   totalPlanned: number;
   /** Sum of `cost` over fixed + flexible categories, plus `untagged.amount`. */

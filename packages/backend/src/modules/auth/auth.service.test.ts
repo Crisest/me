@@ -67,3 +67,53 @@ describe('auth.service', () => {
     expect(await getGroupIdsForUser(user.id)).toEqual([group.id]);
   });
 });
+
+describe('register', () => {
+  it('gives the new user a solo household and an active membership', async () => {
+    const { register } = await import('./auth.service');
+    const { getActiveMembership, getHouseholdForUser } = await import(
+      '../households/household.service'
+    );
+
+    const user = await register('ada@example.com', 'password123', 'Ada');
+
+    const membership = await getActiveMembership(user.id);
+    expect(membership).toBeDefined();
+
+    const household = await getHouseholdForUser(user.id);
+    expect(household?.name).toBe("Ada's Household");
+    expect(household?.members.map(m => m.id)).toEqual([user.id]);
+  });
+
+  it('names the household from the email when no name is given', async () => {
+    const { register } = await import('./auth.service');
+    const { getHouseholdForUser } = await import(
+      '../households/household.service'
+    );
+
+    const user = await register('solo@example.com', 'password123');
+    const household = await getHouseholdForUser(user.id);
+
+    expect(household?.name).toBe("solo@example.com's Household");
+  });
+
+  it('creates no user when household creation fails', async () => {
+    const { register } = await import('./auth.service');
+    const householdService = await import('../households/household.service');
+    const { db } = await import('../../db/client');
+    const { users } = await import('../../db/schema');
+
+    const spy = jest
+      .spyOn(householdService, 'createHousehold')
+      .mockRejectedValueOnce(new Error('boom'));
+
+    await expect(
+      register('rollback@example.com', 'password123')
+    ).rejects.toThrow('boom');
+
+    const rows = await db.select().from(users);
+    expect(rows.find(u => u.email === 'rollback@example.com')).toBeUndefined();
+
+    spy.mockRestore();
+  });
+});

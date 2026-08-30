@@ -1,26 +1,31 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { getMonthlyInsights } from './transaction.insights.service';
 
-export const getTransactionInsights = async (req: Request, res: Response) => {
+export const getTransactionInsights = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const month = parseInt(req.params.month);
-    const year = req.query.year
-      ? parseInt(req.query.year as string)
-      : undefined;
 
     if (isNaN(month) || month < 1 || month > 12) {
       return res.status(400).json({ message: 'Invalid month parameter' });
     }
 
-    if (year && (isNaN(year) || year < 1900 || year > 2100)) {
-      return res.status(400).json({ message: 'Invalid year parameter' });
-    }
+    const query = req.query as { year?: number; scope?: 'mine' | 'household' };
 
-    const insights = await getMonthlyInsights(req.user!.id, month, year);
+    const insights = await getMonthlyInsights(
+      req.budgetScope!,
+      req.user!.id,
+      month,
+      query.year,
+      query.scope ?? 'mine'
+    );
 
     res.json(insights);
-  } catch (error) {
-    console.error('Error getting transaction insights:', error);
-    res.status(500).json({ message: 'Internal server error' });
+  } catch (err) {
+    req.log.error({ err }, 'Failed to fetch transaction insights');
+    next(err);
   }
 };

@@ -12,6 +12,7 @@ import cardRoutes from './modules/cards/card.routes';
 import budgetRoutes from './modules/budget';
 import uploadRoutes from './modules/uploads';
 import groupRoutes from './modules/groups/group.routes';
+import householdRoutes from './modules/households';
 import accountRoutes from './modules/accounts';
 import plaidRoutes from './modules/plaid';
 import devRoutes from './modules/dev';
@@ -93,6 +94,7 @@ app.use('/cards', cardRoutes);
 app.use('/budget', budgetRoutes);
 app.use('/uploads', uploadRoutes);
 app.use('/groups', groupRoutes);
+app.use('/households', householdRoutes);
 app.use('/accounts', accountRoutes);
 app.use('/plaid', plaidRoutes);
 if (config.nodeEnv !== 'production') {

@@ -185,10 +185,11 @@ describe('runVerify', () => {
       { name: 'gym', kind: 'fixed' as const, plannedAmount: 280 },
     ].slice(0, categoriesToWrite);
     for (const r of rows) {
-      await db.insert(schema.budgetCategories).values({
-        ...r,
-        createdBy: user.id,
-      });
+      // `factories.makeBudgetCategory` resolves `household_id` (NOT NULL)
+      // from the user's active membership — created earlier in
+      // `seedMatchingDataset` — rather than leaving it for a raw insert to
+      // violate.
+      await factories.makeBudgetCategory(user.id, r);
     }
   };
 

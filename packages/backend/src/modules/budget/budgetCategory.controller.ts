@@ -10,7 +10,7 @@ export const getCategories = async (
   next: NextFunction
 ) => {
   try {
-    const categories = await categoryService.listCategories(req.user!.id);
+    const categories = await categoryService.listCategories(req.budgetScope!);
     res.json({ categories });
   } catch (err) {
     next(err);
@@ -24,7 +24,11 @@ export const postCategory = async (
 ) => {
   try {
     const payload = req.body as BudgetCategoryPayloads.Create;
-    const category = await categoryService.createCategory(req.user!.id, payload);
+    const category = await categoryService.createCategory(
+      req.budgetScope!,
+      req.user!.id,
+      payload
+    );
     req.log.info({ categoryId: category.id }, 'budget category created');
     res.status(201).json({ category });
   } catch (err) {
@@ -40,6 +44,7 @@ export const patchCategory = async (
   try {
     const payload = req.body as BudgetCategoryPayloads.Update;
     const category = await categoryService.updateCategory(
+      req.budgetScope!,
       req.user!.id,
       req.params.id,
       payload
@@ -56,7 +61,7 @@ export const deleteCategory = async (
   next: NextFunction
 ) => {
   try {
-    await categoryService.deleteCategory(req.user!.id, req.params.id);
+    await categoryService.deleteCategory(req.budgetScope!, req.params.id);
     req.log.info({ categoryId: req.params.id }, 'budget category deleted');
     res.status(204).send();
   } catch (err) {
@@ -72,6 +77,7 @@ export const putCategoryOverride = async (
   try {
     const payload = req.body as BudgetCategoryPayloads.SetOverride;
     const override = await budgetService.upsertCategoryOverride(
+      req.budgetScope!,
       req.user!.id,
       req.params.id,
       payload
@@ -89,7 +95,7 @@ export const deleteCategoryOverride = async (
 ) => {
   try {
     await budgetService.deleteCategoryOverride(
-      req.user!.id,
+      req.budgetScope!,
       req.params.id,
       Number(req.query.month),
       Number(req.query.year)
@@ -107,7 +113,7 @@ export const getSummary = async (
 ) => {
   try {
     const summary = await getBudgetSummary(
-      req.user!.id,
+      req.budgetScope!,
       Number(req.query.month),
       Number(req.query.year)
     );

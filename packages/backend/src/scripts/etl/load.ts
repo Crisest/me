@@ -1,5 +1,6 @@
+import crypto from 'crypto';
 import { openMongo, closeMongo } from './mongo-source';
-import { db } from '../../db/client';
+import { db, type Tx } from '../../db/client';
 import {
   accounts,
   banks,
@@ -10,6 +11,8 @@ import {
   cards,
   groupMembers,
   groups,
+  householdMembers,
+  households,
   transactions,
   uploads,
   users,
@@ -17,6 +20,39 @@ import {
 import { IdMap } from './id-map';
 
 export type LoadReport = Record<string, { read: number; written: number }>;
+
+/**
+ * The Mongo source predates the household feature entirely — no collection
+ * in `ORDER` carries one. `budget_categories.household_id` is NOT NULL, so
+ * every migrated category needs one; each category owner gets a solo
+ * household (created lazily, once per user, cached in `cache`).
+ */
+const resolveSoloHouseholdId = async (
+  tx: Tx,
+  userId: string,
+  createdAt: Date,
+  cache: Map<string, string>
+): Promise<string> => {
+  const cached = cache.get(userId);
+  if (cached) return cached;
+
+  const [household] = await tx
+    .insert(households)
+    .values({
+      name: 'Migrated Household',
+      inviteCode: crypto.randomBytes(4).toString('base64url').slice(0, 6),
+      createdBy: userId,
+      createdAt,
+    })
+    .returning();
+  await tx.insert(householdMembers).values({
+    householdId: household.id,
+    userId,
+    createdAt,
+  });
+  cache.set(userId, household.id);
+  return household.id;
+};
 
 /** Every table is loaded in this order so FKs always resolve. */
 const ORDER = [
@@ -132,23 +168,37 @@ export const runLoad = async (
       // traceable back to the source document.
       const budgetDocs = await read('budgets');
       const categoryDocs = await read('budgetcategories');
+      const householdCache = new Map<string, string>();
 
-      const categoryRows = categoryDocs.map(d => ({
-        id: ids.assign('budgetcategories', String(d._id)),
-        name: d.name as string,
-        kind: d.kind as 'fixed' | 'flexible' | 'ignored',
-        plannedAmount: d.plannedAmount as number,
-        color: (d.color as string) ?? null,
-        createdBy: ids.resolve('users', String(d.createdBy)),
-        createdAt: (d.createdAt as Date) ?? new Date(),
-        updatedAt: (d.updatedAt as Date) ?? (d.createdAt as Date) ?? new Date(),
-      }));
+      const categoryRows = [];
+      for (const d of categoryDocs) {
+        const createdBy = ids.resolve('users', String(d.createdBy));
+        const createdAt = (d.createdAt as Date) ?? new Date();
+        categoryRows.push({
+          id: ids.assign('budgetcategories', String(d._id)),
+          name: d.name as string,
+          kind: d.kind as 'fixed' | 'flexible' | 'ignored',
+          plannedAmount: d.plannedAmount as number,
+          color: (d.color as string) ?? null,
+          createdBy,
+          householdId: await resolveSoloHouseholdId(
+            tx,
+            createdBy,
+            createdAt,
+            householdCache
+          ),
+          createdAt,
+          updatedAt: (d.updatedAt as Date) ?? createdAt,
+        });
+      }
 
       type FixedExpense = { _id: unknown; name: unknown; amount: unknown };
-      const fixedExpenseRows = budgetDocs.flatMap(b => {
+      const fixedExpenseRows = [];
+      for (const b of budgetDocs) {
         const entries = (b.fixedExpenses ?? []) as FixedExpense[];
         const owner = ids.resolve('users', String(b.createdBy));
-        return entries.map(e => {
+        const ownerCreatedAt = (b.createdAt as Date) ?? new Date();
+        for (const e of entries) {
           const amount = e.amount as number;
           // budget_categories_planned_amount_kind_ck requires a positive
           // amount for 'fixed'. Fail by name rather than letting Postgres
@@ -159,7 +209,7 @@ export const runLoad = async (
                 `amount must be a positive number, got ${String(amount)}`
             );
           }
-          return {
+          fixedExpenseRows.push({
             id: ids.assign('budgetcategories', String(e._id)),
             name: String(e.name),
             kind: 'fixed' as const,
@@ -167,11 +217,17 @@ export const runLoad = async (
             // Unused by the UI today, and the source has no equivalent.
             color: null,
             createdBy: owner,
-            createdAt: (b.createdAt as Date) ?? new Date(),
-            updatedAt: (b.updatedAt as Date) ?? (b.createdAt as Date) ?? new Date(),
-          };
-        });
-      });
+            householdId: await resolveSoloHouseholdId(
+              tx,
+              owner,
+              ownerCreatedAt,
+              householdCache
+            ),
+            createdAt: ownerCreatedAt,
+            updatedAt: (b.updatedAt as Date) ?? ownerCreatedAt,
+          });
+        }
+      }
 
       const allCategoryRows = [...categoryRows, ...fixedExpenseRows];
       if (allCategoryRows.length)

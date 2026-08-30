@@ -30,3 +30,13 @@ export const timestamps = {
     .defaultNow()
     .$onUpdate(() => new Date()),
 };
+
+/**
+ * Spread into soft-deleted tables: `...softDelete`.
+ *
+ * Null means the row is live. Postgres evaluates `deleted_at IS NULL` per row
+ * in a partial index predicate, so closed rows simply fall out of the index.
+ */
+export const softDelete = {
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+};

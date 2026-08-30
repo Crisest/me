@@ -1,0 +1,130 @@
+.section {
+  background: var(--color-white);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  margin-bottom: var(--spacing-md);
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.name {
+  font-family: var(--font-family-header);
+  font-size: var(--font-xl);
+  font-weight: 700;
+  color: var(--color-dark);
+  margin: 0;
+}
+
+.nameInput {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: 6px;
+  font-size: var(--font-sm);
+}
+
+.editButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #999;
+  padding: var(--spacing-xs);
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.editButton:hover {
+  color: var(--color-blue);
+  background-color: var(--color-blue-light);
+}
+
+.label {
+  font-family: var(--font-family-body);
+  font-size: var(--font-xs);
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--spacing-sm);
+  display: block;
+}
+
+.soloState {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.soloText {
+  font-size: var(--font-sm);
+  color: var(--color-dark);
+  margin: 0;
+}
+
+.membersList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.memberRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.memberName {
+  flex: 1;
+  font-size: var(--font-sm);
+  color: var(--color-dark);
+}
+
+.removeButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-muted, #888);
+  font-size: var(--font-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+}
+
+.removeButton:hover {
+  color: var(--color-danger, #e53e3e);
+  background-color: var(--color-blue-light);
+}
+
+.inviteRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.inviteLink {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: 6px;
+  font-size: var(--font-xs);
+  color: var(--color-muted, #777);
+  background: var(--color-blue-light, #f4f6ff);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.actionsRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}

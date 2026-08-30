@@ -7,8 +7,10 @@ import budgetRoutes from './budget.routes';
 import { truncateAll, closeTestDb } from '../../../test/setup';
 import { authedAgent } from '../../../test/helpers/auth';
 import { makeUser, makeBudgetCategory } from '../../../test/helpers/factories';
+import { eq } from 'drizzle-orm';
 import { db } from '../../db/client';
-import { budgets } from '../../db/schema';
+import { budgets, householdMembers } from '../../db/schema';
+import { createHousehold, joinByCode } from '../households/household.service';
 
 /**
  * A minimal app that mounts only the budget router, rather than the full
@@ -32,6 +34,7 @@ const buildApp = (): Application => {
 const app = buildApp();
 
 let userId: string;
+let householdId: string;
 let agent: ReturnType<typeof authedAgent>;
 
 afterEach(truncateAll);
@@ -42,6 +45,8 @@ beforeEach(async () => {
   userId = user.id;
   agent = authedAgent(app, userId);
   await db.insert(budgets).values({ salary: 5000, createdBy: userId });
+  const household = await createHousehold('Home', userId);
+  householdId = household.id;
 });
 
 describe('Budget category routes — auth', () => {
@@ -108,8 +113,9 @@ describe('POST /budget/categories', () => {
 describe('GET /budget/categories', () => {
   it('returns only the caller categories', async () => {
     const other = await makeUser();
-    await makeBudgetCategory(userId, { name: 'Mine' });
-    await makeBudgetCategory(other.id, { name: 'Theirs' });
+    const otherHousehold = await createHousehold('Other', other.id);
+    await makeBudgetCategory(userId, { name: 'Mine', householdId });
+    await makeBudgetCategory(other.id, { name: 'Theirs', householdId: otherHousehold.id });
 
     const res = await agent.get('/budget/categories');
 
@@ -117,11 +123,28 @@ describe('GET /budget/categories', () => {
     expect(res.body.categories).toHaveLength(1);
     expect(res.body.categories[0].name).toBe('Mine');
   });
+
+  it('shows a category created by one member to the other', async () => {
+    const a = await makeUser();
+    const b = await makeUser();
+    const household = await createHousehold('Home', a.id);
+    await createHousehold('Other', b.id);
+    await joinByCode(household.inviteCode, b.id);
+
+    await authedAgent(app, a.id)
+      .post('/budget/categories')
+      .send({ name: 'Groceries', kind: 'flexible', plannedAmount: 400 })
+      .expect(201);
+
+    const res = await authedAgent(app, b.id).get('/budget/categories');
+
+    expect(res.body.categories.map((c: any) => c.name)).toEqual(['Groceries']);
+  });
 });
 
 describe('PATCH and DELETE /budget/categories/:id', () => {
   it('updates a category', async () => {
-    const cat = await makeBudgetCategory(userId, { name: 'Old', plannedAmount: 100 });
+    const cat = await makeBudgetCategory(userId, { name: 'Old', plannedAmount: 100, householdId });
 
     const res = await agent.patch(`/budget/categories/${cat.id}`).send({ name: 'New' });
 
@@ -131,7 +154,8 @@ describe('PATCH and DELETE /budget/categories/:id', () => {
 
   it('404s when updating another user category', async () => {
     const other = await makeUser();
-    const cat = await makeBudgetCategory(other.id);
+    const otherHousehold = await createHousehold('Other', other.id);
+    const cat = await makeBudgetCategory(other.id, { householdId: otherHousehold.id });
 
     const res = await agent.patch(`/budget/categories/${cat.id}`).send({ name: 'Hijacked' });
 
@@ -139,7 +163,7 @@ describe('PATCH and DELETE /budget/categories/:id', () => {
   });
 
   it('deletes a category', async () => {
-    const cat = await makeBudgetCategory(userId);
+    const cat = await makeBudgetCategory(userId, { householdId });
 
     const res = await agent.delete(`/budget/categories/${cat.id}`);
 
@@ -149,7 +173,7 @@ describe('PATCH and DELETE /budget/categories/:id', () => {
 
 describe('category overrides', () => {
   it('sets and clears a per-month override', async () => {
-    const cat = await makeBudgetCategory(userId, { kind: 'flexible', plannedAmount: 100 });
+    const cat = await makeBudgetCategory(userId, { kind: 'flexible', plannedAmount: 100, householdId });
 
     const put = await agent
       .put(`/budget/categories/${cat.id}/override`)
@@ -163,7 +187,7 @@ describe('category overrides', () => {
   });
 
   it('rejects an override on an ignored category with 400', async () => {
-    const cat = await makeBudgetCategory(userId, { kind: 'ignored', plannedAmount: 0 });
+    const cat = await makeBudgetCategory(userId, { kind: 'ignored', plannedAmount: 0, householdId });
 
     const res = await agent
       .put(`/budget/categories/${cat.id}/override`)
@@ -175,13 +199,37 @@ describe('category overrides', () => {
 
 describe('GET /budget/summary', () => {
   it('returns the month summary', async () => {
-    await makeBudgetCategory(userId, { name: 'Rent', kind: 'fixed', plannedAmount: 1800 });
+    await makeBudgetCategory(userId, { name: 'Rent', kind: 'fixed', plannedAmount: 1800, householdId });
+
+    // `resolveBudgetScope` derives ScopeMember.from from
+    // household_members.created_at, which defaults to "now" — so a
+    // hardcoded past month would have no covering member unless the
+    // fixture's tenure start is pinned explicitly, well before the
+    // month under test.
+    await db
+      .update(householdMembers)
+      .set({ createdAt: new Date('2020-01-01') })
+      .where(eq(householdMembers.userId, userId));
 
     const res = await agent.get('/budget/summary?month=5&year=2026');
 
     expect(res.status).toBe(200);
     expect(res.body.summary).toMatchObject({ month: 5, year: 2026, income: 5000 });
     expect(res.body.summary.categories[0]).toMatchObject({ name: 'Rent', cost: 1800 });
+  });
+
+  it('excludes income for a month before the member joined the household', async () => {
+    await makeBudgetCategory(userId, { name: 'Rent', kind: 'fixed', plannedAmount: 1800, householdId });
+
+    await db
+      .update(householdMembers)
+      .set({ createdAt: new Date('2020-01-01') })
+      .where(eq(householdMembers.userId, userId));
+
+    const res = await agent.get('/budget/summary?month=5&year=2019');
+
+    expect(res.status).toBe(200);
+    expect(res.body.summary.income).toBe(0);
   });
 
   it('rejects a missing month with 400', async () => {

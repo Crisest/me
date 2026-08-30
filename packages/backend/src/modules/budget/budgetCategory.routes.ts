@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { body, param, query } from 'express-validator';
 import * as controller from './budgetCategory.controller';
 import { authMiddleware } from '../auth';
+import { resolveBudgetScope } from '../../middleware/resolveBudgetScope';
 import { validateRequest, validateBody } from '../../middleware/validateRequest';
 import {
   createCategorySchema,
@@ -27,33 +28,49 @@ const overrideValidation = [
     .withMessage('plannedAmount must be a positive number'),
 ];
 
-router.get('/summary', authMiddleware, validateRequest(monthYearQuery), controller.getSummary);
+router.get(
+  '/summary',
+  authMiddleware,
+  resolveBudgetScope,
+  validateRequest(monthYearQuery),
+  controller.getSummary
+);
 
-router.get('/categories', authMiddleware, controller.getCategories);
+router.get('/categories', authMiddleware, resolveBudgetScope, controller.getCategories);
 router.post(
   '/categories',
   authMiddleware,
+  resolveBudgetScope,
   validateBody(createCategorySchema),
   controller.postCategory
 );
 router.patch(
   '/categories/:id',
   authMiddleware,
+  resolveBudgetScope,
   validateRequest(idParam),
   validateBody(updateCategorySchema),
   controller.patchCategory
 );
-router.delete('/categories/:id', authMiddleware, validateRequest(idParam), controller.deleteCategory);
+router.delete(
+  '/categories/:id',
+  authMiddleware,
+  resolveBudgetScope,
+  validateRequest(idParam),
+  controller.deleteCategory
+);
 
 router.put(
   '/categories/:id/override',
   authMiddleware,
+  resolveBudgetScope,
   validateRequest(overrideValidation),
   controller.putCategoryOverride
 );
 router.delete(
   '/categories/:id/override',
   authMiddleware,
+  resolveBudgetScope,
   validateRequest([...idParam, ...monthYearQuery]),
   controller.deleteCategoryOverride
 );

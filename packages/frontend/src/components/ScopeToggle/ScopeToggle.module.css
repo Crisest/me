@@ -1,0 +1,32 @@
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border-radius: var(--border-radius-sm);
+  background-color: var(--color-grey-light);
+  gap: 2px;
+}
+
+.option {
+  font-family: var(--font-family-button);
+  border: none;
+  cursor: pointer;
+  padding: 6px 14px;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  border-radius: var(--border-radius-sm);
+  background-color: transparent;
+  color: var(--color-grey);
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.option:hover:not(.optionActive) {
+  color: var(--color-dark);
+}
+
+.optionActive {
+  background-color: var(--color-blue);
+  color: var(--color-white);
+}

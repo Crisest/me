@@ -6,7 +6,7 @@ import {
   BudgetCategoryOverride,
   BudgetCategoryPayloads,
 } from '@portfolio/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '../../db/client';
 import {
   budgets,
@@ -20,6 +20,7 @@ import {
   toBudgetCategoryOverride,
 } from './budget.mapper';
 import { AppError } from '../../middleware/errorHandler';
+import type { BudgetScope } from '../../middleware/resolveBudgetScope';
 
 export const getBudgetByUserId = async (
   userId: string
@@ -86,6 +87,7 @@ export const upsertBudgetOverride = async (
 };
 
 export const upsertCategoryOverride = async (
+  scope: BudgetScope,
   userId: string,
   categoryId: string,
   payload: BudgetCategoryPayloads.SetOverride
@@ -93,7 +95,8 @@ export const upsertCategoryOverride = async (
   const category = await db.query.budgetCategories.findFirst({
     where: and(
       eq(budgetCategories.id, categoryId),
-      eq(budgetCategories.createdBy, userId)
+      eq(budgetCategories.householdId, scope.householdId),
+      isNull(budgetCategories.deletedAt)
     ),
   });
   if (!category) throw new AppError('Category not found', 404);
@@ -101,6 +104,10 @@ export const upsertCategoryOverride = async (
     throw new AppError('Ignored categories cannot have a monthly target', 400);
   }
 
+  // The conflict target must match the `bco_category_month_year_uq` unique
+  // constraint on (category_id, month, year) — Postgres validates
+  // ON CONFLICT's column list against an actual unique constraint at plan
+  // time, so this target and that constraint must always move together.
   const [row] = await db
     .insert(budgetCategoryOverrides)
     .values({
@@ -112,7 +119,6 @@ export const upsertCategoryOverride = async (
     })
     .onConflictDoUpdate({
       target: [
-        budgetCategoryOverrides.createdBy,
         budgetCategoryOverrides.categoryId,
         budgetCategoryOverrides.month,
         budgetCategoryOverrides.year,
@@ -124,16 +130,24 @@ export const upsertCategoryOverride = async (
 };
 
 export const deleteCategoryOverride = async (
-  userId: string,
+  scope: BudgetScope,
   categoryId: string,
   month: number,
   year: number
 ): Promise<void> => {
+  const category = await db.query.budgetCategories.findFirst({
+    where: and(
+      eq(budgetCategories.id, categoryId),
+      eq(budgetCategories.householdId, scope.householdId),
+      isNull(budgetCategories.deletedAt)
+    ),
+  });
+  if (!category) throw new AppError('Category not found', 404);
+
   await db
     .delete(budgetCategoryOverrides)
     .where(
       and(
-        eq(budgetCategoryOverrides.createdBy, userId),
         eq(budgetCategoryOverrides.categoryId, categoryId),
         eq(budgetCategoryOverrides.month, month),
         eq(budgetCategoryOverrides.year, year)

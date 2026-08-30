@@ -8,6 +8,9 @@ import { budgets } from './budgets';
 import { cards } from './cards';
 import { groupMembers } from './group-members';
 import { groups } from './groups';
+import { householdMembers } from './household-members';
+import { households } from './households';
+import { transactionCategories } from './transaction-categories';
 import { transactions } from './transactions';
 import { uploads } from './uploads';
 import { users } from './users';
@@ -24,6 +27,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   createdGroups: many(groups),
   memberships: many(groupMembers),
   uploads: many(uploads),
+  householdMemberships: many(householdMembers),
 }));
 
 export const banksRelations = relations(banks, ({ one, many }) => ({
@@ -60,6 +64,11 @@ export const budgetCategoriesRelations = relations(
     }),
     transactions: many(transactions),
     overrides: many(budgetCategoryOverrides),
+    household: one(households, {
+      fields: [budgetCategories.householdId],
+      references: [households.id],
+    }),
+    tags: many(transactionCategories),
   })
 );
 
@@ -102,27 +111,80 @@ export const groupMembersRelations = relations(groupMembers, ({ one }) => ({
   user: one(users, { fields: [groupMembers.userId], references: [users.id] }),
 }));
 
-export const transactionsRelations = relations(transactions, ({ one }) => ({
-  card: one(cards, { fields: [transactions.cardId], references: [cards.id] }),
-  account: one(accounts, {
-    fields: [transactions.accountId],
-    references: [accounts.id],
-  }),
-  group: one(groups, {
-    fields: [transactions.groupId],
-    references: [groups.id],
-  }),
-  category: one(budgetCategories, {
-    fields: [transactions.categoryId],
-    references: [budgetCategories.id],
-  }),
-  createdBy: one(users, {
-    fields: [transactions.createdBy],
-    references: [users.id],
-  }),
-}));
+export const transactionsRelations = relations(
+  transactions,
+  ({ one, many }) => ({
+    card: one(cards, {
+      fields: [transactions.cardId],
+      references: [cards.id],
+    }),
+    account: one(accounts, {
+      fields: [transactions.accountId],
+      references: [accounts.id],
+    }),
+    group: one(groups, {
+      fields: [transactions.groupId],
+      references: [groups.id],
+    }),
+    category: one(budgetCategories, {
+      fields: [transactions.categoryId],
+      references: [budgetCategories.id],
+    }),
+    createdBy: one(users, {
+      fields: [transactions.createdBy],
+      references: [users.id],
+    }),
+    tags: many(transactionCategories),
+  })
+);
 
 export const uploadsRelations = relations(uploads, ({ one }) => ({
   card: one(cards, { fields: [uploads.cardId], references: [cards.id] }),
   createdBy: one(users, { fields: [uploads.createdBy], references: [users.id] }),
 }));
+
+export const householdsRelations = relations(households, ({ one, many }) => ({
+  createdBy: one(users, {
+    fields: [households.createdBy],
+    references: [users.id],
+  }),
+  members: many(householdMembers),
+  categories: many(budgetCategories),
+  tags: many(transactionCategories),
+}));
+
+export const householdMembersRelations = relations(
+  householdMembers,
+  ({ one }) => ({
+    household: one(households, {
+      fields: [householdMembers.householdId],
+      references: [households.id],
+    }),
+    user: one(users, {
+      fields: [householdMembers.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const transactionCategoriesRelations = relations(
+  transactionCategories,
+  ({ one }) => ({
+    transaction: one(transactions, {
+      fields: [transactionCategories.transactionId],
+      references: [transactions.id],
+    }),
+    category: one(budgetCategories, {
+      fields: [transactionCategories.categoryId],
+      references: [budgetCategories.id],
+    }),
+    household: one(households, {
+      fields: [transactionCategories.householdId],
+      references: [households.id],
+    }),
+    createdBy: one(users, {
+      fields: [transactionCategories.createdBy],
+      references: [users.id],
+    }),
+  })
+);
