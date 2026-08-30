@@ -9,25 +9,38 @@ This is a **one-off**. `backfillHouseholds.ts` runs once per database and is
 deliberately not wired into `package.json` — `deploy/update.sh` must never
 invoke it. Delete the script once production has run it and settled.
 
-## State as of 2026-08-30 — steps 1 and 2 are already done
+## Executed — 2026-08-30
 
-Prep ran on 2026-08-30. Resume at **step 3**.
+This cutover ran on 2026-08-30 and succeeded. Deployed commit: `a6aeaee`.
+Downtime was 20.5 minutes (service stopped 22:22:36, back up 22:43:08),
+nearly all of it `pnpm install` and the build in step 4.
 
-- The household work is committed on local `master` (`102b655`, `354e2c1`)
-  and **not pushed**. `origin/master` is still `183c01e` — note that
-  `61c34e6` (the Mongo-cutover doc commit) is also unpushed, so the push in
-  step 4 carries four commits, not three.
-- CT101's auto-deploy cron is **paused** — `crontab -l` shows the
-  `/opt/portfolio` line commented out, original saved at
-  `/root/crontab.backup-household`.
-- CT110 is dumped to `/mnt/backups/portfolio-pre-household.dump` (99 KB,
-  13 tables, verified with `pg_restore --list`), with an off-host copy at
-  `/home/yor/portfolio-prod-pre-household-2026-08-30.dump` on the dev
-  workstation.
-- Production `drizzle.__drizzle_migrations` holds exactly one row
-  (`0000`, `1787525275772`), so both `0001` and `0002` are pending — the
-  failure mode described below is what a deploy would hit today.
-- The service is still **running** and the app is live. Step 3 stops it.
+Backfill counts on production, identical between dry run and the real run:
+1 household created from the single group, 2 memberships, 0 solo households,
+7 categories assigned, no duplicate category names and no override
+collisions. Post-migration verification: 1 household, 2 active memberships,
+0 null `budget_categories.household_id` out of 7, 489 transactions and
+2 users unchanged from the Mongo cutover's recorded figures, and both of
+`0002`'s partial unique indexes (`household_members_active_user_uq`,
+`transaction_categories_active_uq`) present.
+
+`update.sh` failed at the migrate step exactly as this runbook predicts —
+that step is expected to fail and is not a sign anything went wrong.
+
+Note `drizzle.__drizzle_migrations` ids run `1, 3, 4`: id 2 was consumed by
+the failed `update.sh` attempt's rolled-back insert. The gap is a sequence
+artifact and harmless.
+
+The auto-deploy cron has been restored. Backups retained: CT110
+`/mnt/backups/portfolio-pre-household.dump` (99 KB, 13 tables, verified with
+`pg_restore --list`) and an off-host copy at
+`/home/yor/portfolio-prod-pre-household-2026-08-30.dump`.
+
+**A code-only revert is no longer safe.** Once `0002` applied,
+`budget_categories.household_id` is `NOT NULL`, and the pre-household code
+inserts categories without one — reverting the commits without also
+restoring the dump gives you an app that 500s on category creation. See
+Rollback below.
 
 ## Why this cannot be a normal deploy
 
