@@ -5,5 +5,4 @@ export interface User {
   passwordHash: string;
   name?: string;
   createdAt: string; // ISO string (good for frontend)
-  groups: string[]; // Array of group ids (as strings)
 }

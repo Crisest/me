@@ -1,11 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { getConfig } from '../../config/env';
 import { truncateAll, closeTestDb } from '../../../test/setup';
-import { makeUser } from '../../../test/helpers/factories';
 import { register, login } from './auth.service';
-import { findUserById, getGroupIdsForUser } from '../users/user.service';
-import { db } from '../../db/client';
-import { groupMembers, groups } from '../../db/schema';
+import { findUserById } from '../users/user.service';
 
 afterEach(truncateAll);
 afterAll(closeTestDb);
@@ -54,18 +51,6 @@ describe('auth.service', () => {
     ).toBeUndefined();
   });
 
-  it('getGroupIdsForUser reads through the join table', async () => {
-    const user = await makeUser();
-    expect(await getGroupIdsForUser(user.id)).toEqual([]);
-
-    const [group] = await db
-      .insert(groups)
-      .values({ name: 'G', inviteCode: 'CODE1', createdBy: user.id })
-      .returning();
-    await db.insert(groupMembers).values({ groupId: group.id, userId: user.id });
-
-    expect(await getGroupIdsForUser(user.id)).toEqual([group.id]);
-  });
 });
 
 describe('register', () => {

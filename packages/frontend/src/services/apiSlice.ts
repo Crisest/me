@@ -18,7 +18,6 @@ export enum tagTypesEnum {
   BUDGET_CATEGORIES = 'budgetCategories',
   BUDGET_SUMMARY = 'budgetSummary',
   UPLOADS = 'uploads',
-  GROUPS = 'groups',
   PLAID = 'plaid',
   HOUSEHOLDS = 'households',
 }
@@ -39,7 +38,6 @@ export const apiSlice = createApi({
     tagTypesEnum.BUDGET_CATEGORIES,
     tagTypesEnum.BUDGET_SUMMARY,
     tagTypesEnum.UPLOADS,
-    tagTypesEnum.GROUPS,
     tagTypesEnum.PLAID,
     tagTypesEnum.HOUSEHOLDS,
   ],

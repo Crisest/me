@@ -8,8 +8,7 @@ import { listActiveMembers } from './household.service';
 /**
  * Verifies the authenticated user has an active membership in :id.
  * On success `{ id, members }` is left on res.locals.household so the
- * handler does not need to re-query it. Mirrors `requireGroupMembership`
- * in src/modules/groups/group.middleware.ts.
+ * handler does not need to re-query it.
  */
 export const requireHouseholdMembership = async (
   req: Request,

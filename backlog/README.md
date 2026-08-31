@@ -8,35 +8,33 @@ Ordered roughly by cost of leaving it alone.
 
 ---
 
-## 1. Decide whether `groups` survives the household refactor
+## 1. Drop the `groups` and `group_members` tables
 
-**Status:** open — worth settling before the next spec is written.
+**Status:** open — code is gone, tables remain.
 
-The household refactor (2026-08-30, `a6aeaee`) introduced households
-alongside the existing groups rather than replacing them. Both are live:
+Groups were retired on 2026-08-30: households are now the only budget-sharing
+model. The backend module, the `/groups` routes, the frontend `modules/shared/`,
+`groupService`, the `Group` types, and `User.groups` are all deleted, and
+`aggregateSpend` no longer carries the legacy `transactions.category_id`
+fallback that only group insights relied on.
 
-| | groups | households |
-|---|---|---|
-| API | `/groups` — `app.ts:96` | `/households` — `app.ts:97` |
-| Routes | `/shared`, `/shared/join/:code`, `/shared/:groupId` | `/household`, `/household/join/:code` |
-| Frontend | `modules/shared/` | `modules/household/` |
-| Tables | `groups`, `group_members` | `households`, `household_members` |
+The two tables are still there, deliberately — dropping them is a one-way
+migration and there was no reason to couple it to the code removal.
 
-`backfillHouseholds.ts` seeded households *from* groups, so today they agree —
-one group, one household, the same two members. **Nothing keeps them in sync
-from here.** `joinByCode` in `household.service.ts` touches only
-`household_members`; the group services touch only `group_members`. The first
-time someone joins through one path, the two models disagree, and no
-constraint will surface it.
+To finish:
 
-The sidebar only surfaces Household, so the divergence is close to invisible —
-which is exactly why it should be decided deliberately. Any feature touching
-"who shares this budget" has to pick a side, and "it depends which page you
-came from" is not an answer you want baked into a spec.
+- Generate a migration dropping `groups` and `group_members`.
+- `transactions.group_id` references `groups`. Nothing reads it any more, but
+  `transaction.mapper.ts:29` still maps it onto the `Transaction` DTO as `''`,
+  and `Transaction.groupId` in `packages/common` is still required — drop the
+  column, the mapper line, and the DTO field together.
+- Remove the now-unused table definitions from `db/schema/` and the barrel, and
+  the `groups`/`groupMembers` entries in `schema/relations.ts`.
+- `test/helpers/factories.ts` and `db/schema/schema.test.ts` still build group
+  rows.
 
-Options: retire groups (drop the routes, the module, `modules/shared/`, then
-the tables in a later migration); keep groups for something genuinely distinct
-from households; or make one a view over the other.
+Take a dump first — `group_members` is the only record of who shared a budget
+before households existed.
 
 ## 2. Delete the household backfill script
 

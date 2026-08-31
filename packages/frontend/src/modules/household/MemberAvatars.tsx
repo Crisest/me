@@ -1,5 +1,5 @@
 import React from 'react';
-import { GroupMember } from '@portfolio/common';
+import { HouseholdMember } from '@portfolio/common';
 import styles from './MemberAvatars.module.css';
 
 const MAX_SHOWN = 4;
@@ -17,8 +17,8 @@ function hueFromEmail(email: string): number {
 }
 
 interface Props {
-  members: GroupMember[];
-  onMemberClick?: (member: GroupMember) => void;
+  members: HouseholdMember[];
+  onMemberClick?: (member: HouseholdMember) => void;
 }
 
 const MemberAvatars: React.FC<Props> = ({ members, onMemberClick }) => {

@@ -6,24 +6,27 @@ import {
   makeTransactionCategory,
 } from '../../../test/helpers/factories';
 import { createHousehold } from '../households/household.service';
-import {
-  aggregateSpend,
-  getCategoryIdsByKind,
-  getCategoryIdsByHousehold,
-} from './insights.query';
+import { aggregateSpend, getCategoryIdsByHousehold } from './insights.query';
 
 afterEach(truncateAll);
 afterAll(closeTestDb);
 
 const JAN = new Date('2026-01-01T00:00:00Z');
 const FEB = new Date('2026-02-01T00:00:00Z');
-const inJan = (day: number) => new Date(`2026-01-${String(day).padStart(2, '0')}T12:00:00Z`);
+const inJan = (day: number) =>
+  new Date(`2026-01-${String(day).padStart(2, '0')}T12:00:00Z`);
+
+/** Whole-history window, for the cases that are not about tenure. */
+const since = (...userIds: string[]) =>
+  userIds.map(userId => ({ userId, from: new Date(0), to: null }));
 
 describe('aggregateSpend', () => {
   it('returns zeroes for a user with no transactions', async () => {
     const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
     const result = await aggregateSpend({
-      userIds: [user.id],
+      householdId: household.id,
+      ownerWindows: since(user.id),
       startDate: JAN,
       endDate: FEB,
       excludedCategoryIds: [],
@@ -40,25 +43,41 @@ describe('aggregateSpend', () => {
     });
   });
 
-  // THE REGRESSION TEST. Mongo's $nin matched documents with no categoryId.
-  // SQL NOT IN excludes NULLs. If this fails, spending is under-reported.
+  it('returns zeroes when there are no owner windows at all', async () => {
+    const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
+    await makeTransaction(user.id, { amount: 100, date: inJan(5) });
+
+    const result = await aggregateSpend({
+      householdId: household.id,
+      ownerWindows: [],
+      startDate: JAN,
+      endDate: FEB,
+      excludedCategoryIds: [],
+      fixedCategoryIds: [],
+    });
+    expect(result.totalSpent).toBe(0);
+  });
+
+  // THE REGRESSION TEST. A debit with no tag row is still spending; a bare
+  // SQL NOT IN would drop it, under-reporting the month.
   it('counts UNTAGGED debits as spending even when categories are excluded', async () => {
     const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
     const ignored = await makeBudgetCategory(user.id, {
       name: 'Transfers',
       kind: 'ignored',
       plannedAmount: 0,
+      householdId: household.id,
     });
 
     await makeTransaction(user.id, { amount: 100, date: inJan(5) });
-    await makeTransaction(user.id, {
-      amount: 999,
-      date: inJan(6),
-      categoryId: ignored.id,
-    });
+    const tagged = await makeTransaction(user.id, { amount: 999, date: inJan(6) });
+    await makeTransactionCategory(tagged.id, ignored.id, household.id, user.id);
 
     const result = await aggregateSpend({
-      userIds: [user.id],
+      householdId: household.id,
+      ownerWindows: since(user.id),
       startDate: JAN,
       endDate: FEB,
       excludedCategoryIds: [ignored.id],
@@ -71,10 +90,12 @@ describe('aggregateSpend', () => {
 
   it('handles an empty exclusion list without dropping rows', async () => {
     const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
     await makeTransaction(user.id, { amount: 40, date: inJan(5) });
 
     const result = await aggregateSpend({
-      userIds: [user.id],
+      householdId: household.id,
+      ownerWindows: since(user.id),
       startDate: JAN,
       endDate: FEB,
       excludedCategoryIds: [],
@@ -85,12 +106,14 @@ describe('aggregateSpend', () => {
 
   it('separates debits (positive) from credits (negative)', async () => {
     const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
     await makeTransaction(user.id, { amount: 100, date: inJan(5) });
     await makeTransaction(user.id, { amount: 50, date: inJan(6) });
     await makeTransaction(user.id, { amount: -800, date: inJan(7) });
 
     const r = await aggregateSpend({
-      userIds: [user.id],
+      householdId: household.id,
+      ownerWindows: since(user.id),
       startDate: JAN,
       endDate: FEB,
       excludedCategoryIds: [],
@@ -107,15 +130,30 @@ describe('aggregateSpend', () => {
 
   it('matchedFixedCount counts DISTINCT categories, not rows', async () => {
     const user = await makeUser();
-    const rent = await makeBudgetCategory(user.id, { name: 'Rent', kind: 'fixed' });
-    const gym = await makeBudgetCategory(user.id, { name: 'Gym', kind: 'fixed' });
+    const household = await createHousehold('Home', user.id);
+    const rent = await makeBudgetCategory(user.id, {
+      name: 'Rent',
+      kind: 'fixed',
+      householdId: household.id,
+    });
+    const gym = await makeBudgetCategory(user.id, {
+      name: 'Gym',
+      kind: 'fixed',
+      householdId: household.id,
+    });
 
-    await makeTransaction(user.id, { amount: 1200, date: inJan(1), categoryId: rent.id });
-    await makeTransaction(user.id, { amount: 1200, date: inJan(2), categoryId: rent.id });
-    await makeTransaction(user.id, { amount: 40, date: inJan(3), categoryId: gym.id });
+    for (const [day, category] of [
+      [1, rent],
+      [2, rent],
+      [3, gym],
+    ] as const) {
+      const t = await makeTransaction(user.id, { amount: 40, date: inJan(day) });
+      await makeTransactionCategory(t.id, category.id, household.id, user.id);
+    }
 
     const r = await aggregateSpend({
-      userIds: [user.id],
+      householdId: household.id,
+      ownerWindows: since(user.id),
       startDate: JAN,
       endDate: FEB,
       excludedCategoryIds: [],
@@ -126,11 +164,16 @@ describe('aggregateSpend', () => {
 
   it('respects the date window', async () => {
     const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
     await makeTransaction(user.id, { amount: 10, date: inJan(31) });
-    await makeTransaction(user.id, { amount: 999, date: new Date('2026-02-01T00:00:00Z') });
+    await makeTransaction(user.id, {
+      amount: 999,
+      date: new Date('2026-02-01T00:00:00Z'),
+    });
 
     const r = await aggregateSpend({
-      userIds: [user.id],
+      householdId: household.id,
+      ownerWindows: since(user.id),
       startDate: JAN,
       endDate: FEB,
       excludedCategoryIds: [],
@@ -139,14 +182,16 @@ describe('aggregateSpend', () => {
     expect(r.totalSpent).toBe(10);
   });
 
-  it('aggregates across multiple users (the group case)', async () => {
+  it('aggregates across every member of the household', async () => {
     const a = await makeUser();
     const b = await makeUser();
+    const household = await createHousehold('Home', a.id);
     await makeTransaction(a.id, { amount: 60, date: inJan(5) });
     await makeTransaction(b.id, { amount: 40, date: inJan(5) });
 
     const r = await aggregateSpend({
-      userIds: [a.id, b.id],
+      householdId: household.id,
+      ownerWindows: since(a.id, b.id),
       startDate: JAN,
       endDate: FEB,
       excludedCategoryIds: [],
@@ -156,11 +201,39 @@ describe('aggregateSpend', () => {
     expect(r.debitCount).toBe(2);
   });
 
+  it('bounds a member to their tenure window', async () => {
+    const stayed = await makeUser();
+    const left = await makeUser();
+    const household = await createHousehold('Home', stayed.id);
+
+    await makeTransaction(left.id, { amount: 30, date: inJan(5) });
+    // Dated after they left: must not count toward the household.
+    await makeTransaction(left.id, { amount: 900, date: inJan(20) });
+    await makeTransaction(stayed.id, { amount: 70, date: inJan(25) });
+
+    const r = await aggregateSpend({
+      householdId: household.id,
+      ownerWindows: [
+        { userId: stayed.id, from: new Date(0), to: null },
+        { userId: left.id, from: new Date(0), to: inJan(10) },
+      ],
+      startDate: JAN,
+      endDate: FEB,
+      excludedCategoryIds: [],
+      fixedCategoryIds: [],
+    });
+
+    expect(r.totalSpent).toBe(100);
+    expect(r.debitCount).toBe(2);
+  });
+
   it('returns numbers, not strings', async () => {
     const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
     await makeTransaction(user.id, { amount: 12.34, date: inJan(5) });
     const r = await aggregateSpend({
-      userIds: [user.id],
+      householdId: household.id,
+      ownerWindows: since(user.id),
       startDate: JAN,
       endDate: FEB,
       excludedCategoryIds: [],
@@ -171,19 +244,6 @@ describe('aggregateSpend', () => {
       expect(typeof v).toBe('number');
     }
     expect(r.totalSpent).toBe(12.34);
-  });
-
-  it('getCategoryIdsByKind filters by kind and owner', async () => {
-    const user = await makeUser();
-    const other = await makeUser();
-    const ignored = await makeBudgetCategory(user.id, {
-      kind: 'ignored',
-      plannedAmount: 0,
-    });
-    await makeBudgetCategory(user.id, { kind: 'flexible' });
-    await makeBudgetCategory(other.id, { kind: 'ignored', plannedAmount: 0 });
-
-    expect(await getCategoryIdsByKind([user.id], 'ignored')).toEqual([ignored.id]);
   });
 
   it('getCategoryIdsByHousehold resolves a category authored by ANY household member', async () => {
@@ -209,32 +269,8 @@ describe('aggregateSpend', () => {
   });
 });
 
-describe('aggregateSpend — householdId param (live tag row resolution)', () => {
-  it('with no householdId, falls back to the legacy transactions.category_id column unchanged', async () => {
-    const user = await makeUser();
-    const ignored = await makeBudgetCategory(user.id, {
-      kind: 'ignored',
-      plannedAmount: 0,
-    });
-    await makeTransaction(user.id, {
-      amount: 500,
-      date: inJan(5),
-      categoryId: ignored.id,
-    });
-    await makeTransaction(user.id, { amount: 100, date: inJan(6) });
-
-    const result = await aggregateSpend({
-      userIds: [user.id],
-      startDate: JAN,
-      endDate: FEB,
-      excludedCategoryIds: [ignored.id],
-      fixedCategoryIds: [],
-    });
-
-    expect(result.totalSpent).toBe(100);
-  });
-
-  it('with householdId, excludes a debit tagged via a LIVE transaction_categories row', async () => {
+describe('aggregateSpend — tag row resolution', () => {
+  it('excludes a debit tagged via a live transaction_categories row', async () => {
     const user = await makeUser();
     const household = await createHousehold('Home', user.id);
     const ignored = await makeBudgetCategory(user.id, {
@@ -247,18 +283,18 @@ describe('aggregateSpend — householdId param (live tag row resolution)', () =>
     await makeTransactionCategory(tagged.id, ignored.id, household.id, user.id);
 
     const result = await aggregateSpend({
-      userIds: [user.id],
+      householdId: household.id,
+      ownerWindows: since(user.id),
       startDate: JAN,
       endDate: FEB,
       excludedCategoryIds: [ignored.id],
       fixedCategoryIds: [],
-      householdId: household.id,
     });
 
     expect(result.totalSpent).toBe(100);
   });
 
-  it('with householdId, a debit with NO live tag row still counts as spend', async () => {
+  it('ignores the dormant transactions.category_id column', async () => {
     const user = await makeUser();
     const household = await createHousehold('Home', user.id);
     const ignored = await makeBudgetCategory(user.id, {
@@ -266,8 +302,9 @@ describe('aggregateSpend — householdId param (live tag row resolution)', () =>
       plannedAmount: 0,
       householdId: household.id,
     });
-    // Legacy column set directly (as a pre-cutover row would carry), but no
-    // live tag row — with householdId supplied, this must NOT be excluded.
+    // The legacy column set as a pre-cutover row would carry it, with no live
+    // tag row. Nothing has written that column since the household cutover,
+    // so it must not exclude the debit.
     await makeTransaction(user.id, {
       amount: 500,
       date: inJan(5),
@@ -275,18 +312,42 @@ describe('aggregateSpend — householdId param (live tag row resolution)', () =>
     });
 
     const result = await aggregateSpend({
-      userIds: [user.id],
+      householdId: household.id,
+      ownerWindows: since(user.id),
       startDate: JAN,
       endDate: FEB,
       excludedCategoryIds: [ignored.id],
       fixedCategoryIds: [],
-      householdId: household.id,
     });
 
     expect(result.totalSpent).toBe(500);
   });
 
-  it('with householdId, a closed (deleted) tag row does not count toward matchedFixedCount', async () => {
+  it('does not resolve a tag row belonging to another household', async () => {
+    const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
+    const other = await createHousehold('Other', user.id);
+    const ignored = await makeBudgetCategory(user.id, {
+      kind: 'ignored',
+      plannedAmount: 0,
+      householdId: other.id,
+    });
+    const tagged = await makeTransaction(user.id, { amount: 500, date: inJan(5) });
+    await makeTransactionCategory(tagged.id, ignored.id, other.id, user.id);
+
+    const result = await aggregateSpend({
+      householdId: household.id,
+      ownerWindows: since(user.id),
+      startDate: JAN,
+      endDate: FEB,
+      excludedCategoryIds: [ignored.id],
+      fixedCategoryIds: [],
+    });
+
+    expect(result.totalSpent).toBe(500);
+  });
+
+  it('a closed (deleted) tag row does not count toward matchedFixedCount', async () => {
     const user = await makeUser();
     const household = await createHousehold('Home', user.id);
     const rent = await makeBudgetCategory(user.id, {
@@ -300,12 +361,12 @@ describe('aggregateSpend — householdId param (live tag row resolution)', () =>
     });
 
     const result = await aggregateSpend({
-      userIds: [user.id],
+      householdId: household.id,
+      ownerWindows: since(user.id),
       startDate: JAN,
       endDate: FEB,
       excludedCategoryIds: [],
       fixedCategoryIds: [rent.id],
-      householdId: household.id,
     });
 
     expect(result.matchedFixedCount).toBe(0);

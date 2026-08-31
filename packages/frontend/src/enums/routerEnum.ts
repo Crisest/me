@@ -4,9 +4,6 @@ export enum Route {
   HOME = '/',
   BUDGET = '/budget',
   TRANSACTIONS = '/transactions',
-  SHARED = '/shared',
-  SHARED_JOIN = '/shared/join/:code',
-  SHARED_DASHBOARD = '/shared/:groupId',
   PROFILE = '/profile',
   HOUSEHOLD = '/household',
   HOUSEHOLD_JOIN = '/household/join/:code',
@@ -17,6 +14,5 @@ export const protectedRoutes = [
   Route.BUDGET,
   Route.TRANSACTIONS,
   Route.PROFILE,
-  Route.SHARED,
   Route.HOUSEHOLD,
 ];

@@ -32,16 +32,12 @@ export const getMonthlyInsights = async (
     listScope === 'household'
       ? scope.members.map(m => ({ userId: m.userId, from: m.from, to: m.to }))
       : [{ userId, from: new Date(0), to: null }];
-  const userIds =
-    listScope === 'household' ? scope.members.map(m => m.userId) : [userId];
-
   const [ignoredIds, fixedIds] = await Promise.all([
     getCategoryIdsByHousehold(scope.householdId, 'ignored'),
     getCategoryIdsByHousehold(scope.householdId, 'fixed'),
   ]);
 
   const agg = await aggregateSpend({
-    userIds,
     ownerWindows,
     startDate,
     endDate,

@@ -4,14 +4,12 @@ import { toAccount } from '../accounts/account.mapper';
 import { toTransaction } from '../transactions/transaction.mapper';
 import { toUpload } from '../uploads/upload.mapper';
 import { toUser } from '../users/user.mapper';
-import { toGroup, toGroupWithMembers } from '../groups/group.mapper';
 import {
   toBudget,
   toBudgetCategory,
   toBudgetOverride,
   toBudgetCategoryOverride,
 } from '../budget/budget.mapper';
-import type { GroupMember } from '@portfolio/common';
 import type {
   BankRow,
   CardRow,
@@ -19,7 +17,6 @@ import type {
   TransactionRow,
   UploadRow,
   UserRow,
-  GroupRow,
   BudgetRow,
   BudgetOverrideRow,
   BudgetCategoryRow,
@@ -29,7 +26,7 @@ import type {
 const AT = new Date('2026-01-15T12:00:00.000Z');
 
 describe('mappers', () => {
-  it('toUser emits an ISO createdAt and the joined group ids, and never returns passwordHash', () => {
+  it('toUser emits an ISO createdAt and never returns passwordHash', () => {
     const row: UserRow = {
       id: 'u1',
       email: 'a@b.com',
@@ -38,16 +35,14 @@ describe('mappers', () => {
       createdAt: AT,
       updatedAt: AT,
     };
-    const result = toUser(row, ['g1', 'g2']);
+    const result = toUser(row);
     expect(result).toEqual({
       id: 'u1',
       email: 'a@b.com',
       name: 'A',
       createdAt: '2026-01-15T12:00:00.000Z',
-      groups: ['g1', 'g2'],
     });
-    // The Mongoose toUser() this replaces never returned the hash either —
-    // callers serialise this straight into register/login HTTP responses.
+    // Callers serialise this straight into register/login HTTP responses.
     expect(result).not.toHaveProperty('passwordHash');
   });
 
@@ -136,20 +131,6 @@ describe('mappers', () => {
     const dto = toTransaction(row);
     expect(dto.cardName).toBeUndefined();
     expect(dto.bankName).toBeUndefined();
-  });
-
-  it('toGroup emits ISO strings and the joined member ids', () => {
-    const row: GroupRow = {
-      id: 'g1',
-      name: 'Flat',
-      inviteCode: 'ABC123',
-      createdBy: 'u1',
-      createdAt: AT,
-      updatedAt: AT,
-    };
-    const dto = toGroup(row, ['u1', 'u2']);
-    expect(dto.createdAt).toBe('2026-01-15T12:00:00.000Z');
-    expect(dto.members).toEqual(['u1', 'u2']);
   });
 
   it('toBudgetCategory emits epoch-ms timestamps', () => {
@@ -257,23 +238,4 @@ describe('mappers', () => {
     expect(dto.plannedAmount).toBe(300);
   });
 
-  it('toGroupWithMembers emits ISO strings and embeds full member objects', () => {
-    const row: GroupRow = {
-      id: 'g1',
-      name: 'Flat',
-      inviteCode: 'ABC123',
-      createdBy: 'u1',
-      createdAt: AT,
-      updatedAt: AT,
-    };
-    const members: GroupMember[] = [
-      { id: 'u1', email: 'a@b.com', name: 'A' },
-      { id: 'u2', email: 'c@d.com' },
-    ];
-    const dto = toGroupWithMembers(row, members);
-    expect(dto.createdAt).toBe('2026-01-15T12:00:00.000Z');
-    expect(typeof dto.createdAt).toBe('string');
-    expect(dto.updatedAt).toBe('2026-01-15T12:00:00.000Z');
-    expect(dto.members).toEqual(members);
-  });
 });
