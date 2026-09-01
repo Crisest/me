@@ -4,6 +4,7 @@ import YmMenu from '@ui/YmMenu/YmMenu';
 import { MonthYearFilter } from '@/components/MonthYearFilter/MonthYearFilter';
 import { InsightCards, InsightCardItem } from '@/components/InsightCards/InsightCards';
 import CategoryRow from '@/components/CategoryRow/CategoryRow';
+import FixedRow from '@/components/FixedRow/FixedRow';
 import CategoryModal from '@/components/CategoryModal/CategoryModal';
 import { TRANSFER_PRIMARIES } from '@/components/AssignCategoryDialog/AssignCategoryDialog';
 import {
@@ -13,14 +14,8 @@ import {
 } from '@/services/budgetCategoryService';
 import { useGetTransactionsQuery } from '@/services/transactionService';
 import { formatCAD } from '@/utils/format';
-import type { BudgetCategory, BudgetCategoryKind } from '@portfolio/common';
+import type { BudgetCategory } from '@portfolio/common';
 import styles from './BudgetOverviewPage.module.css';
-
-const SECTIONS: { kind: BudgetCategoryKind; title: string }[] = [
-  { kind: 'fixed', title: 'Fixed' },
-  { kind: 'flexible', title: 'Flexible' },
-  { kind: 'ignored', title: 'Not spending' },
-];
 
 export const BudgetOverviewPage = () => {
   const now = new Date();
@@ -57,6 +52,23 @@ export const BudgetOverviewPage = () => {
     [monthTransactions],
   );
 
+  // One pass over the month's categories feeds both the cards and the two
+  // columns: fixed bills and "not spending" on the left, flexible on the right.
+  const groups = useMemo(() => {
+    const all = summary?.categories ?? [];
+    const fixed = all.filter(c => c.kind === 'fixed');
+    const flexible = all.filter(c => c.kind === 'flexible');
+    return {
+      fixed,
+      flexible,
+      ignored: all.filter(c => c.kind === 'ignored'),
+      fixedPlanned: fixed.reduce((sum, c) => sum + c.planned, 0),
+      fixedPaid: fixed.filter(c => c.transactionCount > 0).length,
+      flexiblePlanned: flexible.reduce((sum, c) => sum + c.planned, 0),
+      flexibleActual: flexible.reduce((sum, c) => sum + c.actual, 0),
+    };
+  }, [summary]);
+
   const openCreate = () => {
     setEditing(null);
     setModalOpen(true);
@@ -77,22 +89,28 @@ export const BudgetOverviewPage = () => {
           : 'From your budget',
       },
       {
-        label: 'Planned',
-        amount: `-${formatCAD(summary?.totalPlanned ?? 0)}`,
-        subtitle: `${summary?.categories.length ?? 0} categories`,
+        label: 'Fixed',
+        amount: `-${formatCAD(groups.fixedPlanned)}`,
+        subtitle: `${groups.fixedPaid} of ${groups.fixed.length} paid`,
       },
       {
-        label: 'Actual',
-        amount: `-${formatCAD(summary?.totalCost ?? 0)}`,
-        subtitle: `${formatCAD(summary?.untagged.amount ?? 0)} untagged`,
+        label: 'Budgeted',
+        amount: `-${formatCAD(groups.flexiblePlanned)}`,
+        subtitle: `${formatCAD(groups.flexibleActual)} spent`,
       },
       {
-        label: 'Money Left',
-        amount: formatCAD(summary?.moneyLeft ?? 0),
-        subtitle: 'After planned & spending',
+        // Deliberately not summary.moneyLeft: that subtracts actual spending,
+        // so it would not reconcile with the three cards beside it. Derived
+        // from those two totals rather than totalPlanned so the row always
+        // adds up on screen.
+        label: 'Left',
+        amount: formatCAD(
+          (summary?.income ?? 0) - groups.fixedPlanned - groups.flexiblePlanned,
+        ),
+        subtitle: 'After fixed & budgeted',
       },
     ],
-    [summary],
+    [summary, groups],
   );
 
   return (
@@ -139,36 +157,80 @@ export const BudgetOverviewPage = () => {
           </div>
         )}
 
-        {SECTIONS.map(section => {
-          const rows = (summary?.categories ?? []).filter(
-            c => c.kind === section.kind,
-          );
-          if (rows.length === 0) return null;
-          return (
-            <section key={section.kind} className={styles.section}>
-              <h3 className={styles.sectionTitle}>{section.title}</h3>
-              {rows.map(row => (
-                <CategoryRow
-                  key={row.categoryId}
-                  summary={row}
-                  month={selectedMonth}
-                  year={selectedYear}
-                  onEdit={openEdit}
-                />
-              ))}
-            </section>
-          );
-        })}
+        <div className={styles.columns}>
+          <div className={styles.column}>
+            {groups.fixed.length > 0 && (
+              <section className={styles.section}>
+                <div className={styles.sectionHead}>
+                  <h3 className={styles.sectionTitle}>Fixed</h3>
+                  <span className={styles.sectionTotal}>
+                    {formatCAD(groups.fixedPlanned)} · {groups.fixedPaid} of{' '}
+                    {groups.fixed.length}
+                  </span>
+                </div>
+                {groups.fixed.map(row => (
+                  <FixedRow
+                    key={row.categoryId}
+                    summary={row}
+                    month={selectedMonth}
+                    year={selectedYear}
+                    onEdit={openEdit}
+                  />
+                ))}
+              </section>
+            )}
+
+            {groups.ignored.length > 0 && (
+              <section className={styles.section}>
+                <div className={styles.sectionHead}>
+                  <h3 className={styles.sectionTitle}>Not spending</h3>
+                </div>
+                {groups.ignored.map(row => (
+                  <CategoryRow
+                    key={row.categoryId}
+                    summary={row}
+                    month={selectedMonth}
+                    year={selectedYear}
+                    onEdit={openEdit}
+                  />
+                ))}
+              </section>
+            )}
+          </div>
+
+          <div className={styles.column}>
+            {groups.flexible.length > 0 && (
+              <section className={styles.section}>
+                <div className={styles.sectionHead}>
+                  <h3 className={styles.sectionTitle}>Categories</h3>
+                  <span className={styles.sectionTotal}>
+                    {formatCAD(groups.flexibleActual)} /{' '}
+                    {formatCAD(groups.flexiblePlanned)}
+                  </span>
+                </div>
+                {groups.flexible.map(row => (
+                  <CategoryRow
+                    key={row.categoryId}
+                    summary={row}
+                    month={selectedMonth}
+                    year={selectedYear}
+                    onEdit={openEdit}
+                  />
+                ))}
+              </section>
+            )}
+          </div>
+        </div>
 
         {summary && summary.untagged.transactionCount > 0 && (
-          <div className={styles.untagged}>
-            <span>Untagged</span>
+          <div className={styles.prompt}>
             <span>
-              {formatCAD(summary.untagged.amount)} ·{' '}
+              {formatCAD(summary.untagged.amount)} across{' '}
               {summary.untagged.transactionCount}{' '}
               {summary.untagged.transactionCount === 1
-                ? 'transaction'
-                : 'transactions'}
+                ? 'transaction is'
+                : 'transactions are'}{' '}
+              still untagged.
             </span>
           </div>
         )}

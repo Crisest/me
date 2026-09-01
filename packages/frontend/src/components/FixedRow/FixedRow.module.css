@@ -1,0 +1,74 @@
+.row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+/* Untagged bills recede so the left edge scans as a to-do list. */
+.pending .name,
+.pending .amounts {
+  color: var(--color-text-secondary);
+}
+
+.marker {
+  display: flex;
+  align-items: center;
+  font-size: 1.05rem;
+  color: var(--color-border-strong);
+}
+
+.paid {
+  color: var(--color-positive);
+}
+
+.name,
+.amounts {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.amounts {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.over {
+  font-size: 0.75rem;
+  color: var(--color-negative);
+}
+
+.under {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  background: rgba(128, 128, 128, 0.2);
+}
+
+.editor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.input {
+  width: 90px;
+}
