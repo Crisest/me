@@ -243,7 +243,10 @@ describe('transactions table', () => {
     expect(behaviour.category_id).toBe('set null');
     expect(behaviour.card_id).toBe('set null');
     expect(behaviour.group_id).toBe('set null');
-    expect(behaviour.account_id).toBe('cascade');
+    // An account is Plaid bookkeeping tied to an Item; the transactions on it
+    // are the user's history and outlive an unlink. Only the owning user
+    // cascades.
+    expect(behaviour.account_id).toBe('set null');
     expect(behaviour.created_by).toBe('cascade');
   });
 

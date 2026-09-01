@@ -1,5 +1,5 @@
 import { index, pgTable, text, uuid } from 'drizzle-orm/pg-core';
-import { primaryId, timestamps } from './columns';
+import { primaryId, softDelete, timestamps } from './columns';
 import { accountTypeEnum } from './enums';
 import { banks } from './banks';
 import { users } from './users';
@@ -21,6 +21,7 @@ export const accounts = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     ...timestamps,
+    ...softDelete,
   },
   t => [
     index('accounts_bank_id_idx').on(t.bankId),

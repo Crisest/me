@@ -1,11 +1,14 @@
 import type { AccountsGetResponse } from 'plaid';
+import { eq } from 'drizzle-orm';
+import { db } from '../../db/client';
+import { accounts } from '../../db/schema';
 import { truncateAll, closeTestDb } from '../../../test/setup';
 import { makeUser, makeBank, makeAccount } from '../../../test/helpers/factories';
 import {
   upsertPlaidAccountsForBank,
   getAccountsByUser,
   findAccountByPlaidId,
-  deleteAccountsForBank,
+  softDeleteAccountsForBank,
   normaliseType,
 } from './account.service';
 
@@ -102,13 +105,72 @@ describe('account.service', () => {
     expect(list[0].createdAt).toBeInstanceOf(Date);
   });
 
-  it('deleteAccountsForBank removes every account on that bank', async () => {
+  it('softDeleteAccountsForBank hides every account on that bank', async () => {
     const user = await makeUser();
     const bank = await makeBank(user.id);
     await makeAccount(user.id, bank.id);
     await makeAccount(user.id, bank.id);
 
-    await deleteAccountsForBank(bank.id);
+    await softDeleteAccountsForBank(bank.id);
     expect(await getAccountsByUser(user.id)).toEqual([]);
+
+    // Hidden, not gone — a relink revives these rows.
+    const rows = await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.bankId, bank.id));
+    expect(rows).toHaveLength(2);
+    expect(rows.every(r => r.deletedAt !== null)).toBe(true);
+  });
+
+  it('re-keys an account across a relink instead of duplicating it', async () => {
+    const user = await makeUser();
+    const bank = await makeBank(user.id);
+    const [before] = await upsertPlaidAccountsForBank(user.id, bank.id, [
+      plaidAccount({ account_id: 'plaid-old' }),
+    ]);
+    await softDeleteAccountsForBank(bank.id);
+
+    // Same real account, new Item: different account_id, same mask/type/subtype.
+    const after = await upsertPlaidAccountsForBank(user.id, bank.id, [
+      plaidAccount({ account_id: 'plaid-new' }),
+    ]);
+
+    expect(after).toHaveLength(1);
+    expect(after[0].id).toBe(before.id);
+    expect(after[0].plaidAccountId).toBe('plaid-new');
+    expect(after[0].deletedAt).toBeNull();
+  });
+
+  it('does not merge two accounts that share a mask but differ in subtype', async () => {
+    const user = await makeUser();
+    const bank = await makeBank(user.id);
+    await upsertPlaidAccountsForBank(user.id, bank.id, [
+      plaidAccount({ account_id: 'plaid-chk', subtype: 'checking' }),
+      plaidAccount({ account_id: 'plaid-sav', subtype: 'savings' }),
+    ]);
+
+    const rows = await upsertPlaidAccountsForBank(user.id, bank.id, [
+      plaidAccount({ account_id: 'plaid-chk2', subtype: 'checking' }),
+      plaidAccount({ account_id: 'plaid-sav2', subtype: 'savings' }),
+    ]);
+
+    expect(rows).toHaveLength(2);
+    expect(rows.map(r => r.subtype).sort()).toEqual(['checking', 'savings']);
+  });
+
+  it('inserts rather than guesses when the account has no mask', async () => {
+    const user = await makeUser();
+    const bank = await makeBank(user.id);
+    await upsertPlaidAccountsForBank(user.id, bank.id, [
+      plaidAccount({ account_id: 'plaid-a', mask: null }),
+    ]);
+
+    const rows = await upsertPlaidAccountsForBank(user.id, bank.id, [
+      plaidAccount({ account_id: 'plaid-b', mask: null }),
+    ]);
+
+    // type+subtype alone is too coarse to claim these are the same account.
+    expect(rows).toHaveLength(2);
   });
 });

@@ -1,4 +1,11 @@
-import { boolean, index, pgTable, text } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  index,
+  pgTable,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { primaryId, timestamps } from './columns';
 import { plaidStatusEnum } from './enums';
 import { users } from './users';
@@ -23,6 +30,14 @@ export const banks = pgTable(
   t => [
     index('banks_plaid_item_id_idx').on(t.plaidItemId),
     index('banks_created_by_idx').on(t.createdBy),
+    // One row per user per institution. Not gated on is_plaid_linked: an
+    // unlinked row keeps its institution id so a later relink lands back on
+    // it (and on its soft-deleted accounts) instead of forking a new bank.
+    // Scoped to the user, not the household — two members may each link the
+    // same institution with their own logins.
+    uniqueIndex('banks_user_institution_uq')
+      .on(t.createdBy, t.plaidInstitutionId)
+      .where(sql`${t.plaidInstitutionId} IS NOT NULL`),
   ]
 );
 

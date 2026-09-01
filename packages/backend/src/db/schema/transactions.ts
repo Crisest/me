@@ -25,8 +25,11 @@ export const transactions = pgTable(
     cardId: uuid('card_id').references(() => cards.id, {
       onDelete: 'set null',
     }),
+    // SET NULL, not CASCADE: an account row is Plaid bookkeeping that comes
+    // and goes with an Item, but the transactions hanging off it are the
+    // user's own history and must survive an unlink or a re-link.
     accountId: uuid('account_id').references(() => accounts.id, {
-      onDelete: 'cascade',
+      onDelete: 'set null',
     }),
     categoryId: uuid('category_id').references(() => budgetCategories.id, {
       onDelete: 'set null',

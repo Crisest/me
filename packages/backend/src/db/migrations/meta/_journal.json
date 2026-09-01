@@ -22,6 +22,20 @@
       "when": 1788046155968,
       "tag": "0002_nifty_johnny_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788279928661,
+      "tag": "0003_cuddly_pestilence",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788283154916,
+      "tag": "0004_parched_scarlet_witch",
+      "breakpoints": true
     }
   ]
 }

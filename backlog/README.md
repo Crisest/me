@@ -103,3 +103,20 @@ but there is no sweep for households that end up orphaned another way.
 
 Production currently has 1 household with 2 active members, so nothing is
 orphaned today. Worth a small script or a step folded into an existing one.
+
+## 7. Let a household admin sync all members' transactions
+
+**Status:** open — feature request, not started.
+
+Plaid sync today is per-user only: `POST /plaid/sync` and
+`POST /plaid/sync/:bankId` (`plaid.routes.ts`) call
+`syncAllBanksForUser`/`syncOneBankForUser` (`plaid.service.ts`), both scoped to
+`req.user!.id`'s own banks. A household admin has no way to trigger a sync for
+a member's banks — each member has to sync their own.
+
+To add it: a household-scoped endpoint (alongside the existing
+`household.routes.ts`) that checks the caller is an active admin of the
+household (`household.middleware.ts` likely already has the admin check used
+elsewhere), then loops over the household's active members' banks calling
+`syncBank` per bank the same way `syncAllBanksForUser` does. Aggregate the
+`SyncCounts` per member or in total, whichever the frontend needs.

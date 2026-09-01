@@ -40,6 +40,23 @@ export async function findPlaidBankByIdForUser(
   });
 }
 
+/**
+ * Finds a user's bank row for an institution regardless of link state — an
+ * unlinked row keeps its plaidInstitutionId precisely so a relink can find
+ * it. Backed by the partial unique index banks_user_institution_uq.
+ */
+export async function findBankByInstitutionForUser(
+  userId: string,
+  plaidInstitutionId: string
+): Promise<BankRow | undefined> {
+  return db.query.banks.findFirst({
+    where: and(
+      eq(banks.createdBy, userId),
+      eq(banks.plaidInstitutionId, plaidInstitutionId)
+    ),
+  });
+}
+
 export async function findPlaidLinkedBanksByUser(
   userId: string
 ): Promise<BankRow[]> {

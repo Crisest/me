@@ -8,11 +8,12 @@ import { PlaidPayloads, PlaidLinkedBank } from '@portfolio/common';
 import {
   findPlaidLinkedBanksByUser,
   findPlaidBankByIdForUser,
+  findBankByInstitutionForUser,
 } from '../banks/bank.service';
 import { toBank } from '../banks/bank.mapper';
 import {
   upsertPlaidAccountsForBank,
-  deleteAccountsForBank,
+  softDeleteAccountsForBank,
 } from '../accounts/account.service';
 
 export async function createLinkToken(userId: string): Promise<string> {
@@ -39,18 +40,50 @@ export async function exchangePublicToken(
   const accessToken = exchange.data.access_token;
   const itemId = exchange.data.item_id;
 
-  const [bank] = await db
-    .insert(banks)
-    .values({
-      name: payload.institutionName,
-      createdBy: userId,
-      isPlaidLinked: true,
-      plaidAccessToken: encrypt(accessToken),
-      plaidItemId: itemId,
-      plaidInstitutionId: payload.institutionId,
-      plaidStatus: 'connected',
-    })
-    .returning();
+  // A relink of an institution the user already has must land on the existing
+  // row — that is what keeps its (soft-deleted) accounts, and the history
+  // hanging off them, connected to the new Item.
+  const existing = await findBankByInstitutionForUser(
+    userId,
+    payload.institutionId
+  );
+
+  const values = {
+    name: payload.institutionName,
+    isPlaidLinked: true,
+    plaidAccessToken: encrypt(accessToken),
+    plaidItemId: itemId,
+    plaidInstitutionId: payload.institutionId,
+    // Cursors are Item-scoped: the old one is not replayable against the new
+    // Item, so the next sync starts from scratch.
+    plaidSyncCursor: null,
+    plaidStatus: 'connected' as const,
+  };
+
+  let bank: BankRow;
+  if (existing) {
+    // Relinking a still-live bank leaves the old Item running (and billable)
+    // on Plaid's side. Best-effort: a failure here must not block the relink.
+    if (existing.plaidAccessToken) {
+      try {
+        await plaid.itemRemove({
+          access_token: decrypt(existing.plaidAccessToken),
+        });
+      } catch {
+        // Old Item stays live at Plaid; local state is still correct.
+      }
+    }
+    [bank] = await db
+      .update(banks)
+      .set(values)
+      .where(eq(banks.id, existing.id))
+      .returning();
+  } else {
+    [bank] = await db
+      .insert(banks)
+      .values({ ...values, createdBy: userId })
+      .returning();
+  }
 
   try {
     await syncAccountsForBank(bank);
@@ -114,6 +147,123 @@ function mapPlaidTxToRow(
   };
 }
 
+type MappedTxRow = ReturnType<typeof mapPlaidTxToRow>;
+
+/**
+ * How far a replayed transaction's date may drift from the local row it
+ * matches. Plaid can report a different date for the same purchase under a
+ * new Item (authorised vs posted), so an exact date match is too strict.
+ */
+const ADOPTION_DATE_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+
+const normaliseDescription = (d: string): string =>
+  d.trim().toLowerCase().replace(/\s+/g, ' ');
+
+/** Compares money as integer cents — 9.99 never equals 9.99 in float land. */
+const toCents = (amount: number): number => Math.round(amount * 100);
+
+const adoptionKey = (r: {
+  // undefined when Plaid sent a transaction for an account it did not also
+  // return; such a row can never match a stored one, which is correct.
+  accountId: string | null | undefined;
+  amount: number;
+  description: string;
+}): string =>
+  `${r.accountId}|${toCents(r.amount)}|${normaliseDescription(r.description)}`;
+
+/**
+ * Re-links replayed Plaid transactions to the rows the user already has.
+ *
+ * A new Item mints new transaction ids for purchases already synced under the
+ * old one, so `plaidTransactionId` cannot recognise them and every row would
+ * insert a second time. Matching on account + amount + description + a date
+ * window does recognise them.
+ *
+ * Candidates are consumed one at a time, which is what keeps two identical
+ * same-day purchases as two rows: the second incoming copy cannot claim the
+ * candidate the first one took. That property is also why this is not a
+ * unique index — a constraint on those columns would collapse the pair
+ * permanently.
+ *
+ * Returns the rows that found no counterpart and must still be inserted.
+ */
+async function adoptReplayedTransactions(
+  tx: Tx,
+  userId: string,
+  accountIds: string[],
+  incoming: MappedTxRow[]
+): Promise<{ toInsert: MappedTxRow[]; adopted: number }> {
+  if (accountIds.length === 0 || incoming.length === 0) {
+    return { toInsert: incoming, adopted: 0 };
+  }
+
+  const existing = await tx
+    .select({
+      id: transactions.id,
+      accountId: transactions.accountId,
+      amount: transactions.amount,
+      description: transactions.description,
+      date: transactions.date,
+    })
+    .from(transactions)
+    .where(
+      and(
+        eq(transactions.createdBy, userId),
+        inArray(transactions.accountId, accountIds)
+      )
+    );
+
+  const candidates = new Map<string, { id: string; date: Date }[]>();
+  for (const row of existing) {
+    const key = adoptionKey(row);
+    const bucket = candidates.get(key);
+    if (bucket) bucket.push({ id: row.id, date: row.date });
+    else candidates.set(key, [{ id: row.id, date: row.date }]);
+  }
+
+  const toInsert: MappedTxRow[] = [];
+  let adopted = 0;
+
+  for (const row of incoming) {
+    const bucket = candidates.get(adoptionKey(row));
+    // Closest date wins, so a run of similar purchases pairs up in order
+    // rather than by whichever row the database happened to return first.
+    let bestIndex = -1;
+    let bestDelta = Infinity;
+    bucket?.forEach((c, i) => {
+      const delta = Math.abs(c.date.getTime() - row.date.getTime());
+      if (delta <= ADOPTION_DATE_WINDOW_MS && delta < bestDelta) {
+        bestDelta = delta;
+        bestIndex = i;
+      }
+    });
+
+    if (bestIndex === -1 || !bucket) {
+      toInsert.push(row);
+      continue;
+    }
+
+    const [claimed] = bucket.splice(bestIndex, 1);
+    await tx
+      .update(transactions)
+      .set({
+        plaidTransactionId: row.plaidTransactionId,
+        // Enrichment is safe to refresh. Date, amount and description are
+        // deliberately left alone: they already matched, and nudging a date
+        // across a month boundary would silently move the transaction into a
+        // different budget period.
+        category: row.category,
+        subDescription: row.subDescription,
+        logoUrl: row.logoUrl,
+        categoryIconUrl: row.categoryIconUrl,
+      })
+      .where(eq(transactions.id, claimed.id));
+    adopted += 1;
+  }
+
+  return { toInsert, adopted };
+}
+
 async function syncBank(bank: BankRow): Promise<SyncCounts> {
   if (!bank.isPlaidLinked || !bank.plaidAccessToken) {
     throw new Error(`Bank ${bank.id} is not Plaid-linked`);
@@ -171,13 +321,33 @@ async function syncBank(bank: BankRow): Promise<SyncCounts> {
       );
 
       if (pendingAdded.length > 0) {
-        await tx
-          .insert(transactions)
-          .values(
-            pendingAdded.map(t => mapPlaidTxToRow(t, userId, accountIdByPlaidId))
-          )
-          .onConflictDoNothing({ target: transactions.plaidTransactionId });
-        added = pendingAdded.length;
+        let toInsert = pendingAdded.map(t =>
+          mapPlaidTxToRow(t, userId, accountIdByPlaidId)
+        );
+
+        // A null cursor means this Item has never been synced — either a
+        // first link (nothing to adopt) or a relink, where Plaid is about to
+        // replay history this bank's accounts already hold. Incremental syncs
+        // skip this entirely: there, a repeat of the same amount and merchant
+        // is a genuine second purchase, not a duplicate.
+        if (bank.plaidSyncCursor === null) {
+          const result = await adoptReplayedTransactions(
+            tx,
+            userId,
+            [...accountIdByPlaidId.values()],
+            toInsert
+          );
+          toInsert = result.toInsert;
+          modified += result.adopted;
+        }
+
+        if (toInsert.length > 0) {
+          await tx
+            .insert(transactions)
+            .values(toInsert)
+            .onConflictDoNothing({ target: transactions.plaidTransactionId });
+        }
+        added = toInsert.length;
       }
 
       for (const t of pendingModified) {
@@ -327,17 +497,20 @@ export async function unlinkBank(
     // If Plaid call fails we still locally unlink — avoids orphaned local state
   }
 
-  await db
-    .update(banks)
-    .set({
-      isPlaidLinked: false,
-      plaidAccessToken: null,
-      plaidItemId: null,
-      plaidInstitutionId: null,
-      plaidSyncCursor: null,
-      plaidStatus: null,
-    })
-    .where(eq(banks.id, bank.id));
+  await db.transaction(async tx => {
+    await tx
+      .update(banks)
+      .set({
+        isPlaidLinked: false,
+        plaidAccessToken: null,
+        plaidItemId: null,
+        // plaidInstitutionId is deliberately kept: it is identity, not a
+        // credential, and a later relink needs it to find this row.
+        plaidSyncCursor: null,
+        plaidStatus: null,
+      })
+      .where(eq(banks.id, bank.id));
 
-  await deleteAccountsForBank(bankId);
+    await softDeleteAccountsForBank(bankId, tx);
+  });
 }
