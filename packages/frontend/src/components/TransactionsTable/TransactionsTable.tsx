@@ -1,4 +1,4 @@
-import { Transaction } from '@/types';
+import { Transaction, BudgetCategory } from '@/types';
 import React, { useMemo } from 'react';
 import styles from './TransactionsTable.module.css';
 import { formatPlaidCategory, formatPlaidDetailedCategory } from '@/utils/format';
@@ -18,6 +18,8 @@ type transactionTableProps = {
   extraColumns?: ColumnDef<Transaction, any>[];
   rowActions?: (txn: Transaction) => YmMenuItem[];
   sortDirection?: SortDirection;
+  categoriesById?: Map<string, BudgetCategory>;
+  onCategoryClick?: (categoryId: string) => void;
 };
 
 const columnHelper = createColumnHelper<Transaction>();
@@ -53,6 +55,8 @@ const TransactionsTable: React.FC<transactionTableProps> = ({
   extraColumns,
   rowActions,
   sortDirection = 'newest',
+  categoriesById,
+  onCategoryClick,
 }) => {
   const sortedTransactions = useMemo(() => {
     const sorted = [...transactions].sort(
@@ -143,17 +147,35 @@ const TransactionsTable: React.FC<transactionTableProps> = ({
       columnHelper.accessor('category', {
         header: 'Category',
         cell: info => {
-          const value = info.getValue();
-          if (!value) return null;
-          return (
-            <span className={styles.categoryPill}>
-              {formatPlaidCategory(value)}
-            </span>
-          );
+          const txn = info.row.original;
+          const budget = txn.categoryId
+            ? categoriesById?.get(txn.categoryId)
+            : undefined;
+          const label = budget ? budget.name : formatPlaidCategory(info.getValue());
+          if (!label) return null;
+
+          const pillClass = budget
+            ? `${styles.categoryPill} ${styles.categoryPillBudget}`
+            : styles.categoryPill;
+
+          if (budget && onCategoryClick) {
+            return (
+              <button
+                type="button"
+                className={`${pillClass} ${styles.categoryPillClickable}`}
+                onClick={() => onCategoryClick(budget.id)}
+                aria-label={`Filter by ${budget.name}`}
+              >
+                {label}
+              </button>
+            );
+          }
+
+          return <span className={pillClass}>{label}</span>;
         },
       }),
     ],
-    [],
+    [categoriesById, onCategoryClick],
   );
 
   const allColumns = useMemo<ColumnDef<Transaction, any>[]>(() => {

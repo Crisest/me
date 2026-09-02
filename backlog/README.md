@@ -120,3 +120,109 @@ household (`household.middleware.ts` likely already has the admin check used
 elsewhere), then loops over the household's active members' banks calling
 `syncBank` per bank the same way `syncAllBanksForUser` does. Aggregate the
 `SyncCounts` per member or in total, whichever the frontend needs.
+
+## 8. Budget override inputs don't match the design system
+
+**Status:** open — UX inconsistency, not a bug.
+
+The monthly-override editors in
+`packages/frontend/src/components/CategoryRow/CategoryRow.tsx:66-80` and
+`packages/frontend/src/components/FixedRow/FixedRow.tsx:70-84` are hand-rolled
+— a bare `<input type="number">` and plain `<button>`s for Save/Reset/Cancel.
+One component away, `CategoryModal.tsx:1-12,92-116` (the create/edit category
+dialog) does this correctly with the shared system components: `YmDialog`,
+`YmFlex`, `Textbox` (`@ui/Textbox/Textbox`), `YmCombobox`
+(`@ui/YmCombobox/YmCombobox`).
+
+To fix: replace the raw `input`/`button` elements in `CategoryRow` and
+`FixedRow` with `Textbox` and the shared button component, matching
+`CategoryModal`'s pattern. Backend is unaffected —
+`packages/backend/src/modules/budget/budgetCategory.routes.ts:64-75`
+(`PUT/DELETE /categories/:id/override`) already does the right thing.
+
+## 9. Insights don't respect the mine/household scope toggle
+
+**Status:** open — feature gap.
+
+The transactions page has a real `'mine' | 'household'` scope toggle
+(`packages/frontend/src/components/ScopeToggle/ScopeToggle.tsx`, wired in
+`TransactionsPage.tsx:55,59-66,68-79,221-223`) that's passed to both
+`useGetTransactionsQuery` and `useGetTransactionInsightsQuery`. But
+`aggregateSpend` in `packages/backend/src/modules/shared/insights.query.ts:44-119`
+is keyed only on `householdId` + `ownerWindows` — it has no per-user "mine"
+filter, so insights always aggregate the whole household regardless of what
+the toggle shows for the transaction list underneath it. The budget page
+(`BudgetOverviewPage.tsx`) doesn't have the toggle at all, and
+`resolveBudgetScope.ts:9-40` is the same story — always household-wide.
+
+To fix: thread the caller's chosen scope into `aggregateSpend` (filter by
+owner when `scope === 'mine'`) so insights match what the transactions list is
+actually showing. Decide separately whether the budget page should also get
+the toggle, or keep budget summaries household-wide by design — the ask above
+was specifically about insights matching the transactions view.
+
+## 10. Clicking a category in the budget page should show its transactions
+
+**Status:** open — feature request.
+
+Each budget category row's name is already a clickable button —
+`CategoryRow.tsx:54-60` and `FixedRow.tsx:62-68` — but `onEdit`
+(`BudgetOverviewPage.tsx:77-80`) opens the edit `CategoryModal`, not a
+transactions drilldown. There's no way today to go from "this category is
+$140 over budget" to the transactions that make it up.
+
+To add it: add a second affordance on the row (the name button is already
+spoken for by edit) that navigates to `RouteEnum.TRANSACTIONS` with
+`?categoryId=<id>` — reusing the same query param and filter mechanism the
+transactions table's category pill already uses, so the budget page becomes a
+second entry point into one piece of wiring.
+
+## 11. Clicking the user in the transactions table should open a profile modal
+
+**Status:** open — feature request.
+
+The `User` column only appears in household scope and renders flat text:
+`ownerColumn` in `TransactionsPage.tsx:38-44` is
+`cell: ({ row }) => row.original.ownerName || row.original.ownerEmail`, with no
+click target. Seeing whose transaction a row is doesn't get you anywhere —
+there's no way to go from a row to that person.
+
+To add it: make the cell a button keyed on the row's owner, opening a
+`YmDialog` with that member's profile. The row carries only `ownerName` /
+`ownerEmail` (`packages/common/src/types/Transaction.ts`), not an owner id, so
+either match against `useGetMyHouseholdQuery()`'s members (already fetched at
+`TransactionsPage.tsx:59`) by email, or add `ownerId` to the DTO and the
+transaction mapper — the latter is the sounder key.
+
+Two nearby pieces to reuse rather than duplicate:
+
+- `MemberAvatars.tsx:21,36-58` already takes an optional `onMemberClick` and
+  renders a clickable avatar for it, but no caller passes the handler —
+  `HouseholdPage.tsx:139` renders `<MemberAvatars members={[member]} />` bare.
+  That prop is the unfinished half of the same idea.
+- `docs/superpowers/plans/2026-08-15-group-member-budget-breakdown.md` and its
+  paired spec cover clicking a member to see their budget breakdown (the
+  `BudgetBreakdown` component exists). Worth reading first — a member modal
+  probably wants to be one shell showing profile and breakdown, not two.
+
+## 12. Run category suggestion generation in the background
+
+**Status:** open — request blocks on the LLM call.
+
+`POST /suggestions`
+(`packages/backend/src/modules/categorization/categorization.routes.ts:41-49`)
+calls `generate` in `categorization.controller.ts:7-25`, which `await`s
+`generateSuggestions` synchronously before responding. `generateSuggestions`
+(`categorization.service.ts`) drives `claude.suggester.ts:144-178`, which
+chunks transactions 100 at a time and makes one Claude API call per chunk in
+series — so a household with a few hundred uncategorized transactions holds
+the HTTP request open for several sequential model calls. There's already a
+rate limiter on the route (`categorization.routes.ts:38`, "Too many suggestion
+runs") that hints this was known to be slow.
+
+To fix: make `POST /suggestions` kick off the job and return immediately
+(e.g. `202 Accepted` with a run id, or just fire-and-forget since suggestions
+are polled via the existing `GET /suggestions`), and have the frontend poll
+`GET /suggestions` until results appear instead of waiting on the POST. Worth
+deciding whether this needs a real job queue or can stay in-process given
+current volume.

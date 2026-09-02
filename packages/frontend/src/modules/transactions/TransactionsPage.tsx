@@ -81,6 +81,10 @@ export const TransactionsPage = () => {
   const { data: override, isLoading: overrideLoading } =
     useGetBudgetOverrideQuery({ month: selectedMonth, year: selectedYear });
   const { data: categories } = useGetBudgetCategoriesQuery();
+  const categoriesById = useMemo(
+    () => new Map((categories ?? []).map(c => [c.id, c])),
+    [categories],
+  );
   const [setCategory] = useSetTransactionCategoryMutation();
   const [openUploadModal, setOpenUploadModal] = useState(false);
   const [openBudgetModal, setOpenBudgetModal] = useState(false);
@@ -108,8 +112,8 @@ export const TransactionsPage = () => {
   const loading = insightsLoading || budgetLoading || overrideLoading;
 
   const selectedCategory = useMemo(
-    () => categories?.find(c => c.id === categoryId),
-    [categories, categoryId],
+    () => (categoryId ? categoriesById.get(categoryId) : undefined),
+    [categoriesById, categoryId],
   );
 
   const clearCategoryFilter = useCallback(() => {
@@ -119,11 +123,22 @@ export const TransactionsPage = () => {
     });
   }, [setSearchParams]);
 
+  const handleCategoryClick = useCallback(
+    (clickedId: string) => {
+      setSearchParams(params => {
+        if (params.get('categoryId') === clickedId) params.delete('categoryId');
+        else params.set('categoryId', clickedId);
+        return params;
+      });
+    },
+    [setSearchParams],
+  );
+
   const rowActions = useCallback(
     (txn: Transaction) => {
       if (txn.amount <= 0) return [];
       if (txn.categoryId) {
-        const category = categories?.find(c => c.id === txn.categoryId);
+        const category = categoriesById.get(txn.categoryId);
         return [
           {
             label: `Remove from "${category?.name ?? 'category'}"`,
@@ -135,7 +150,7 @@ export const TransactionsPage = () => {
         { label: 'Assign to category', onClick: () => setAssignTxn(txn) },
       ];
     },
-    [categories, setCategory],
+    [categoriesById, setCategory],
   );
 
   const cards: InsightCardItem[] = [
@@ -246,6 +261,8 @@ export const TransactionsPage = () => {
             extraColumns={isSharedHousehold ? ownerColumn : undefined}
             rowActions={rowActions}
             sortDirection={sortDirection}
+            categoriesById={categoriesById}
+            onCategoryClick={handleCategoryClick}
           />
         )}
       </Content>

@@ -94,6 +94,34 @@
   white-space: nowrap;
 }
 
+/* Assigned budget category: amber hue (derived from --color-yello) to read as
+   clearly distinct from the blue Plaid pill at a glance. color-mix keeps the
+   token as the single source of truth instead of hard-coding a new hex. Stays
+   after .categoryPill so its background/color win the specificity tie. */
+.categoryPillBudget {
+  background-color: color-mix(in srgb, var(--color-yello) 30%, white);
+  color: color-mix(in srgb, var(--color-yello) 55%, black);
+}
+
+/* Interactivity affordance only — declares no background/color, so it never
+   clobbers .categoryPill or .categoryPillBudget. Neutralises the <button>'s
+   default border and margin; padding and font already come from
+   .categoryPill. */
+.categoryPillClickable {
+  cursor: pointer;
+  border: none;
+  margin: 0;
+}
+
+.categoryPillClickable:hover {
+  filter: brightness(0.94);
+}
+
+.categoryPillClickable:focus-visible {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 2px;
+}
+
 .descriptionCell {
   font-family: var(--font-family-button);
   color: var(--color-text-primary);
