@@ -1,14 +1,25 @@
 import { truncateAll, closeTestDb } from '../../../test/setup';
-import { makeUser, makeBudgetCategory, makeTransaction } from '../../../test/helpers/factories';
+import {
+  makeUser,
+  makeBudgetCategory,
+  makeTransaction,
+  makeHouseholdMember,
+} from '../../../test/helpers/factories';
 import { createHousehold } from '../../modules/households/household.service';
 import { setTransactionCategory } from './transaction.service';
 import { db } from '../../db/client';
 import { budgetCategories, transactionCategories } from '../../db/schema';
 import { and, eq, isNull } from 'drizzle-orm';
 
+const addMember = (householdId: string, userId: string) =>
+  makeHouseholdMember(householdId, userId);
+
 let userId: string;
 let householdId: string;
-let scope: { householdId: string; members: never[] };
+let scope: {
+  householdId: string;
+  members: { userId: string; from: Date; to: Date | null }[];
+};
 
 afterEach(truncateAll);
 afterAll(closeTestDb);
@@ -18,7 +29,10 @@ beforeEach(async () => {
   userId = user.id;
   const household = await createHousehold('Home', userId);
   householdId = household.id;
-  scope = { householdId, members: [] };
+  scope = {
+    householdId,
+    members: [{ userId, from: new Date('2000-01-01'), to: null }],
+  };
 });
 
 const liveCategoryId = async (transactionId: string): Promise<string | undefined> => {
@@ -35,12 +49,77 @@ const liveCategoryId = async (transactionId: string): Promise<string | undefined
 };
 
 describe('setTransactionCategory', () => {
-  it('404s when the transaction is not the caller transaction', async () => {
-    const other = await makeUser();
-    const txn = await makeTransaction(other.id);
+  it("tags another household member's transaction", async () => {
+    const partner = await makeUser();
+    await addMember(householdId, partner.id);
+    const txn = await makeTransaction(partner.id, {
+      amount: 25,
+      date: new Date('2026-03-10'),
+    });
+    const cat = await makeBudgetCategory(userId, { householdId, kind: 'flexible' });
+
+    scope.members.push({ userId: partner.id, from: new Date('2000-01-01'), to: null });
+
+    await setTransactionCategory(scope, userId, txn.id, { categoryId: cat.id });
+
+    expect(await liveCategoryId(txn.id)).toBe(cat.id);
+  });
+
+  it('records the acting user, not the transaction owner, as created_by', async () => {
+    const partner = await makeUser();
+    await addMember(householdId, partner.id);
+    const txn = await makeTransaction(partner.id, {
+      amount: 25,
+      date: new Date('2026-03-10'),
+    });
+    const cat = await makeBudgetCategory(userId, { householdId, kind: 'flexible' });
+
+    scope.members.push({ userId: partner.id, from: new Date('2000-01-01'), to: null });
+
+    await setTransactionCategory(scope, userId, txn.id, { categoryId: cat.id });
+
+    const [row] = await db
+      .select()
+      .from(transactionCategories)
+      .where(
+        and(
+          eq(transactionCategories.transactionId, txn.id),
+          isNull(transactionCategories.deletedAt)
+        )
+      );
+    expect(row.createdBy).toBe(userId);
+  });
+
+  it('404s for a transaction dated outside every tenure window', async () => {
+    const partner = await makeUser();
+    await addMember(householdId, partner.id);
+    const txn = await makeTransaction(partner.id, {
+      amount: 25,
+      date: new Date('2026-09-10'),
+    });
+    const cat = await makeBudgetCategory(userId, { householdId, kind: 'flexible' });
+
+    scope.members.push({
+      userId: partner.id,
+      from: new Date('2000-01-01'),
+      to: new Date('2026-04-01'),
+    });
 
     await expect(
-      setTransactionCategory(scope, userId, txn.id, { categoryId: null })
+      setTransactionCategory(scope, userId, txn.id, { categoryId: cat.id })
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it("404s for a non-member's transaction", async () => {
+    const outsider = await makeUser();
+    const txn = await makeTransaction(outsider.id, {
+      amount: 25,
+      date: new Date('2026-03-10'),
+    });
+    const cat = await makeBudgetCategory(userId, { householdId, kind: 'flexible' });
+
+    await expect(
+      setTransactionCategory(scope, userId, txn.id, { categoryId: cat.id })
     ).rejects.toMatchObject({ statusCode: 404 });
   });
 

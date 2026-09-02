@@ -23,6 +23,7 @@ import Content from '@ui/Content/Content';
 import TransactionUploadModal from '@/components/TransactionUploadModal/TransactionUploadModal';
 import BudgetModal from '@/components/BudgetModal/BudgetModal';
 import AssignCategoryDialog from '@/components/AssignCategoryDialog/AssignCategoryDialog';
+import ReviewSuggestionsDialog from '@/components/ReviewSuggestionsDialog/ReviewSuggestionsDialog';
 import {
   InsightCards,
   InsightCardItem,
@@ -49,6 +50,7 @@ export const TransactionsPage = () => {
   const [selectedMonth, setSelectedMonth] = useState(previousMonth);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [assignTxn, setAssignTxn] = useState<Transaction | null>(null);
+  const [suggestOpen, setSuggestOpen] = useState(false);
   const [sortDirection, setSortDirection] = useState<SortDirection>('newest');
   const [scope, setScope] = useState<Scope>('mine');
   const [searchParams, setSearchParams] = useSearchParams();
@@ -231,6 +233,10 @@ export const TransactionsPage = () => {
                 onClick: () => setOpenActualModal(true),
               },
               { label: 'Upload CSV', onClick: () => setOpenUploadModal(true) },
+              {
+                label: 'Suggest categories',
+                onClick: () => setSuggestOpen(true),
+              },
             ]}
           />
         </MonthYearFilter>
@@ -255,6 +261,12 @@ export const TransactionsPage = () => {
         open={assignTxn !== null}
         onClose={() => setAssignTxn(null)}
         transaction={assignTxn}
+        month={selectedMonth}
+        year={selectedYear}
+      />
+      <ReviewSuggestionsDialog
+        open={suggestOpen}
+        onClose={() => setSuggestOpen(false)}
         month={selectedMonth}
         year={selectedYear}
       />

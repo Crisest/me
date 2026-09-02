@@ -6,6 +6,7 @@ import { budgetCategoryOverrides } from './budget-category-overrides';
 import { budgetOverrides } from './budget-overrides';
 import { budgets } from './budgets';
 import { cards } from './cards';
+import { categorySuggestions } from './category-suggestions';
 import { groupMembers } from './group-members';
 import { groups } from './groups';
 import { householdMembers } from './household-members';
@@ -69,6 +70,7 @@ export const budgetCategoriesRelations = relations(
       references: [households.id],
     }),
     tags: many(transactionCategories),
+    suggestions: many(categorySuggestions),
   })
 );
 
@@ -135,6 +137,7 @@ export const transactionsRelations = relations(
       references: [users.id],
     }),
     tags: many(transactionCategories),
+    suggestions: many(categorySuggestions),
   })
 );
 
@@ -151,6 +154,7 @@ export const householdsRelations = relations(households, ({ one, many }) => ({
   members: many(householdMembers),
   categories: many(budgetCategories),
   tags: many(transactionCategories),
+  suggestions: many(categorySuggestions),
 }));
 
 export const householdMembersRelations = relations(
@@ -185,6 +189,36 @@ export const transactionCategoriesRelations = relations(
     createdBy: one(users, {
       fields: [transactionCategories.createdBy],
       references: [users.id],
+    }),
+  })
+);
+
+export const categorySuggestionsRelations = relations(
+  categorySuggestions,
+  ({ one }) => ({
+    transaction: one(transactions, {
+      fields: [categorySuggestions.transactionId],
+      references: [transactions.id],
+    }),
+    category: one(budgetCategories, {
+      fields: [categorySuggestions.categoryId],
+      references: [budgetCategories.id],
+    }),
+    household: one(households, {
+      fields: [categorySuggestions.householdId],
+      references: [households.id],
+    }),
+    // Two FKs to `users` on this table, so each needs its own relationName
+    // to disambiguate.
+    createdBy: one(users, {
+      fields: [categorySuggestions.createdBy],
+      references: [users.id],
+      relationName: 'categorySuggestionsCreatedBy',
+    }),
+    resolvedBy: one(users, {
+      fields: [categorySuggestions.resolvedBy],
+      references: [users.id],
+      relationName: 'categorySuggestionsResolvedBy',
     }),
   })
 );

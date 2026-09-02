@@ -1,6 +1,7 @@
-import { and, eq, gte, lt, or, sql } from 'drizzle-orm';
+import { and, eq, gte, lt, sql } from 'drizzle-orm';
 import { db } from '../../db/client';
 import { budgetCategories, transactions } from '../../db/schema';
+import { householdOwnerFilter } from './householdScope';
 
 export type SpendAggregate = {
   totalSpent: number;
@@ -68,16 +69,7 @@ export const aggregateSpend = async (params: {
   };
   if (ownerWindows.length === 0) return empty;
 
-  const ownerFilter = or(
-    ...ownerWindows.map(w => {
-      const conds = [
-        eq(transactions.createdBy, w.userId),
-        gte(transactions.date, w.from),
-      ];
-      if (w.to) conds.push(lt(transactions.date, w.to));
-      return and(...conds)!;
-    })
-  )!;
+  const ownerFilter = householdOwnerFilter(ownerWindows)!;
 
   // A transaction's category is the live tag row for this household. NULL when
   // there is none — an untagged debit must still count as spend.

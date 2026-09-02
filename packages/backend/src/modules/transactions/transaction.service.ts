@@ -15,6 +15,7 @@ import { toTransaction, type TransactionEnrichment } from './transaction.mapper'
 import { createUploadRecord } from '../uploads/upload.service';
 import { AppError } from '../../middleware/errorHandler';
 import type { BudgetScope } from '../../middleware/resolveBudgetScope';
+import { householdOwnerFilter } from '../shared/householdScope';
 
 const cardBanks = alias(banks, 'card_banks');
 const accountBanks = alias(banks, 'account_banks');
@@ -205,9 +206,15 @@ export const setTransactionCategory = async (
 ): Promise<Transaction> => {
   const { categoryId } = payload;
 
-  const existing = await db.query.transactions.findFirst({
-    where: and(eq(transactions.id, transactionId), eq(transactions.createdBy, userId)),
-  });
+  // Tagging is household-scoped: any member may tag any transaction inside the
+  // household's tenure windows. `transaction_categories.created_by` still
+  // records the acting user, so authorship stays auditable.
+  const ownerFilter = householdOwnerFilter(scope.members);
+  const existing = ownerFilter
+    ? await db.query.transactions.findFirst({
+        where: and(eq(transactions.id, transactionId), ownerFilter),
+      })
+    : undefined;
   if (!existing) {
     throw new AppError('Transaction not found', 404);
   }

@@ -9,6 +9,18 @@ Full-stack personal portfolio/finance app using a pnpm monorepo with three packa
 - `packages/backend` — Express.js REST API with PostgreSQL/Drizzle
 - `packages/frontend` — React SPA with Redux Toolkit Query
 
+## Secrets
+
+**Never read the contents of a `.env` file.** That includes `packages/*/.env`, `.env.local`, and any variant — no `cat`, `head`, `grep`, `Read`, or reading one inside a script. These files hold live credentials: the database password, `JWT_SECRET`, the Plaid secrets, and `ANTHROPIC_API_KEY`. This holds even when the value would be masked, and even when the user says it's fine.
+
+Get what you need another way:
+
+- **Which variables the app consumes** → read `packages/backend/src/config/env.ts`. Every one is listed there with its default.
+- **Whether a variable is set, or what it points at** → ask the user. Don't infer it from the file.
+- **Adding a new variable** → add it to `config/env.ts` and document it in this file, then tell the user which line to add to their `.env`. Never write into `.env` yourself.
+
+Never put a secret value into a command line, a log, a comment, a test fixture, or any tracked file. When suggesting how to run something with a credential, point at the `.env` file or a secret-store lookup (`$(pass show ...)`) rather than an inline `VAR=<value> cmd` prefix, which lands in shell history.
+
 ## Commands
 
 All commands run from the repo root unless noted.

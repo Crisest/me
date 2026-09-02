@@ -7,6 +7,7 @@ import {
   budgetCategories,
   budgetCategoryOverrides,
   cards,
+  categorySuggestions,
   groups,
   householdMembers,
   households,
@@ -18,6 +19,7 @@ import {
   type BudgetCategoryOverrideRow,
   type BudgetCategoryRow,
   type CardRow,
+  type CategorySuggestionRow,
   type GroupRow,
   type TransactionRow,
   type UserRow,
@@ -216,6 +218,29 @@ export const makeTransactionCategory = async (
       transactionId,
       categoryId,
       householdId,
+      createdBy: userId,
+      ...overrides,
+    })
+    .returning();
+  return row;
+};
+
+export const makeCategorySuggestion = async (
+  transactionId: string,
+  categoryId: string,
+  householdId: string,
+  userId: string,
+  overrides: Partial<typeof categorySuggestions.$inferInsert> = {}
+): Promise<CategorySuggestionRow> => {
+  const [row] = await db
+    .insert(categorySuggestions)
+    .values({
+      transactionId,
+      categoryId,
+      householdId,
+      confidence: 0.9,
+      reason: 'Test reason',
+      source: 'stub',
       createdBy: userId,
       ...overrides,
     })

@@ -9,6 +9,9 @@ import { truncateAll, closeTestDb } from '../../../test/setup';
 import { authedAgent } from '../../../test/helpers/auth';
 import { makeUser, makeBudgetCategory, makeTransaction } from '../../../test/helpers/factories';
 import { createHousehold } from '../households/household.service';
+import { db } from '../../db/client';
+import { householdMembers } from '../../db/schema';
+import { eq } from 'drizzle-orm';
 
 const buildApp = (): Application => {
   const app = express();
@@ -37,6 +40,13 @@ beforeEach(async () => {
   // it via householdId.
   const household = await createHousehold('Home', userId);
   householdId = household.id;
+  // resolveBudgetScope derives each member's tenure window from
+  // householdMembers.createdAt; backdate it so this test's transactions
+  // (some dated well in the past) fall inside the window.
+  await db
+    .update(householdMembers)
+    .set({ createdAt: new Date('2000-01-01') })
+    .where(eq(householdMembers.userId, userId));
   agent = authedAgent(app, userId);
 });
 

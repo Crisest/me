@@ -19,3 +19,9 @@ export const categoryKindEnum = pgEnum('category_kind', [
   'flexible',
   'ignored',
 ]);
+
+export const suggestionStatusEnum = pgEnum('suggestion_status', [
+  'pending',
+  'accepted',
+  'rejected',
+]);

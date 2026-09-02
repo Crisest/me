@@ -21,6 +21,14 @@ import { eq } from 'drizzle-orm';
 
 const emptyScope = (householdId: string): BudgetScope => ({ householdId, members: [] });
 
+// setTransactionCategory now filters on tenure windows, not a flat owner id,
+// so tests exercising it need a real window rather than `members: []`
+// (which now means "matches nothing").
+const memberScope = (householdId: string, userId: string): BudgetScope => ({
+  householdId,
+  members: [{ userId, from: new Date('2000-01-01'), to: null }],
+});
+
 afterEach(truncateAll);
 afterAll(closeTestDb);
 
@@ -175,7 +183,7 @@ describe('setTransactionCategory — tag rows', () => {
       kind: 'flexible', plannedAmount: 100, householdId: household.id,
     });
     const txn = await makeTransaction(user.id, { amount: 50 });
-    const scope = { householdId: household.id, members: [] };
+    const scope = memberScope(household.id, user.id);
 
     await setTransactionCategory(scope, user.id, txn.id, {
       categoryId: category.id,
@@ -195,7 +203,7 @@ describe('setTransactionCategory — tag rows', () => {
   it('replaces rather than accumulates on re-tag', async () => {
     const user = await makeUser();
     const household = await createHousehold('Home', user.id);
-    const scope = { householdId: household.id, members: [] };
+    const scope = memberScope(household.id, user.id);
     const first = await makeBudgetCategory(user.id, {
       kind: 'flexible', plannedAmount: 100, householdId: household.id,
     });
@@ -216,7 +224,7 @@ describe('setTransactionCategory — tag rows', () => {
   it('untags by closing the live row', async () => {
     const user = await makeUser();
     const household = await createHousehold('Home', user.id);
-    const scope = { householdId: household.id, members: [] };
+    const scope = memberScope(household.id, user.id);
     const category = await makeBudgetCategory(user.id, {
       kind: 'flexible', plannedAmount: 100, householdId: household.id,
     });
@@ -240,7 +248,7 @@ describe('setTransactionCategory — tag rows', () => {
     const txn = await makeTransaction(a.id, { amount: 50 });
 
     await expect(
-      setTransactionCategory({ householdId: mine.id, members: [] }, a.id, txn.id, {
+      setTransactionCategory(memberScope(mine.id, a.id), a.id, txn.id, {
         categoryId: theirCategory.id,
       })
     ).rejects.toMatchObject({ statusCode: 400 });
@@ -249,7 +257,7 @@ describe('setTransactionCategory — tag rows', () => {
   it('rejects a second transaction on a fixed category in one month', async () => {
     const user = await makeUser();
     const household = await createHousehold('Home', user.id);
-    const scope = { householdId: household.id, members: [] };
+    const scope = memberScope(household.id, user.id);
     const rent = await makeBudgetCategory(user.id, {
       kind: 'fixed', plannedAmount: 2000, householdId: household.id,
     });
@@ -272,7 +280,7 @@ describe('getAllTransactions — categoryId and scope', () => {
   it('filters by categoryId through the live tag row', async () => {
     const user = await makeUser();
     const household = await createHousehold('Home', user.id);
-    const scope = { householdId: household.id, members: [] };
+    const scope = memberScope(household.id, user.id);
     const category = await makeBudgetCategory(user.id, {
       kind: 'flexible', plannedAmount: 100, householdId: household.id,
     });

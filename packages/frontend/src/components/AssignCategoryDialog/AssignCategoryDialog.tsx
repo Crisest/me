@@ -6,7 +6,8 @@ import {
   useGetTransactionsQuery,
   useSetTransactionCategoryMutation,
 } from '@/services/transactionService';
-import type { BudgetCategory, Transaction } from '@portfolio/common';
+import { useAvailableCategories } from '@/hooks/useAvailableCategories';
+import type { Transaction } from '@portfolio/common';
 import styles from './AssignCategoryDialog.module.css';
 
 type Props = {
@@ -36,31 +37,23 @@ const AssignCategoryDialog: React.FC<Props> = ({
   year,
 }) => {
   const { data: categories } = useGetBudgetCategoriesQuery();
+  // Household scope, not the default 'mine': `fixed` categories are claimed
+  // per household, so a partner's tagged transaction must drop that category
+  // from the picker too. Fetching only our own would offer an option the
+  // server refuses with a 409.
   const { data: transactions } = useGetTransactionsQuery(
-    { month, year },
+    { month, year, scope: 'household' },
     { skip: !open },
   );
   const [assign, { isLoading }] = useSetTransactionCategoryMutation();
   const [selected, setSelected] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
-  // Only `fixed` categories are exclusive; a month may hold just one
-  // transaction each. Flexible and ignored categories are always available.
-  const claimedIds = useMemo(() => {
-    const set = new Set<string>();
-    (transactions ?? []).forEach(t => {
-      if (t.id !== transaction?.id && t.categoryId) set.add(t.categoryId);
-    });
-    return set;
-  }, [transactions, transaction?.id]);
-
-  const available = useMemo<BudgetCategory[]>(
-    () =>
-      (categories ?? []).filter(
-        c => c.kind !== 'fixed' || !claimedIds.has(c.id),
-      ),
-    [categories, claimedIds],
-  );
+  const available = useAvailableCategories({
+    categories,
+    transactions,
+    excludeTransactionId: transaction?.id,
+  });
 
   // Pre-select the ignored category when Plaid says this is a payment/transfer.
   useEffect(() => {

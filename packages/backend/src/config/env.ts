@@ -30,6 +30,13 @@ export const config = {
       | 'production',
     tokenEncryptionKey: process.env.PLAID_TOKEN_ENCRYPTION_KEY || '',
   },
+  categorization: {
+    // Absent ⇒ generation runs history-only; this is a supported state, not
+    // an error, so it is deliberately not part of the production env check
+    // below.
+    apiKey: process.env.ANTHROPIC_API_KEY || '',
+    model: process.env.CATEGORIZATION_MODEL || 'claude-opus-5',
+  },
 };
 
 if (!config.databaseUri) {

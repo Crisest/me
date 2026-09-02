@@ -1,0 +1,66 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 480px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 2fr 2fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border-subtle, #e5e7eb);
+}
+
+.description {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.meta,
+.reason,
+.confidence {
+  font-size: var(--font-xs, 0.85rem);
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.confidence {
+  margin-left: 6px;
+}
+
+.amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.skip {
+  background: none;
+  border: 1px solid var(--color-border-subtle, #e5e7eb);
+  border-radius: var(--btn-border-radius, 6px);
+  padding: 4px 12px;
+  cursor: pointer;
+  font-family: var(--font-family-button);
+}
+
+.skip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status,
+.empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--color-muted, #6b7280);
+  font-size: var(--font-sm);
+}
+
+.error {
+  grid-column: 1 / -1;
+  color: var(--color-danger, #d33);
+  font-size: var(--font-xs, 0.85rem);
+}
