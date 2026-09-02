@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { IoCheckmarkCircle, IoEllipseOutline } from 'react-icons/io5';
+import { IoCheckmarkCircle, IoEllipseOutline, IoReceiptOutline } from 'react-icons/io5';
+import Textbox from '@ui/Textbox/Textbox';
+import YButton from '@ui/Button/Button';
 import { formatCAD } from '@/utils/format';
 import {
   useSetCategoryOverrideMutation,
@@ -13,9 +15,17 @@ type Props = {
   month: number;
   year: number;
   onEdit: (categoryId: string) => void;
+  /** Optional so the row still compiles where the drilldown isn't wired. */
+  onViewTransactions?: (categoryId: string) => void;
 };
 
-const FixedRow: React.FC<Props> = ({ summary, month, year, onEdit }) => {
+const FixedRow: React.FC<Props> = ({
+  summary,
+  month,
+  year,
+  onEdit,
+  onViewTransactions,
+}) => {
   const [editingTarget, setEditingTarget] = useState(false);
   const [draft, setDraft] = useState('');
   const [setOverride] = useSetCategoryOverrideMutation();
@@ -69,18 +79,32 @@ const FixedRow: React.FC<Props> = ({ summary, month, year, onEdit }) => {
 
       {editingTarget ? (
         <span className={styles.editor}>
-          <input
-            className={styles.input}
+          <Textbox
             type="number"
+            customClass={styles.input}
             value={draft}
-            onChange={e => setDraft(e.target.value)}
+            onChange={setDraft}
             aria-label={`Monthly target for ${summary.name}`}
           />
-          <button type="button" onClick={saveTarget}>Save</button>
+          <YButton
+            variant="primary"
+            customClass={styles.editorButton}
+            onClick={saveTarget}
+          >
+            Save
+          </YButton>
           {summary.isOverridden && (
-            <button type="button" onClick={resetTarget}>Reset</button>
+            <YButton
+              variant="secondary"
+              customClass={styles.editorButton}
+              onClick={resetTarget}
+            >
+              Reset
+            </YButton>
           )}
-          <button type="button" onClick={() => setEditingTarget(false)}>Cancel</button>
+          <YButton variant="link" onClick={() => setEditingTarget(false)}>
+            Cancel
+          </YButton>
         </span>
       ) : (
         <button
@@ -98,6 +122,18 @@ const FixedRow: React.FC<Props> = ({ summary, month, year, onEdit }) => {
             </span>
           )}
         </button>
+      )}
+
+      {onViewTransactions && (
+        <YButton
+          variant="styleless"
+          customClass={styles.drilldown}
+          aria-label={`View ${summary.name} transactions`}
+          title={`View ${summary.name} transactions`}
+          onClick={() => onViewTransactions(summary.categoryId)}
+        >
+          <IoReceiptOutline />
+        </YButton>
       )}
     </div>
   );

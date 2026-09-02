@@ -30,8 +30,16 @@ const YButton: React.FC<ButtonProps> = ({
     .filter(Boolean)
     .join(' ');
 
+  // react-aria's filterDOMProps keeps only `id` and the labelable aria-*
+  // props, so `title` never reaches the DOM through buttonProps. Forward it
+  // explicitly — an icon-only button has no visible text to explain itself.
   return (
-    <button className={classNames} {...buttonProps} ref={ref}>
+    <button
+      className={classNames}
+      {...buttonProps}
+      title={rest.title}
+      ref={ref}
+    >
       {icon && <span className={styles.icon}>{icon}</span>}
       {children}
     </button>
