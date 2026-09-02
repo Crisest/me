@@ -121,26 +121,7 @@ elsewhere), then loops over the household's active members' banks calling
 `syncBank` per bank the same way `syncAllBanksForUser` does. Aggregate the
 `SyncCounts` per member or in total, whichever the frontend needs.
 
-## 8. Budget override inputs don't match the design system
-
-**Status:** open — UX inconsistency, not a bug.
-
-The monthly-override editors in
-`packages/frontend/src/components/CategoryRow/CategoryRow.tsx:66-80` and
-`packages/frontend/src/components/FixedRow/FixedRow.tsx:70-84` are hand-rolled
-— a bare `<input type="number">` and plain `<button>`s for Save/Reset/Cancel.
-One component away, `CategoryModal.tsx:1-12,92-116` (the create/edit category
-dialog) does this correctly with the shared system components: `YmDialog`,
-`YmFlex`, `Textbox` (`@ui/Textbox/Textbox`), `YmCombobox`
-(`@ui/YmCombobox/YmCombobox`).
-
-To fix: replace the raw `input`/`button` elements in `CategoryRow` and
-`FixedRow` with `Textbox` and the shared button component, matching
-`CategoryModal`'s pattern. Backend is unaffected —
-`packages/backend/src/modules/budget/budgetCategory.routes.ts:64-75`
-(`PUT/DELETE /categories/:id/override`) already does the right thing.
-
-## 9. Insights don't respect the mine/household scope toggle
+## 8. Insights don't respect the mine/household scope toggle
 
 **Status:** open — feature gap.
 
@@ -161,23 +142,7 @@ actually showing. Decide separately whether the budget page should also get
 the toggle, or keep budget summaries household-wide by design — the ask above
 was specifically about insights matching the transactions view.
 
-## 10. Clicking a category in the budget page should show its transactions
-
-**Status:** open — feature request.
-
-Each budget category row's name is already a clickable button —
-`CategoryRow.tsx:54-60` and `FixedRow.tsx:62-68` — but `onEdit`
-(`BudgetOverviewPage.tsx:77-80`) opens the edit `CategoryModal`, not a
-transactions drilldown. There's no way today to go from "this category is
-$140 over budget" to the transactions that make it up.
-
-To add it: add a second affordance on the row (the name button is already
-spoken for by edit) that navigates to `RouteEnum.TRANSACTIONS` with
-`?categoryId=<id>` — reusing the same query param and filter mechanism the
-transactions table's category pill already uses, so the budget page becomes a
-second entry point into one piece of wiring.
-
-## 11. Clicking the user in the transactions table should open a profile modal
+## 9. Clicking the user in the transactions table should open a profile modal
 
 **Status:** open — feature request.
 
@@ -205,7 +170,7 @@ Two nearby pieces to reuse rather than duplicate:
   `BudgetBreakdown` component exists). Worth reading first — a member modal
   probably wants to be one shell showing profile and breakdown, not two.
 
-## 12. Run category suggestion generation in the background
+## 10. Run category suggestion generation in the background
 
 **Status:** open — request blocks on the LLM call.
 
