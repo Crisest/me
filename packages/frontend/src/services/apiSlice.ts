@@ -20,6 +20,7 @@ export enum tagTypesEnum {
   UPLOADS = 'uploads',
   PLAID = 'plaid',
   HOUSEHOLDS = 'households',
+  CATEGORY_SUGGESTIONS = 'categorySuggestions',
 }
 
 export enum abstractTagTypesEnum {
@@ -40,6 +41,7 @@ export const apiSlice = createApi({
     tagTypesEnum.UPLOADS,
     tagTypesEnum.PLAID,
     tagTypesEnum.HOUSEHOLDS,
+    tagTypesEnum.CATEGORY_SUGGESTIONS,
   ],
   baseQuery: fetchBaseQuery({
     baseUrl,

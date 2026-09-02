@@ -9,6 +9,7 @@ import {
 } from '../../middleware/validateRequest';
 import { resolveBudgetScope } from '../../middleware/resolveBudgetScope';
 import insightsRouter from './transaction.insights.routes';
+import suggestionsRouter from '../categorization/categorization.routes';
 
 const router: Router = Router();
 
@@ -61,6 +62,7 @@ router.patch(
   resolveBudgetScope,
   controller.setCategory
 );
+router.use(suggestionsRouter);
 router.use(insightsRouter);
 
 export default router;

@@ -20,6 +20,7 @@
     "etl:verify": "ts-node -r tsconfig-paths/register src/scripts/etl/verify.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.123.0",
     "@portfolio/common": "workspace:*",
     "@types/cors": "^2.8.17",
     "bcrypt": "^5.1.1",

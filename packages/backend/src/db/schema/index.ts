@@ -13,6 +13,7 @@ export * from './group-members';
 export * from './households';
 export * from './household-members';
 export * from './transaction-categories';
+export * from './category-suggestions';
 export * from './transactions';
 export * from './uploads';
 export * from './relations';

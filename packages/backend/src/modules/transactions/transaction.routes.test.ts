@@ -237,7 +237,10 @@ describe('GET /transactions — query validation and scope', () => {
     });
 
     await setTransactionCategory(
-      { householdId: household.id, members: [] },
+      {
+        householdId: household.id,
+        members: [{ userId: user.id, from: new Date('2000-01-01'), to: null }],
+      },
       user.id,
       tagged.id,
       { categoryId: category.id }

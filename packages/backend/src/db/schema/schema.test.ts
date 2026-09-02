@@ -13,6 +13,7 @@ import { budgets } from './budgets';
 import { householdMembers } from './household-members';
 import { households } from './households';
 import { transactionCategories } from './transaction-categories';
+import { categorySuggestions } from './category-suggestions';
 import { transactions } from './transactions';
 import { uploads } from './uploads';
 import { truncateAll, closeTestDb } from '../../../test/setup';
@@ -24,6 +25,7 @@ import {
   makeBudgetCategoryOverride,
   makeTransaction,
   makeTransactionCategory,
+  makeCategorySuggestion,
 } from '../../../test/helpers/factories';
 
 const columnNames = (table: Parameters<typeof getTableConfig>[0]) =>
@@ -348,6 +350,16 @@ describe('household tables', () => {
       expect.arrayContaining(['household_id', 'updated_by', 'deleted_at'])
     );
   });
+
+  it('category_suggestions proposes a category for a transaction', () => {
+    expect(columnNames(categorySuggestions)).toEqual(
+      expect.arrayContaining([
+        'id', 'transaction_id', 'household_id', 'category_id', 'confidence',
+        'reason', 'source', 'status', 'created_by', 'resolved_by',
+        'resolved_at', 'created_at', 'updated_at', 'deleted_at',
+      ])
+    );
+  });
 });
 
 describe('household relational query API', () => {
@@ -355,6 +367,7 @@ describe('household relational query API', () => {
     expect(db.query.households).toBeDefined();
     expect(db.query.householdMembers).toBeDefined();
     expect(db.query.transactionCategories).toBeDefined();
+    expect(db.query.categorySuggestions).toBeDefined();
   });
 });
 
@@ -408,6 +421,36 @@ describe('household constraints', () => {
     await makeTransactionCategory(txn.id, catOne.id, one.id, a.id);
     await expect(
       makeTransactionCategory(txn.id, catTwo.id, two.id, b.id)
+    ).resolves.toBeDefined();
+  });
+
+  it('allows only one live suggestion per transaction per household', async () => {
+    const user = await makeUser();
+    const household = await makeHousehold(user.id);
+    const category = await makeBudgetCategory(user.id, {
+      householdId: household.id,
+    });
+    const txn = await makeTransaction(user.id, { amount: 10 });
+    await makeCategorySuggestion(txn.id, category.id, household.id, user.id);
+
+    await expect(
+      makeCategorySuggestion(txn.id, category.id, household.id, user.id)
+    ).rejects.toThrow();
+  });
+
+  it('allows a new suggestion once the prior one is soft-deleted', async () => {
+    const user = await makeUser();
+    const household = await makeHousehold(user.id);
+    const category = await makeBudgetCategory(user.id, {
+      householdId: household.id,
+    });
+    const txn = await makeTransaction(user.id, { amount: 10 });
+    await makeCategorySuggestion(txn.id, category.id, household.id, user.id, {
+      deletedAt: new Date(),
+    });
+
+    await expect(
+      makeCategorySuggestion(txn.id, category.id, household.id, user.id)
     ).resolves.toBeDefined();
   });
 

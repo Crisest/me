@@ -10,3 +10,4 @@ export * from './types/Insights';
 export * from './types/Upload';
 export * from './types/Plaid';
 export * from './types/Account';
+export * from './types/CategorySuggestion';

@@ -7,6 +7,7 @@ import { db, closeDb } from '../src/db/client';
  * statement correct if a serial column is ever added.
  */
 const TABLES = [
+  'category_suggestions',
   'transaction_categories',
   'transactions',
   'uploads',
