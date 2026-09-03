@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Route } from '@/enums/routerEnum';
 import Content from '@ui/Content/Content';
 import YmMenu from '@ui/YmMenu/YmMenu';
 import { MonthYearFilter } from '@/components/MonthYearFilter/MonthYearFilter';
@@ -77,6 +79,16 @@ export const BudgetOverviewPage = () => {
   const openEdit = (categoryId: string) => {
     setEditing(categories?.find(c => c.id === categoryId) ?? null);
     setModalOpen(true);
+  };
+
+  const navigate = useNavigate();
+
+  // The month/year ride along so the drilldown lands on the month the user
+  // is looking at — TransactionsPage otherwise defaults to last month.
+  const viewTransactions = (categoryId: string) => {
+    navigate(
+      `${Route.TRANSACTIONS}?categoryId=${categoryId}&month=${selectedMonth}&year=${selectedYear}`,
+    );
   };
 
   const cards: InsightCardItem[] = useMemo(
@@ -175,6 +187,7 @@ export const BudgetOverviewPage = () => {
                     month={selectedMonth}
                     year={selectedYear}
                     onEdit={openEdit}
+                    onViewTransactions={viewTransactions}
                   />
                 ))}
               </section>
@@ -192,6 +205,7 @@ export const BudgetOverviewPage = () => {
                     month={selectedMonth}
                     year={selectedYear}
                     onEdit={openEdit}
+                    onViewTransactions={viewTransactions}
                   />
                 ))}
               </section>
@@ -215,6 +229,7 @@ export const BudgetOverviewPage = () => {
                     month={selectedMonth}
                     year={selectedYear}
                     onEdit={openEdit}
+                    onViewTransactions={viewTransactions}
                   />
                 ))}
               </section>

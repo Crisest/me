@@ -46,6 +46,24 @@
   background: rgba(128, 128, 128, 0.2);
 }
 
+.nameGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.drilldown {
+  display: flex;
+  align-items: center;
+  font-size: 0.95rem;
+  opacity: 0.55;
+}
+
+.drilldown:hover {
+  opacity: 1;
+}
+
 .editor {
   display: flex;
   align-items: center;
@@ -54,6 +72,15 @@
 
 .input {
   width: 90px;
+}
+
+/* Button.module.css sizes padding off these two custom properties, so
+   overriding them here shrinks the shared button to fit a table row
+   without forking its styles. */
+.editorButton {
+  --btn-padding-y: 2px;
+  --btn-padding-x: 8px;
+  font-size: 0.75rem;
 }
 
 .track {

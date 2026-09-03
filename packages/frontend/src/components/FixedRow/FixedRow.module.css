@@ -1,6 +1,6 @@
 .row {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: 10px;
   padding: 10px 0;
@@ -71,4 +71,24 @@
 
 .input {
   width: 90px;
+}
+
+.drilldown {
+  display: flex;
+  align-items: center;
+  font-size: 0.95rem;
+  opacity: 0.55;
+}
+
+.drilldown:hover {
+  opacity: 1;
+}
+
+/* Button.module.css sizes padding off these two custom properties, so
+   overriding them here shrinks the shared button to fit a table row
+   without forking its styles. */
+.editorButton {
+  --btn-padding-y: 2px;
+  --btn-padding-x: 8px;
+  font-size: 0.75rem;
 }

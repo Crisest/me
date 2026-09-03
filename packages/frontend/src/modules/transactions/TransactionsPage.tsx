@@ -47,14 +47,29 @@ export const TransactionsPage = () => {
   const now = new Date();
   const prevMonthIndex = (now.getMonth() + 11) % 12;
   const previousMonth = prevMonthIndex + 1;
-  const [selectedMonth, setSelectedMonth] = useState(previousMonth);
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const categoryId = searchParams.get('categoryId') ?? undefined;
+
+  // Seeded from the URL so a drilldown from the budget page opens on the
+  // month it was viewing. Initial state only — the MonthYearFilter stays the
+  // source of truth once the page is mounted, so changing the filter does
+  // not fight a stale param.
+  const monthParam = Number(searchParams.get('month'));
+  const yearParam = Number(searchParams.get('year'));
+  const [selectedMonth, setSelectedMonth] = useState(
+    Number.isInteger(monthParam) && monthParam >= 1 && monthParam <= 12
+      ? monthParam
+      : previousMonth,
+  );
+  const [selectedYear, setSelectedYear] = useState(
+    Number.isInteger(yearParam) && yearParam >= 2000 && yearParam <= 2100
+      ? yearParam
+      : now.getFullYear(),
+  );
   const [assignTxn, setAssignTxn] = useState<Transaction | null>(null);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [sortDirection, setSortDirection] = useState<SortDirection>('newest');
   const [scope, setScope] = useState<Scope>('mine');
-  const [searchParams, setSearchParams] = useSearchParams();
-  const categoryId = searchParams.get('categoryId') ?? undefined;
 
   const { data: household } = useGetMyHouseholdQuery();
   const isSharedHousehold = (household?.members.length ?? 0) > 1;
