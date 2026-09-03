@@ -1,15 +1,19 @@
+/* Bare by default. A bordered box in every table row is more chrome than a
+   secondary action earns, and the same trigger sits in both page headers
+   beside borderless filters. The affordance returns on hover, and the open
+   menu still gets its blue outline. */
 .trigger {
   background: none;
-  border: 1px solid var(--color-grey-hover);
+  background-color: transparent;
+  border: 1px solid transparent;
   border-radius: var(--input-border-radius);
-  color: var(--color-grey);
+  color: var(--color-text-secondary);
   cursor: pointer;
-  font-size: 1.125rem;
-  padding: var(--input-padding-y) 0.625rem;
+  font-size: 1rem;
+  padding: 4px 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--color-white);
   transition:
     color 0.2s ease,
     border-color 0.2s ease,
@@ -17,8 +21,8 @@
 }
 
 .trigger:hover {
-  color: var(--color-dark);
-  border-color: var(--color-blue);
+  color: var(--color-text-primary);
+  background-color: var(--neutral-200);
 }
 
 .trigger[data-open] {

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { IoReceiptOutline } from 'react-icons/io5';
 import Textbox from '@ui/Textbox/Textbox';
 import YButton from '@ui/Button/Button';
 import { formatCAD } from '@/utils/format';
+import { pressureTone, pressurePercent } from '@/utils/budgetPressure';
 import {
   useSetCategoryOverrideMutation,
   useClearCategoryOverrideMutation,
@@ -32,11 +32,10 @@ const CategoryRow: React.FC<Props> = ({
   const [clearOverride] = useClearCategoryOverrideMutation();
 
   const isIgnored = summary.kind === 'ignored';
-  const isOver = !isIgnored && summary.actual > summary.planned;
-  const percent =
-    summary.planned > 0
-      ? Math.min(100, Math.round((summary.actual / summary.planned) * 100))
-      : 0;
+  const tone = isIgnored ? 'ok' : pressureTone(summary.actual, summary.planned);
+  const percent = pressurePercent(summary.actual, summary.planned);
+  // Nothing tagged means nothing to say — the row recedes and offers no link.
+  const isEmpty = summary.transactionCount === 0;
 
   const startEditing = () => {
     setDraft(String(summary.planned));
@@ -60,7 +59,7 @@ const CategoryRow: React.FC<Props> = ({
   };
 
   return (
-    <div className={styles.row}>
+    <div className={`${styles.row} ${isEmpty ? styles.empty : ''}`}>
       <div className={styles.header}>
         <span className={styles.nameGroup}>
           <button
@@ -71,16 +70,21 @@ const CategoryRow: React.FC<Props> = ({
             {summary.name}
           </button>
 
-          {onViewTransactions && (
-            <YButton
-              variant="styleless"
-              customClass={styles.drilldown}
-              aria-label={`View ${summary.name} transactions`}
+          {summary.isOverridden && <span className={styles.badge}>custom</span>}
+
+          {onViewTransactions && !isEmpty && (
+            <button
+              type="button"
+              className={styles.count}
+              // The visible text is the accessible name — an aria-label naming
+              // the category would replace "1 transaction" rather than extend
+              // it. The tooltip carries the category for sighted hover instead.
               title={`View ${summary.name} transactions`}
               onClick={() => onViewTransactions(summary.categoryId)}
             >
-              <IoReceiptOutline />
-            </YButton>
+              {summary.transactionCount}{' '}
+              {summary.transactionCount === 1 ? 'transaction' : 'transactions'}
+            </button>
           )}
         </span>
 
@@ -120,12 +124,16 @@ const CategoryRow: React.FC<Props> = ({
         ) : (
           <button
             type="button"
-            className={`${styles.amounts} ${isOver ? styles.over : ''}`}
+            className={`${styles.amounts} ${styles[tone]}`}
             onClick={startEditing}
             title="Set a target just for this month"
           >
-            {formatCAD(summary.actual)} / {formatCAD(summary.planned)}
-            {summary.isOverridden && <span className={styles.badge}>custom</span>}
+            <strong className={styles.actual}>
+              {formatCAD(summary.actual)}
+            </strong>{' '}
+            <span className={styles.planned}>
+              / {formatCAD(summary.planned)}
+            </span>
           </button>
         )}
       </div>
@@ -133,17 +141,11 @@ const CategoryRow: React.FC<Props> = ({
       {!isIgnored && (
         <div className={styles.track}>
           <div
-            className={`${styles.fill} ${isOver ? styles.fillOver : ''}`}
+            className={`${styles.fill} ${styles[tone]}`}
             style={{ width: `${percent}%` }}
           />
         </div>
       )}
-
-      <div className={styles.meta}>
-        {summary.transactionCount}{' '}
-        {summary.transactionCount === 1 ? 'transaction' : 'transactions'}
-        {isOver && ` · over by ${formatCAD(summary.actual - summary.planned)}`}
-      </div>
     </div>
   );
 };

@@ -1,0 +1,110 @@
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-surface);
+  padding: 28px 32px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 48px;
+  align-items: center;
+}
+
+/* The stat trio stacks under the figure before it can squash. */
+@media (max-width: 767px) {
+  .card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+    padding: 20px;
+  }
+}
+
+.primary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: var(--font-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-text-secondary);
+}
+
+.amount {
+  font-family: var(--font-family-header);
+  font-weight: 700;
+  font-size: 50px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 767px) {
+  .amount {
+    font-size: 36px;
+  }
+}
+
+.positive {
+  color: var(--color-positive);
+}
+
+.negative {
+  color: var(--color-negative);
+}
+
+.neutral {
+  color: var(--color-text-primary);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statAmount {
+  font-size: var(--font-xl);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.note {
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+}
+
+.skeleton {
+  background: var(--neutral-100);
+  border-radius: 6px;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.skeletonAmount {
+  height: 50px;
+  width: 70%;
+}
+
+.skeletonStat {
+  height: 20px;
+  width: 80%;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}

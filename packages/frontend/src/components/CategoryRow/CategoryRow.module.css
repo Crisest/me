@@ -1,20 +1,38 @@
+/* Rows are direct children of a Panel, so they own their horizontal padding
+   and the divider sits on every row but the last. */
 .row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+  gap: 8px;
+  padding: 13px 20px;
+}
+
+.row:not(:last-child) {
+  border-bottom: 1px solid var(--neutral-100);
+}
+
+.empty .name,
+.empty .amounts {
+  color: var(--color-text-secondary);
 }
 
 .header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
 }
 
+.nameGroup {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
 .name,
-.amounts {
+.amounts,
+.count {
   background: none;
   border: none;
   padding: 0;
@@ -25,43 +43,77 @@
 }
 
 .name {
+  font-size: var(--font-sm);
   font-weight: 600;
 }
 
-.amounts {
-  font-variant-numeric: tabular-nums;
-  opacity: 0.85;
+/* The count is both the number and the way into that category's
+   transactions — always visible, so it works without a hover. */
+.count {
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
 }
 
-.over {
-  color: var(--color-negative);
-  opacity: 1;
+.count:hover {
+  color: var(--color-blue);
+  text-decoration: underline;
+}
+
+.amounts {
+  font-size: var(--font-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.actual {
+  font-weight: 700;
+}
+
+.planned {
+  color: var(--color-text-secondary);
+  font-weight: 400;
 }
 
 .badge {
-  margin-left: 6px;
-  padding: 1px 6px;
+  padding: 1px 7px;
   border-radius: 999px;
-  font-size: 0.7rem;
-  background: rgba(128, 128, 128, 0.2);
+  font-size: var(--font-xs);
+  background: var(--neutral-100);
+  color: var(--color-text-secondary);
 }
 
-.nameGroup {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
+.track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--neutral-200);
+  overflow: hidden;
 }
 
-.drilldown {
-  display: flex;
-  align-items: center;
-  font-size: 0.95rem;
-  opacity: 0.55;
+.fill {
+  height: 100%;
 }
 
-.drilldown:hover {
-  opacity: 1;
+/* Pressure bands. Applied to the amount and the bar fill, so a row still
+   reads when the bar is too short to see. `.ok` deliberately leaves the
+   amount at its inherited colour — only trouble gets tinted. */
+.fill.ok {
+  background: var(--color-positive);
+}
+
+.warning.amounts {
+  color: var(--color-warning);
+}
+
+.fill.warning {
+  background: var(--color-warning);
+}
+
+.over.amounts {
+  color: var(--color-negative);
+}
+
+.fill.over {
+  background: var(--color-negative);
 }
 
 .editor {
@@ -81,25 +133,4 @@
   --btn-padding-y: 2px;
   --btn-padding-x: 8px;
   font-size: 0.75rem;
-}
-
-.track {
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(128, 128, 128, 0.2);
-  overflow: hidden;
-}
-
-.fill {
-  height: 100%;
-  background: var(--color-positive);
-}
-
-.fillOver {
-  background: var(--color-negative);
-}
-
-.meta {
-  font-size: 0.8rem;
-  opacity: 0.6;
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { IoCheckmarkCircle, IoEllipseOutline, IoReceiptOutline } from 'react-icons/io5';
+import { IoCheckmarkCircle, IoEllipseOutline } from 'react-icons/io5';
 import Textbox from '@ui/Textbox/Textbox';
 import YButton from '@ui/Button/Button';
 import { formatCAD } from '@/utils/format';
@@ -69,13 +69,33 @@ const FixedRow: React.FC<Props> = ({
         {isPaid ? <IoCheckmarkCircle /> : <IoEllipseOutline />}
       </span>
 
-      <button
-        type="button"
-        className={styles.name}
-        onClick={() => onEdit(summary.categoryId)}
-      >
-        {summary.name}
-      </button>
+      <span className={styles.nameGroup}>
+        <button
+          type="button"
+          className={styles.name}
+          onClick={() => onEdit(summary.categoryId)}
+        >
+          {summary.name}
+        </button>
+
+        {summary.isOverridden && <span className={styles.badge}>custom</span>}
+
+        {isPaid ? (
+          onViewTransactions && (
+            <button
+              type="button"
+              className={styles.count}
+              title={`View ${summary.name} transactions`}
+              onClick={() => onViewTransactions(summary.categoryId)}
+            >
+              {summary.transactionCount}{' '}
+              {summary.transactionCount === 1 ? 'transaction' : 'transactions'}
+            </button>
+          )
+        ) : (
+          <span className={styles.countEmpty}>not tagged yet</span>
+        )}
+      </span>
 
       {editingTarget ? (
         <span className={styles.editor}>
@@ -114,26 +134,13 @@ const FixedRow: React.FC<Props> = ({
           title="Set a target just for this month"
         >
           {formatCAD(isPaid ? summary.actual : summary.planned)}
-          {summary.isOverridden && <span className={styles.badge}>custom</span>}
           {hasDelta && (
             <span className={delta > 0 ? styles.over : styles.under}>
               {delta > 0 ? '+' : '−'}
-              {formatCAD(Math.abs(delta))} vs plan
+              {formatCAD(Math.abs(delta))}
             </span>
           )}
         </button>
-      )}
-
-      {onViewTransactions && (
-        <YButton
-          variant="styleless"
-          customClass={styles.drilldown}
-          aria-label={`View ${summary.name} transactions`}
-          title={`View ${summary.name} transactions`}
-          onClick={() => onViewTransactions(summary.categoryId)}
-        >
-          <IoReceiptOutline />
-        </YButton>
       )}
     </div>
   );
