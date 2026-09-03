@@ -1,0 +1,37 @@
+/* Same surface treatment as TransactionsTable's .tableContainer, so the two
+   pages read as one app. `overflow: hidden` keeps the header bar's fill
+   inside the rounded corners. */
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-surface);
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 20px;
+  background: var(--neutral-50);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+/* Micro-caps grey is for structural labels only — a date or an amount is data
+   and is set in sentence case at row weight instead. */
+.title {
+  margin: 0;
+  font-size: var(--font-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+}
+
+.meta {
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}

@@ -195,3 +195,20 @@
   opacity: 0.6;
   text-align: center;
 }
+
+/* Filter bars live in the page header, where a boxed control competes with the
+   page title. Bare keeps the control's behaviour and drops its chrome; the
+   focus ring becomes an outline so keyboard users still see it without a
+   border reappearing. */
+.bare .input {
+  border-color: transparent;
+  background-color: transparent;
+  padding-left: 0;
+}
+
+.bare .input:focus {
+  border-color: transparent;
+  box-shadow: none;
+  outline: 2px solid var(--color-blue);
+  outline-offset: 2px;
+}
