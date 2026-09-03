@@ -18,14 +18,18 @@ export function MonthYearFilter({
   onYearChange,
   children,
 }: MonthYearFilterProps) {
+  // Wraps because this now shares a line with the page title inside
+  // PageHeader — the transactions page passes six controls through here,
+  // and YmFlex is nowrap by default.
   return (
-    <YmFlex justify="end" align="center" gap={15}>
+    <YmFlex justify="end" align="center" gap={15} wrap="wrap">
       <YmCombobox
         options={months}
         value={selectedMonth}
         onChange={onMonthChange}
         placeholder="Select a month"
         ariaLabel="Month filter"
+        variant="bare"
       />
       <YmCombobox
         options={years}
@@ -33,6 +37,7 @@ export function MonthYearFilter({
         onChange={onYearChange}
         placeholder="Select a year"
         ariaLabel="Year filter"
+        variant="bare"
       />
       {children}
     </YmFlex>

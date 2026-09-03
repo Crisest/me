@@ -2,9 +2,11 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Route } from '@/enums/routerEnum';
 import Content from '@ui/Content/Content';
+import Panel from '@ui/Panel/Panel';
+import PageHeader from '@ui/PageHeader/PageHeader';
 import YmMenu from '@ui/YmMenu/YmMenu';
 import { MonthYearFilter } from '@/components/MonthYearFilter/MonthYearFilter';
-import { InsightCards, InsightCardItem } from '@/components/InsightCards/InsightCards';
+import { SummaryCard, SummaryStat } from '@/components/SummaryCard/SummaryCard';
 import CategoryRow from '@/components/CategoryRow/CategoryRow';
 import FixedRow from '@/components/FixedRow/FixedRow';
 import CategoryModal from '@/components/CategoryModal/CategoryModal';
@@ -91,35 +93,30 @@ export const BudgetOverviewPage = () => {
     );
   };
 
-  const cards: InsightCardItem[] = useMemo(
+  // Deliberately not summary.moneyLeft: that subtracts actual spending, so it
+  // would not reconcile with the three stats beside it. Derived from the two
+  // totals rather than totalPlanned so the card always adds up on screen.
+  const leftToAllocate =
+    (summary?.income ?? 0) - groups.fixedPlanned - groups.flexiblePlanned;
+
+  const stats: SummaryStat[] = useMemo(
     () => [
       {
-        label: summary?.usingActualIncome ? 'Actual Income' : 'Projected Income',
+        label: summary?.usingActualIncome ? 'Actual income' : 'Income',
         amount: `+${formatCAD(summary?.income ?? 0)}`,
-        subtitle: summary?.usingActualIncome
+        note: summary?.usingActualIncome
           ? 'Actual for this month'
           : 'From your budget',
       },
       {
         label: 'Fixed',
-        amount: `-${formatCAD(groups.fixedPlanned)}`,
-        subtitle: `${groups.fixedPaid} of ${groups.fixed.length} paid`,
+        amount: formatCAD(groups.fixedPlanned),
+        note: `${groups.fixedPaid} of ${groups.fixed.length} paid`,
       },
       {
         label: 'Budgeted',
-        amount: `-${formatCAD(groups.flexiblePlanned)}`,
-        subtitle: `${formatCAD(groups.flexibleActual)} spent`,
-      },
-      {
-        // Deliberately not summary.moneyLeft: that subtracts actual spending,
-        // so it would not reconcile with the three cards beside it. Derived
-        // from those two totals rather than totalPlanned so the row always
-        // adds up on screen.
-        label: 'Left',
-        amount: formatCAD(
-          (summary?.income ?? 0) - groups.fixedPlanned - groups.flexiblePlanned,
-        ),
-        subtitle: 'After fixed & budgeted',
+        amount: formatCAD(groups.flexiblePlanned),
+        note: `${formatCAD(groups.flexibleActual)} spent`,
       },
     ],
     [summary, groups],
@@ -127,19 +124,28 @@ export const BudgetOverviewPage = () => {
 
   return (
     <>
-      <InsightCards cards={cards} loading={isLoading} />
-      <Content>
-        <MonthYearFilter
-          selectedMonth={selectedMonth}
-          selectedYear={selectedYear}
-          onMonthChange={setSelectedMonth}
-          onYearChange={setSelectedYear}
-        >
-          <YmMenu
-            ariaLabel="Budget actions"
-            items={[{ label: 'New category', onClick: openCreate }]}
-          />
-        </MonthYearFilter>
+      <Content width="wide">
+        <PageHeader title="Budget">
+          <MonthYearFilter
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            onMonthChange={setSelectedMonth}
+            onYearChange={setSelectedYear}
+          >
+            <YmMenu
+              ariaLabel="Budget actions"
+              items={[{ label: 'New category', onClick: openCreate }]}
+            />
+          </MonthYearFilter>
+        </PageHeader>
+
+        <SummaryCard
+          label="Left to allocate"
+          amount={formatCAD(leftToAllocate)}
+          tone={leftToAllocate < 0 ? 'negative' : 'positive'}
+          stats={stats}
+          loading={isLoading}
+        />
 
         {summary && summary.categories.length === 0 && (
           <p className={styles.empty}>
@@ -152,7 +158,9 @@ export const BudgetOverviewPage = () => {
           <div className={styles.prompt}>
             <span>
               {untaggedTransferCount}{' '}
-              {untaggedTransferCount === 1 ? 'transaction looks' : 'transactions look'}{' '}
+              {untaggedTransferCount === 1
+                ? 'transaction looks'
+                : 'transactions look'}{' '}
               like card payments or transfers. Those are not spending.
             </span>
             <button
@@ -172,14 +180,10 @@ export const BudgetOverviewPage = () => {
         <div className={styles.columns}>
           <div className={styles.column}>
             {groups.fixed.length > 0 && (
-              <section className={styles.section}>
-                <div className={styles.sectionHead}>
-                  <h3 className={styles.sectionTitle}>Fixed</h3>
-                  <span className={styles.sectionTotal}>
-                    {formatCAD(groups.fixedPlanned)} · {groups.fixedPaid} of{' '}
-                    {groups.fixed.length}
-                  </span>
-                </div>
+              <Panel
+                title="Fixed"
+                meta={`${formatCAD(groups.fixedPlanned)} · ${groups.fixedPaid} of ${groups.fixed.length} paid`}
+              >
                 {groups.fixed.map(row => (
                   <FixedRow
                     key={row.categoryId}
@@ -190,14 +194,11 @@ export const BudgetOverviewPage = () => {
                     onViewTransactions={viewTransactions}
                   />
                 ))}
-              </section>
+              </Panel>
             )}
 
             {groups.ignored.length > 0 && (
-              <section className={styles.section}>
-                <div className={styles.sectionHead}>
-                  <h3 className={styles.sectionTitle}>Not spending</h3>
-                </div>
+              <Panel title="Not spending">
                 {groups.ignored.map(row => (
                   <CategoryRow
                     key={row.categoryId}
@@ -208,20 +209,27 @@ export const BudgetOverviewPage = () => {
                     onViewTransactions={viewTransactions}
                   />
                 ))}
-              </section>
+              </Panel>
+            )}
+
+            {summary && summary.untagged.transactionCount > 0 && (
+              <div className={styles.untagged}>
+                {formatCAD(summary.untagged.amount)} across{' '}
+                {summary.untagged.transactionCount}{' '}
+                {summary.untagged.transactionCount === 1
+                  ? 'transaction is'
+                  : 'transactions are'}{' '}
+                still untagged.
+              </div>
             )}
           </div>
 
           <div className={styles.column}>
             {groups.flexible.length > 0 && (
-              <section className={styles.section}>
-                <div className={styles.sectionHead}>
-                  <h3 className={styles.sectionTitle}>Categories</h3>
-                  <span className={styles.sectionTotal}>
-                    {formatCAD(groups.flexibleActual)} /{' '}
-                    {formatCAD(groups.flexiblePlanned)}
-                  </span>
-                </div>
+              <Panel
+                title="Categories"
+                meta={`${formatCAD(groups.flexibleActual)} / ${formatCAD(groups.flexiblePlanned)}`}
+              >
                 {groups.flexible.map(row => (
                   <CategoryRow
                     key={row.categoryId}
@@ -232,23 +240,10 @@ export const BudgetOverviewPage = () => {
                     onViewTransactions={viewTransactions}
                   />
                 ))}
-              </section>
+              </Panel>
             )}
           </div>
         </div>
-
-        {summary && summary.untagged.transactionCount > 0 && (
-          <div className={styles.prompt}>
-            <span>
-              {formatCAD(summary.untagged.amount)} across{' '}
-              {summary.untagged.transactionCount}{' '}
-              {summary.untagged.transactionCount === 1
-                ? 'transaction is'
-                : 'transactions are'}{' '}
-              still untagged.
-            </span>
-          </div>
-        )}
       </Content>
 
       <CategoryModal

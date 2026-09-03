@@ -1,52 +1,38 @@
 .columns {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: var(--spacing-xl);
+  gap: var(--spacing-lg);
   align-items: start;
 }
 
 @media (max-width: 767px) {
   .columns {
     grid-template-columns: minmax(0, 1fr);
-    gap: 0;
+    gap: var(--spacing-md);
   }
 }
 
 .column {
   min-width: 0;
-}
-
-.section {
-  margin-bottom: 24px;
-}
-
-.sectionHead {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--color-border-strong);
-}
-
-.sectionTotal {
-  font-size: 0.8rem;
-  color: var(--color-text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.sectionTitle {
-  margin: 0;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-text-secondary);
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
 .empty {
   color: var(--color-text-secondary);
   padding: 24px 0;
+}
+
+/* A one-line to-do, not a section — bordered but unshadowed, so it sits a
+   step below the panels rather than competing with them. */
+.untagged {
+  padding: 12px 16px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--border-radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-sm);
 }
 
 .prompt {
@@ -55,10 +41,9 @@
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
   padding: 12px 14px;
-  border-radius: 8px;
+  border-radius: var(--border-radius-md);
   background: var(--color-day-band);
   color: var(--color-text-primary);
-  font-size: 0.9rem;
+  font-size: var(--font-sm);
 }

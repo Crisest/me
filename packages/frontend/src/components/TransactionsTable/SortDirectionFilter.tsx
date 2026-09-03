@@ -21,6 +21,7 @@ export function SortDirectionFilter({
       value={value}
       onChange={onChange}
       ariaLabel="Sort transactions by date"
+      variant="bare"
     />
   );
 }

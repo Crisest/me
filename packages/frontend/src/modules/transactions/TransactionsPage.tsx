@@ -24,10 +24,8 @@ import TransactionUploadModal from '@/components/TransactionUploadModal/Transact
 import BudgetModal from '@/components/BudgetModal/BudgetModal';
 import AssignCategoryDialog from '@/components/AssignCategoryDialog/AssignCategoryDialog';
 import ReviewSuggestionsDialog from '@/components/ReviewSuggestionsDialog/ReviewSuggestionsDialog';
-import {
-  InsightCards,
-  InsightCardItem,
-} from '@/components/InsightCards/InsightCards';
+import PageHeader from '@ui/PageHeader/PageHeader';
+import { SummaryCard, SummaryStat } from '@/components/SummaryCard/SummaryCard';
 import { MonthYearFilter } from '@/components/MonthYearFilter/MonthYearFilter';
 import { formatCAD } from '@/utils/format';
 import YmCombobox from '@ui/YmCombobox/YmCombobox';
@@ -168,34 +166,81 @@ export const TransactionsPage = () => {
     [categoriesById, setCategory],
   );
 
-  const cards: InsightCardItem[] = [
+  const stats: SummaryStat[] = [
     {
-      label: isActual ? 'Actual Income' : 'Projected Income',
+      label: isActual ? 'Actual income' : 'Income',
       amount: `+${formatCAD(effectiveSalary)}`,
-      subtitle: `${insights?.debitCount ?? 0} transactions`,
+      note: isActual ? 'Actual for this month' : 'Projected',
     },
     {
-      label: 'Total Spent',
-      amount: `-${formatCAD(insights?.totalSpent ?? 0)}`,
-      subtitle: `${insights?.debitCount ?? 0} transactions`,
+      label: 'Spent',
+      amount: formatCAD(insights?.totalSpent ?? 0),
+      note: `${insights?.debitCount ?? 0} transactions`,
     },
     {
-      label: 'Fixed Expenses',
-      amount: `-${formatCAD(totalFixed)}`,
-      subtitle: `${fixedCategories.length} fixed expenses · ${insights?.matchedFixedCount ?? 0} matched`,
-    },
-    {
-      label: 'Money Left',
-      amount: formatCAD(moneyLeft),
-      subtitle: 'After fixed & spending',
+      label: 'Fixed',
+      amount: formatCAD(totalFixed),
+      note: `${insights?.matchedFixedCount ?? 0} of ${fixedCategories.length} matched`,
     },
   ];
 
   return (
     <>
-      {/* <Header title={headerTitle} /> */}
-      <InsightCards cards={cards} loading={loading} />
-      <Content>
+      <Content width="wide">
+        <PageHeader title="Transactions">
+          <MonthYearFilter
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            onMonthChange={setSelectedMonth}
+            onYearChange={setSelectedYear}
+          >
+            <YmCombobox
+              options={accountOptions}
+              value={selectedAccountId}
+              onChange={setSelectedAccountId}
+              placeholder="All accounts"
+              ariaLabel="Account filter"
+              variant="bare"
+            />
+            <SortDirectionFilter
+              value={sortDirection}
+              onChange={setSortDirection}
+            />
+            {isSharedHousehold && (
+              <ScopeToggle value={effectiveScope} onChange={setScope} />
+            )}
+            <YmMenu
+              ariaLabel="Budget actions"
+              items={[
+                {
+                  label: 'Set Monthly Income',
+                  onClick: () => setOpenBudgetModal(true),
+                },
+                {
+                  label: 'Set Actual Income',
+                  onClick: () => setOpenActualModal(true),
+                },
+                {
+                  label: 'Upload CSV',
+                  onClick: () => setOpenUploadModal(true),
+                },
+                {
+                  label: 'Suggest categories',
+                  onClick: () => setSuggestOpen(true),
+                },
+              ]}
+            />
+          </MonthYearFilter>
+        </PageHeader>
+
+        <SummaryCard
+          label="Left to spend"
+          amount={formatCAD(moneyLeft)}
+          tone={moneyLeft < 0 ? 'negative' : 'positive'}
+          stats={stats}
+          loading={loading}
+        />
+
         {selectedCategory && (
           <div
             style={{
@@ -231,45 +276,6 @@ export const TransactionsPage = () => {
             </button>
           </div>
         )}
-        <MonthYearFilter
-          selectedMonth={selectedMonth}
-          selectedYear={selectedYear}
-          onMonthChange={setSelectedMonth}
-          onYearChange={setSelectedYear}
-        >
-          <YmCombobox
-            options={accountOptions}
-            value={selectedAccountId}
-            onChange={setSelectedAccountId}
-            placeholder="All accounts"
-            ariaLabel="Account filter"
-          />
-          <SortDirectionFilter
-            value={sortDirection}
-            onChange={setSortDirection}
-          />
-          {isSharedHousehold && (
-            <ScopeToggle value={effectiveScope} onChange={setScope} />
-          )}
-          <YmMenu
-            ariaLabel="Budget actions"
-            items={[
-              {
-                label: 'Set Monthly Income',
-                onClick: () => setOpenBudgetModal(true),
-              },
-              {
-                label: 'Set Actual Income',
-                onClick: () => setOpenActualModal(true),
-              },
-              { label: 'Upload CSV', onClick: () => setOpenUploadModal(true) },
-              {
-                label: 'Suggest categories',
-                onClick: () => setSuggestOpen(true),
-              },
-            ]}
-          />
-        </MonthYearFilter>
         {transactionsData && (
           <TransactionsTable
             transactions={filteredTransactions}
