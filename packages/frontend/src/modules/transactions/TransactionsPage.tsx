@@ -134,15 +134,21 @@ export const TransactionsPage = () => {
     summary?.categories.filter(c => c.kind === 'fixed') ?? [];
   const totalFixed = fixedCategories.reduce((sum, c) => sum + c.planned, 0);
 
-  // Fixed expenses are counted as the transactions that actually landed, not
-  // as their plan: `insights.totalSpent` already includes them, so nothing is
-  // subtracted twice and an overrun costs what it really cost. The plan is
-  // shown rather than spent — the Fixed tile reports how much of it has been
-  // charged so far, which is what says "the rent is still coming" early in
-  // the month.
+  // Every fixed category is committed money, so it is always counted — most
+  // fixed bills are never tagged, and waiting for a tag would leave the rent
+  // out of the figure entirely. A category is counted through its plan unless
+  // a transaction has been tagged to it this month, in which case the real
+  // charge is already inside `insights.totalSpent` and adding the plan on top
+  // would bill it twice. `transactionCount` is this month's tag count for
+  // that category, so the swap happens per category rather than all at once.
   const spent = insights?.totalSpent ?? 0;
   const fixedSpent = insights?.fixedSpent ?? 0;
-  const moneyLeft = income - spent;
+  const unchargedFixed = fixedCategories
+    .filter(c => c.transactionCount === 0)
+    .reduce((sum, c) => sum + c.planned, 0);
+  // Mine subtracts no plan: a fixed bill the viewer actually paid is already
+  // in their own `totalSpent`, and the household's plan is not theirs to owe.
+  const moneyLeft = isMine ? income - spent : income - spent - unchargedFixed;
 
   const loading = insightsLoading || summaryLoading;
 
@@ -205,7 +211,7 @@ export const TransactionsPage = () => {
           {
             label: 'Fixed',
             amount: formatCAD(totalFixed),
-            note: `${formatCAD(fixedSpent)} charged so far`,
+            note: `${formatCAD(fixedSpent)} charged, ${formatCAD(unchargedFixed)} pending`,
           },
         ]),
   ];
