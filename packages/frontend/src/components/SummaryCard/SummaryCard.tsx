@@ -15,6 +15,8 @@ interface SummaryCardProps {
   tone: SummaryTone;
   stats: SummaryStat[];
   loading?: boolean;
+  /** 'accent' marks this card as the page's hero surface — there should be one per page. */
+  variant?: 'plain' | 'accent';
 }
 
 const toneClass: Record<SummaryTone, string> = {
@@ -29,9 +31,16 @@ export function SummaryCard({
   tone,
   stats,
   loading,
+  variant = 'plain',
 }: SummaryCardProps) {
   return (
-    <div className={styles.card}>
+    <div
+      className={
+        variant === 'accent'
+          ? `${styles.card} ${styles.accentCard}`
+          : styles.card
+      }
+    >
       <div className={styles.primary}>
         <div className={styles.label}>{label}</div>
         {loading ? (

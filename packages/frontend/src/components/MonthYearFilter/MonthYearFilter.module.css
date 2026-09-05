@@ -1,0 +1,17 @@
+/* This sits inside PageHeader's .controls, on the same line as the title, so
+   it must not make its own wrapping decision — `inherit` hands that call to
+   the header, which stacks everything at once below its breakpoint. Gap comes
+   from the same token as the header's other controls so the spacing stays
+   even across the row. */
+.filter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: inherit;
+  gap: var(--control-gap, var(--spacing-md));
+  min-width: 0;
+}
+
+.filter > * {
+  min-width: 0;
+}

@@ -41,7 +41,9 @@
 }
 
 .table tbody tr {
-  transition: background-color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 /* Inset divider (doesn't reach the card edges) drawn as a positioned line
@@ -61,26 +63,34 @@
   pointer-events: none;
 }
 
+/* The accent should show up in response to what the user is doing, not sit on
+   the page — so it only appears on hover, as a tint plus a thin leading-edge
+   rule, rather than as a permanent decoration. */
 .table tbody tr:hover {
-  background-color: var(--color-row-hover);
+  background-color: var(--color-accent-tint);
+  box-shadow: inset 2px 0 0 0 var(--color-accent-rule);
 }
 
 .table td.amountCell {
   text-align: right;
-  font-family: var(--font-family-button);
+  font-family: var(--font-family-body);
+  font-weight: 700;
 }
 
 .table th.amountHeader {
   text-align: right;
 }
 
-/* Color carries direction: green for income, red for expenses. */
+/* Green still marks money coming in, but ordinary spending is no longer
+   painted red — a list of expenses is the normal case, not a warning, so it
+   sits in the body's own ink. Red is held back for genuine trouble (over
+   budget, a negative balance) so it still lands when it actually appears. */
 .amountCredit {
   color: var(--color-positive);
 }
 
 .amountDebit {
-  color: var(--color-negative);
+  color: var(--color-text-primary);
 }
 
 .categoryPill {
@@ -90,7 +100,8 @@
   background-color: var(--color-blue-light);
   color: var(--color-blue-dark);
   font-size: var(--font-xs);
-  font-family: var(--font-family-button);
+  font-family: var(--font-family-body);
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -123,7 +134,8 @@
 }
 
 .descriptionCell {
-  font-family: var(--font-family-button);
+  font-family: var(--font-family-body);
+  font-weight: 700;
   color: var(--color-text-primary);
 }
 
@@ -177,7 +189,6 @@
   }
 }
 
-
 .emptyRow {
   text-align: center !important;
   padding: 32px 16px !important;
@@ -204,10 +215,13 @@
   border: 0;
 }
 
-/* No tinted band: the grouping reads through hierarchy (a real heading) plus
-   the default `.table td` bottom border acting as a hairline divider. */
+/* No tinted band and no leading-edge rule: the grouping reads through
+   hierarchy (a real heading) plus the default `.table td` bottom border
+   acting as a hairline divider, so heading rows opt out of the hover
+   treatment entirely rather than just resetting the background. */
 .table tbody tr.dayHeaderRow:hover {
   background-color: transparent;
+  box-shadow: none;
 }
 
 /* Generous top padding gives each day group room to breathe. No divider under
@@ -227,14 +241,15 @@
 
 /* Darker, normal-case heading — hierarchy carries the grouping, not a fill. */
 .dayHeaderLabel {
-  font-family: var(--font-family-button);
+  font-family: var(--font-family-body);
   font-weight: 600;
   font-size: var(--font-sm);
   color: var(--color-text-primary);
 }
 
 .dayHeaderTotal {
-  font-family: var(--font-family-button);
+  font-family: var(--font-family-body);
+  font-weight: 700;
   font-size: var(--font-xs);
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;

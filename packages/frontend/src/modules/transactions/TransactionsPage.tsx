@@ -113,8 +113,7 @@ export const TransactionsPage = () => {
   const effectiveSalary = override?.salary ?? budget?.salary ?? 0;
   const isActual = !!override;
 
-  const fixedCategories =
-    categories?.filter(c => c.kind === 'fixed') ?? [];
+  const fixedCategories = categories?.filter(c => c.kind === 'fixed') ?? [];
   const totalFixed = fixedCategories.reduce(
     (sum, c) => sum + c.plannedAmount,
     0,
@@ -237,6 +236,7 @@ export const TransactionsPage = () => {
           label="Left to spend"
           amount={formatCAD(moneyLeft)}
           tone={moneyLeft < 0 ? 'negative' : 'positive'}
+          variant="accent"
           stats={stats}
           loading={loading}
         />
@@ -252,7 +252,8 @@ export const TransactionsPage = () => {
               backgroundColor: 'var(--color-blue-light)',
               color: 'var(--color-blue-dark)',
               fontSize: 'var(--font-xs)',
-              fontFamily: 'var(--font-family-button)',
+              fontFamily: 'var(--font-family-body)',
+              fontWeight: 700,
               marginBottom: '12px',
               width: 'fit-content',
             }}

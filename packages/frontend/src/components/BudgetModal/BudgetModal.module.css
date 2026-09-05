@@ -93,7 +93,7 @@
 }
 
 .rowAmount {
-  font-family: var(--font-family-button);
+  font-family: var(--font-family-body);
   font-weight: 600;
   color: var(--color-dark);
   text-align: right;
@@ -110,7 +110,10 @@
   cursor: pointer;
   color: var(--color-blue);
   border-radius: var(--border-radius-sm);
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .iconButton:hover {
@@ -143,7 +146,6 @@
   text-align: right;
 }
 
-
 .emptyMessage {
   padding: var(--spacing-md);
   color: var(--color-muted);
@@ -162,10 +164,13 @@
   border: 1px dashed var(--color-border);
   border-radius: var(--border-radius-sm);
   color: var(--color-blue);
-  font-family: var(--font-family-button);
+  font-family: var(--font-family-body);
+  font-weight: 700;
   font-size: var(--font-sm);
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .addButton:hover {
@@ -192,7 +197,7 @@
 }
 
 .summaryRow span:last-child {
-  font-family: var(--font-family-button);
+  font-family: var(--font-family-body);
   font-weight: 600;
   color: var(--color-dark);
 }

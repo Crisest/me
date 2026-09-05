@@ -5,17 +5,23 @@
   font-style: normal;
 }
 
+/* One family, two real faces. Montserrat above is a genuine variable font, so
+   `1 1000` is true of it; the Roboto files are static, and claiming the same
+   range of them meant every requested weight matched the regular file — and
+   matched it exactly, so the browser saw no reason to synthesise a bold
+   either. `font-weight: 700` on body text simply did nothing. Declaring the
+   real weight of each file is what makes weight work at all. */
 @font-face {
-  font-family: 'Roboto-Regular';
+  font-family: 'Roboto';
   src: url('./resources/fonts/Roboto-Regular.ttf');
-  font-weight: 1 1000;
+  font-weight: 400;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'Roboto-Bold';
+  font-family: 'Roboto';
   src: url('./resources/fonts/Roboto-Bold.ttf');
-  font-weight: 1 1000;
+  font-weight: 700;
   font-style: normal;
 }
 
@@ -58,12 +64,47 @@
   --color-text-secondary: var(--neutral-500); /* headers, sub-text, dates */
   --color-header-text: var(--neutral-500);
   --color-day-band: var(--neutral-100);
-  --color-row-hover: var(--neutral-50);
   --color-positive: #059669; /* emerald-600 — income */
   --color-negative: #dc2626; /* red-600 — expenses */
   --color-warning: #d97706; /* amber-600 — a category nearing its limit */
-  --shadow-surface: 0 1px 2px rgba(0, 0, 0, 0.04),
-    0 8px 24px -8px rgba(0, 0, 0, 0.08);
+
+  /* Interaction accent. Indigo only shows up in response to intent — a row
+     under the cursor — so it never competes with the semantic colours above.
+     The rule is what you actually see; the wash just warms the row. */
+  --color-accent-tint: rgba(88, 101, 242, 0.05);
+  --color-accent-rule: var(--color-blue);
+  --shadow-surface:
+    0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px -8px rgba(0, 0, 0, 0.08);
+
+  /* Borderless controls (header filters, the row menu trigger) read their
+     colours from these rather than naming a grey directly, so a tinted
+     surface can re-point them by redefining the tokens on itself. The
+     defaults below are the light-surface values. */
+  --control-fg: var(--color-text-body);
+  --control-fg-muted: var(--color-text-secondary);
+  --control-fg-strong: var(--color-text-primary);
+  --control-hover-bg: var(--neutral-200);
+  --control-accent: var(--color-blue);
+  --control-ring: var(--color-blue);
+
+  /* ...and their size scale. A dense surface (the page header, which puts six
+     controls on one line with the title) re-points these to viewport-relative
+     clamps; everywhere else they resolve to the normal input metrics. */
+  --control-gap: var(--spacing-md);
+  --control-font-size: var(--input-font-size);
+  --control-padding-x: var(--input-padding-x);
+  --control-field-width: auto;
+
+  /* The segmented control (ScopeToggle) needs its own pair — its active
+     segment is a filled chip, which inverts rather than brightens. */
+  --segment-bg: var(--color-grey-light);
+  --segment-fg: var(--color-grey);
+  --segment-fg-hover: var(--color-dark);
+  --segment-active-bg: var(--color-blue);
+  --segment-active-fg: var(--color-white);
+  --segment-font-size: var(--font-sm);
+  --segment-padding-y: 6px;
+  --segment-padding-x: 14px;
 
   /* Gradients */
   --gradient-primary: linear-gradient(135deg, #5b5bf0 0%, #8080ff 100%);
@@ -118,9 +159,8 @@
   --breakpoint-xl: 1200px; /* Extra Large Devices */
   --breakpoint-xxl: 1440px; /* Ultra Wide Devices */
 
-  --font-family-body: 'Roboto-Regular', sans-serif;
+  --font-family-body: 'Roboto', sans-serif;
   --font-family-header: 'Montserrat', sans-serif;
-  --font-family-button: 'Roboto-Bold', sans-serif;
 }
 
 h1,
@@ -143,7 +183,7 @@ h1:hover {
 }
 
 body {
-  font-family: 'Roboto-Regular', sans-serif;
+  font-family: var(--font-family-body);
 }
 
 html,

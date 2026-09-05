@@ -1,24 +1,71 @@
+/* Title and controls share one line. They stay on it by shrinking rather than
+   wrapping: the control and segment size tokens below are viewport-relative
+   clamps that every control in `children` reads, so the whole row narrows
+   together instead of one filter dropping to a second row. Below `--bp-stack`
+   there is genuinely not enough width, and only then does it stack. */
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-lg);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  gap: clamp(var(--spacing-sm), 2vw, var(--spacing-lg));
+  padding: 4px 2px 0;
+
+  --control-gap: clamp(var(--spacing-xs), 1vw, var(--spacing-md));
+  --control-font-size: clamp(var(--font-xs), 1.05vw, var(--font-sm));
+  --control-padding-x: clamp(6px, 0.7vw, var(--input-padding-x));
+  --control-field-width: clamp(96px, 10vw, 148px);
+
+  --segment-font-size: clamp(var(--font-xs), 1.05vw, var(--font-sm));
+  --segment-padding-y: clamp(4px, 0.5vw, 6px);
+  --segment-padding-x: clamp(8px, 1vw, 14px);
 }
 
+/* Never the thing that shrinks — the controls give way first. */
 .title {
   margin: 0;
+  flex: 0 0 auto;
+  white-space: nowrap;
   font-family: var(--font-family-header);
   font-weight: 700;
-  font-size: var(--font-xl);
+  font-size: clamp(var(--font-md), 1.6vw, var(--font-xl));
   letter-spacing: -0.01em;
+  color: var(--color-text-primary);
 }
 
-/* The transactions page passes six controls through here, so this wraps
-   rather than overflowing at narrow widths. */
 .controls {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: var(--control-gap);
+}
+
+/* Without this a flex item refuses to go below its content width, which is
+   what pushed the filters onto their own row in the first place. */
+.controls > * {
+  min-width: 0;
+}
+
+/* Past this point the row has run out of room to give. Stack, and hand the
+   controls their full-size metrics back rather than leaving them at the
+   squeezed end of the clamp. */
+@media (max-width: 720px) {
+  .header {
+    flex-wrap: wrap;
+
+    --control-gap: var(--spacing-md);
+    --control-font-size: var(--font-sm);
+    --control-padding-x: var(--input-padding-x);
+    --control-field-width: auto;
+
+    --segment-font-size: var(--font-sm);
+    --segment-padding-y: 6px;
+    --segment-padding-x: 14px;
+  }
+
+  .controls {
+    flex-wrap: wrap;
+  }
 }

@@ -143,6 +143,7 @@ export const BudgetOverviewPage = () => {
           label="Left to allocate"
           amount={formatCAD(leftToAllocate)}
           tone={leftToAllocate < 0 ? 'negative' : 'positive'}
+          variant="accent"
           stats={stats}
           loading={isLoading}
         />

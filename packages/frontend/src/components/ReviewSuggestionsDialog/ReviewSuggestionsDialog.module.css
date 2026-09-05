@@ -43,7 +43,8 @@
   border-radius: var(--btn-border-radius, 6px);
   padding: 4px 12px;
   cursor: pointer;
-  font-family: var(--font-family-button);
+  font-family: var(--font-family-body);
+  font-weight: 700;
 }
 
 .skip:disabled {

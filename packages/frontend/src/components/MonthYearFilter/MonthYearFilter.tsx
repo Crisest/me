@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
-import YmFlex from '@ui/YmFlex/YmFlex';
 import YmCombobox from '@ui/YmCombobox/YmCombobox';
 import { months, years } from '@/constants/date';
+import styles from './MonthYearFilter.module.css';
 
 interface MonthYearFilterProps {
   selectedMonth: number;
@@ -18,11 +18,8 @@ export function MonthYearFilter({
   onYearChange,
   children,
 }: MonthYearFilterProps) {
-  // Wraps because this now shares a line with the page title inside
-  // PageHeader — the transactions page passes six controls through here,
-  // and YmFlex is nowrap by default.
   return (
-    <YmFlex justify="end" align="center" gap={15} wrap="wrap">
+    <div className={styles.filter}>
       <YmCombobox
         options={months}
         value={selectedMonth}
@@ -40,6 +37,6 @@ export function MonthYearFilter({
         variant="bare"
       />
       {children}
-    </YmFlex>
+    </div>
   );
 }

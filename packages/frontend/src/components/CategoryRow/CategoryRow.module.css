@@ -5,6 +5,16 @@
   flex-direction: column;
   gap: 8px;
   padding: 13px 20px;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+/* The accent should appear in response to intent, not sit on the row at
+   rest — same treatment as the transactions table. */
+.row:hover {
+  background: var(--color-accent-tint);
+  box-shadow: inset 2px 0 0 0 var(--color-accent-rule);
 }
 
 .row:not(:last-child) {
@@ -61,6 +71,7 @@
 
 .amounts {
   font-size: var(--font-sm);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -71,7 +82,6 @@
 
 .planned {
   color: var(--color-text-secondary);
-  font-weight: 400;
 }
 
 .badge {
@@ -95,9 +105,11 @@
 
 /* Pressure bands. Applied to the amount and the bar fill, so a row still
    reads when the bar is too short to see. `.ok` deliberately leaves the
-   amount at its inherited colour — only trouble gets tinted. */
+   amount at its inherited colour — only trouble gets tinted. Indigo is the
+   bar's resting state; amber and red escalate on top of it. Green stays
+   reserved for income elsewhere in the app. */
 .fill.ok {
-  background: var(--color-positive);
+  background: var(--color-blue);
 }
 
 .warning.amounts {

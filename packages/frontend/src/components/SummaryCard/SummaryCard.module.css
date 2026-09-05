@@ -59,6 +59,42 @@
   color: var(--color-text-primary);
 }
 
+/* The page's one big splash of colour sits on its most important number
+   rather than on the filter row above it, so this card takes the gradient and
+   a shadow tinted to match instead of the flat surface treatment. */
+.accentCard {
+  background: var(--gradient-primary);
+  border-color: transparent;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 12px 28px -10px rgba(88, 101, 242, 0.45);
+}
+
+.accentCard .label {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.accentCard .statAmount {
+  color: #ffffff;
+}
+
+.accentCard .note {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* On indigo the figure is white whatever its tone — the minus sign carries
+   the direction, and a tinted green or red reads as a stain on the gradient
+   rather than as meaning. */
+.accentCard .positive,
+.accentCard .negative,
+.accentCard .neutral {
+  color: #ffffff;
+}
+
+.accentCard .skeleton {
+  background: rgba(255, 255, 255, 0.22);
+}
+
 .stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -78,8 +114,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* A note is one string, so the whole line takes the weight rather than just
+   the figure inside it — "$1,500.00 spent" and "Projected" match. */
 .note {
   font-size: var(--font-xs);
+  font-weight: 700;
   color: var(--color-text-secondary);
 }
 

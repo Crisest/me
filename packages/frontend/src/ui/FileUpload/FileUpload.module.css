@@ -20,9 +20,9 @@
   color: var(--color-white);
   padding: var(--btn-padding-y) var(--btn-padding-x);
   border-radius: var(--btn-border-radius);
-  font-family: var(--font-family-button);
+  font-family: var(--font-family-body);
+  font-weight: 700;
   font-size: var(--btn-font-size);
-  font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s ease;
   width: 100%;
