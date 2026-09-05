@@ -61,7 +61,9 @@ const compareCategories = (
 };
 
 /**
- * Planned-vs-actual for one month, at household scope.
+ * Planned-vs-actual for one month. Household-wide by default; pass `memberId`
+ * to narrow income and spending to a single member (the transactions page's
+ * Mine/Household toggle) while leaving the category set household-wide.
  *
  * `fixed` categories cost their plan until the real charge lands, then cost
  * whatever actually hit — so a budgeted rent never double-counts, and a rent
@@ -81,16 +83,23 @@ const compareCategories = (
 export const getBudgetSummary = async (
   scope: BudgetScope,
   month: number,
-  year: number
+  year: number,
+  memberId?: string
 ): Promise<BudgetSummary> => {
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 1);
 
+  // `memberId` narrows every whose-money question to one member; the category
+  // set stays household-wide either way, so a member viewing only their own
+  // figures still sees every category the household plans for.
+  const members =
+    memberId === undefined
+      ? scope.members
+      : scope.members.filter(m => m.userId === memberId);
+
   const memberIds = Array.from(
     new Set(
-      scope.members
-        .filter(m => memberCoversMonth(m, month, year))
-        .map(m => m.userId)
+      members.filter(m => memberCoversMonth(m, month, year)).map(m => m.userId)
     )
   );
 
@@ -108,10 +117,10 @@ export const getBudgetSummary = async (
   const categoryIds = categories.map(c => c.id);
 
   const untaggedOwnerCondition =
-    scope.members.length === 0
+    members.length === 0
       ? undefined
       : or(
-          ...scope.members.map(m => {
+          ...members.map(m => {
             const windowConditions = [
               eq(transactions.createdBy, m.userId),
               gte(transactions.date, m.from),
@@ -171,7 +180,10 @@ export const getBudgetSummary = async (
             isNull(transactionCategories.deletedAt),
             gte(transactions.date, startDate),
             lt(transactions.date, endDate),
-            gt(transactions.amount, 0)
+            gt(transactions.amount, 0),
+            ...(memberId === undefined
+              ? []
+              : [eq(transactions.createdBy, memberId)])
           )
         )
         .groupBy(

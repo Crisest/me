@@ -84,7 +84,10 @@ export const budgetCategoryApi = apiSlice.injectEndpoints({
       BudgetSummary,
       BudgetCategoryPayloads.GetSummary
     >({
-      query: ({ month, year }) => ({ url: '/budget/summary', params: { month, year } }),
+      query: ({ month, year, scope }) => ({
+        url: '/budget/summary',
+        params: { month, year, ...(scope !== undefined && { scope }) },
+      }),
       transformResponse: (res: { summary: BudgetSummary }) => res.summary,
       providesTags: (_r, _e, arg) => [
         { type: tagTypesEnum.BUDGET_SUMMARY, id: `${arg.year}-${arg.month}` },

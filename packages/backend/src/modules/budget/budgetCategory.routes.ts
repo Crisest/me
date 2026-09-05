@@ -18,6 +18,8 @@ const monthYearQuery = [
   query('year').isInt({ min: 1970 }),
 ];
 
+const scopeQuery = [query('scope').optional().isIn(['mine', 'household'])];
+
 const overrideValidation = [
   ...idParam,
   body('month').isInt({ min: 1, max: 12 }),
@@ -32,7 +34,7 @@ router.get(
   '/summary',
   authMiddleware,
   resolveBudgetScope,
-  validateRequest(monthYearQuery),
+  validateRequest([...monthYearQuery, ...scopeQuery]),
   controller.getSummary
 );
 

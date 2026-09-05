@@ -10,6 +10,7 @@ export type SpendAggregate = {
   totalIncome: number;
   creditCount: number;
   averageCredit: number;
+  fixedSpent: number;
   matchedFixedCount: number;
 };
 
@@ -65,6 +66,7 @@ export const aggregateSpend = async (params: {
     totalIncome: 0,
     creditCount: 0,
     averageCredit: 0,
+    fixedSpent: 0,
     matchedFixedCount: 0,
   };
   if (ownerWindows.length === 0) return empty;
@@ -104,6 +106,7 @@ export const aggregateSpend = async (params: {
       totalIncome: sql<number>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${isCredit}), 0)::float8`,
       creditCount: sql<number>`COUNT(*) FILTER (WHERE ${isCredit})::int`,
       averageCredit: sql<number>`COALESCE(AVG(${transactions.amount}) FILTER (WHERE ${isCredit}), 0)::float8`,
+      fixedSpent: sql<number>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${isMatchedFixed}), 0)::float8`,
       matchedFixedCount: sql<number>`COUNT(DISTINCT ${resolvedCategoryId}) FILTER (WHERE ${isMatchedFixed})::int`,
     })
     .from(transactions)

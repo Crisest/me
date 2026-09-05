@@ -34,6 +34,7 @@ describe('aggregateSpend', () => {
     });
     expect(result).toEqual({
       totalSpent: 0,
+      fixedSpent: 0,
       debitCount: 0,
       averageDebit: 0,
       totalIncome: 0,

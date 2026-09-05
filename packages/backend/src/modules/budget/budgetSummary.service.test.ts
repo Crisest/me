@@ -502,3 +502,105 @@ describe('getBudgetSummary — household scope', () => {
     expect(summary.categories.find(c => c.categoryId === category.id)).toBeUndefined();
   });
 });
+
+describe('getBudgetSummary — narrowed to one member', () => {
+  /** A two-member household, both present since the beginning of time. */
+  const pairScope = (
+    householdId: string,
+    aId: string,
+    bId: string
+  ): BudgetScope => ({
+    householdId,
+    members: [
+      { userId: aId, from: new Date('2000-01-01'), to: null },
+      { userId: bId, from: new Date('2000-01-01'), to: null },
+    ],
+  });
+
+  const makePair = async () => {
+    const a = await makeUser();
+    const household = await createHousehold('Home', a.id);
+    const b = await makeUser();
+    await joinByCode(household.inviteCode, b.id);
+    return { a, b, household, scope: pairScope(household.id, a.id, b.id) };
+  };
+
+  it('counts only the named member’s salary as income', async () => {
+    const { a, b, scope } = await makePair();
+    await db.insert(budgets).values({ salary: 5000, createdBy: a.id });
+    await db.insert(budgets).values({ salary: 3000, createdBy: b.id });
+
+    const household = await getBudgetSummary(scope, 5, 2026);
+    const mine = await getBudgetSummary(scope, 5, 2026, a.id);
+
+    expect(household.income).toBe(8000);
+    expect(mine.income).toBe(5000);
+  });
+
+  it('uses only the named member’s salary override', async () => {
+    const { a, b, scope } = await makePair();
+    await db.insert(budgets).values({ salary: 5000, createdBy: a.id });
+    await db.insert(budgets).values({ salary: 3000, createdBy: b.id });
+    await db
+      .insert(budgetOverrides)
+      .values({ salary: 4200, month: 5, year: 2026, createdBy: b.id });
+
+    const mine = await getBudgetSummary(scope, 5, 2026, a.id);
+    const theirs = await getBudgetSummary(scope, 5, 2026, b.id);
+
+    expect(mine).toMatchObject({ income: 5000, usingActualIncome: false });
+    expect(theirs).toMatchObject({ income: 4200, usingActualIncome: true });
+  });
+
+  it('counts only the named member’s tagged spending', async () => {
+    const { a, b, household, scope } = await makePair();
+    const cat = await makeBudgetCategory(a.id, {
+      name: 'Groceries',
+      kind: 'flexible',
+      plannedAmount: 600,
+      householdId: household.id,
+    });
+    const mineTxn = await makeTransaction(a.id, { amount: 100, date: MAY });
+    await tag(mineTxn.id, cat.id, household.id, a.id);
+    const theirTxn = await makeTransaction(b.id, { amount: 40, date: MAY });
+    await tag(theirTxn.id, cat.id, household.id, b.id);
+
+    const bothResult = await getBudgetSummary(scope, 5, 2026);
+    const mineResult = await getBudgetSummary(scope, 5, 2026, a.id);
+
+    expect(bothResult.categories[0]).toMatchObject({
+      actual: 140,
+      transactionCount: 2,
+    });
+    expect(mineResult.categories[0]).toMatchObject({
+      actual: 100,
+      transactionCount: 1,
+    });
+    expect(mineResult.categories[0].byMember).toHaveLength(1);
+  });
+
+  it('counts only the named member’s untagged spending', async () => {
+    const { a, b, scope } = await makePair();
+    await makeTransaction(a.id, { amount: 100, date: MAY });
+    await makeTransaction(b.id, { amount: 40, date: MAY });
+
+    const bothResult = await getBudgetSummary(scope, 5, 2026);
+    const mineResult = await getBudgetSummary(scope, 5, 2026, a.id);
+
+    expect(bothResult.untagged).toMatchObject({ amount: 140, transactionCount: 2 });
+    expect(mineResult.untagged).toMatchObject({ amount: 100, transactionCount: 1 });
+  });
+
+  it('still ignores credits when narrowed to one member', async () => {
+    const { a, scope } = await makePair();
+    await db.insert(budgets).values({ salary: 5000, createdBy: a.id });
+    await makeTransaction(a.id, { amount: 100, date: MAY });
+    await makeTransaction(a.id, { amount: -60, date: MAY });
+
+    const mine = await getBudgetSummary(scope, 5, 2026, a.id);
+
+    expect(mine.untagged.amount).toBe(100);
+    expect(mine.totalCost).toBe(100);
+    expect(mine.moneyLeft).toBe(4900);
+  });
+});

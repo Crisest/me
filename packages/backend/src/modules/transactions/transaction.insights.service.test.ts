@@ -32,6 +32,41 @@ describe('getMonthlyInsights', () => {
     expect(result.totalSpent).toBe(1800);
   });
 
+  it('reports a fixed-category debit in fixedSpent as well as totalSpent', async () => {
+    const cat = await makeBudgetCategory(userId, { kind: 'fixed', plannedAmount: 1800, householdId });
+    const rent = await makeTransaction(userId, { amount: 1800, date: MAY });
+    await setTransactionCategory(scope, userId, rent.id, { categoryId: cat.id });
+    await makeTransaction(userId, { amount: 200, date: MAY });
+
+    const result = await getMonthlyInsights(scope, userId, 5, 2026);
+
+    expect(result.totalSpent).toBe(2000);
+    expect(result.fixedSpent).toBe(1800);
+    expect(result.debitCount).toBe(2);
+  });
+
+  it('leaves fixedSpent at zero when nothing is tagged to a fixed category', async () => {
+    const cat = await makeBudgetCategory(userId, { kind: 'flexible', plannedAmount: 600, householdId });
+    const txn = await makeTransaction(userId, { amount: 540, date: MAY });
+    await setTransactionCategory(scope, userId, txn.id, { categoryId: cat.id });
+
+    const result = await getMonthlyInsights(scope, userId, 5, 2026);
+
+    expect(result.totalSpent).toBe(540);
+    expect(result.fixedSpent).toBe(0);
+  });
+
+  it('keeps an ignored-category debit out of fixedSpent and totalSpent alike', async () => {
+    const cat = await makeBudgetCategory(userId, { kind: 'ignored', plannedAmount: 0, householdId });
+    const txn = await makeTransaction(userId, { amount: 1240, date: MAY });
+    await setTransactionCategory(scope, userId, txn.id, { categoryId: cat.id });
+
+    const result = await getMonthlyInsights(scope, userId, 5, 2026);
+
+    expect(result.totalSpent).toBe(0);
+    expect(result.fixedSpent).toBe(0);
+  });
+
   it('excludes an ignored-category debit from totalSpent', async () => {
     const cat = await makeBudgetCategory(userId, { kind: 'ignored', plannedAmount: 0, householdId });
     const txn = await makeTransaction(userId, { amount: 1240, date: MAY });

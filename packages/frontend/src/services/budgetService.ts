@@ -11,7 +11,7 @@ export const budgetApi = apiSlice.injectEndpoints({
     upsertBudget: builder.mutation<Budget, BudgetPayloads.Upsert>({
       query: payload => ({ url: '/budget', method: 'PUT', body: payload }),
       transformResponse: (res: { budget: Budget }) => res.budget,
-      invalidatesTags: [tagTypesEnum.BUDGET],
+      invalidatesTags: [tagTypesEnum.BUDGET, tagTypesEnum.BUDGET_SUMMARY],
     }),
     getBudgetOverride: builder.query<BudgetOverride | null, BudgetOverridePayloads.GetOne>({
       query: ({ month, year }) => `/budget/override?month=${month}&year=${year}`,
@@ -21,7 +21,7 @@ export const budgetApi = apiSlice.injectEndpoints({
     upsertBudgetOverride: builder.mutation<BudgetOverride, BudgetOverridePayloads.Upsert>({
       query: payload => ({ url: '/budget/override', method: 'PUT', body: payload }),
       transformResponse: (res: { override: BudgetOverride }) => res.override,
-      invalidatesTags: [tagTypesEnum.BUDGET],
+      invalidatesTags: [tagTypesEnum.BUDGET, tagTypesEnum.BUDGET_SUMMARY],
     }),
   }),
 });

@@ -12,11 +12,11 @@ import {
   useGetTransactionInsightsQuery,
   useSetTransactionCategoryMutation,
 } from '@/services/transactionService';
+import { useGetBudgetQuery } from '@/services/budgetService';
 import {
-  useGetBudgetQuery,
-  useGetBudgetOverrideQuery,
-} from '@/services/budgetService';
-import { useGetBudgetCategoriesQuery } from '@/services/budgetCategoryService';
+  useGetBudgetCategoriesQuery,
+  useGetBudgetSummaryQuery,
+} from '@/services/budgetCategoryService';
 import { useGetMyHouseholdQuery } from '@/services/householdService';
 import ActualIncomeModal from '@/components/ActualIncomeModal/ActualIncomeModal';
 import Content from '@ui/Content/Content';
@@ -90,9 +90,18 @@ export const TransactionsPage = () => {
       year: selectedYear,
       scope: effectiveScope,
     });
-  const { data: budget, isLoading: budgetLoading } = useGetBudgetQuery();
-  const { data: override, isLoading: overrideLoading } =
-    useGetBudgetOverrideQuery({ month: selectedMonth, year: selectedYear });
+  // The income figure has to follow the toggle too, so it comes from the
+  // budget summary — the one place that folds each member's salary override
+  // over their base salary — rather than from `/budget`, which only ever
+  // knows the caller's own salary.
+  const { data: summary, isLoading: summaryLoading } = useGetBudgetSummaryQuery({
+    month: selectedMonth,
+    year: selectedYear,
+    scope: effectiveScope,
+  });
+  // Still the caller's own salary: `Set Actual Income` edits your row, not
+  // the household's.
+  const { data: budget } = useGetBudgetQuery();
   const { data: categories } = useGetBudgetCategoriesQuery();
   const categoriesById = useMemo(
     () => new Map((categories ?? []).map(c => [c.id, c])),
@@ -110,18 +119,32 @@ export const TransactionsPage = () => {
     filteredTransactions,
   } = useAccountFilter(transactionsData);
 
-  const effectiveSalary = override?.salary ?? budget?.salary ?? 0;
-  const isActual = !!override;
+  const income = summary?.income ?? 0;
+  const isActual = summary?.usingActualIncome ?? false;
 
-  const fixedCategories = categories?.filter(c => c.kind === 'fixed') ?? [];
-  const totalFixed = fixedCategories.reduce(
-    (sum, c) => sum + c.plannedAmount,
-    0,
-  );
-  const remainingAfterFixed = effectiveSalary - totalFixed;
-  const moneyLeft = remainingAfterFixed - (insights?.totalSpent ?? 0);
+  // Fixed categories are planned by the household and carry no per-member
+  // split, so there is no honest "my share" to show one member. The Mine view
+  // therefore hides the Fixed tile rather than showing a figure that belongs
+  // to both of you; the money itself is not lost, since fixed charges are
+  // counted as ordinary spending below.
+  const isMine = effectiveScope === 'mine';
+  // From the summary rather than the raw category list so a month-specific
+  // planned override counts.
+  const fixedCategories =
+    summary?.categories.filter(c => c.kind === 'fixed') ?? [];
+  const totalFixed = fixedCategories.reduce((sum, c) => sum + c.planned, 0);
 
-  const loading = insightsLoading || budgetLoading || overrideLoading;
+  // Fixed expenses are counted as the transactions that actually landed, not
+  // as their plan: `insights.totalSpent` already includes them, so nothing is
+  // subtracted twice and an overrun costs what it really cost. The plan is
+  // shown rather than spent — the Fixed tile reports how much of it has been
+  // charged so far, which is what says "the rent is still coming" early in
+  // the month.
+  const spent = insights?.totalSpent ?? 0;
+  const fixedSpent = insights?.fixedSpent ?? 0;
+  const moneyLeft = income - spent;
+
+  const loading = insightsLoading || summaryLoading;
 
   const selectedCategory = useMemo(
     () => (categoryId ? categoriesById.get(categoryId) : undefined),
@@ -168,19 +191,23 @@ export const TransactionsPage = () => {
   const stats: SummaryStat[] = [
     {
       label: isActual ? 'Actual income' : 'Income',
-      amount: `+${formatCAD(effectiveSalary)}`,
+      amount: `+${formatCAD(income)}`,
       note: isActual ? 'Actual for this month' : 'Projected',
     },
     {
       label: 'Spent',
-      amount: formatCAD(insights?.totalSpent ?? 0),
+      amount: formatCAD(spent),
       note: `${insights?.debitCount ?? 0} transactions`,
     },
-    {
-      label: 'Fixed',
-      amount: formatCAD(totalFixed),
-      note: `${insights?.matchedFixedCount ?? 0} of ${fixedCategories.length} matched`,
-    },
+    ...(isMine
+      ? []
+      : [
+          {
+            label: 'Fixed',
+            amount: formatCAD(totalFixed),
+            note: `${formatCAD(fixedSpent)} charged so far`,
+          },
+        ]),
   ];
 
   return (

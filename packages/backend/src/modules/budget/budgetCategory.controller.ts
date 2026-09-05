@@ -112,10 +112,13 @@ export const getSummary = async (
   next: NextFunction
 ) => {
   try {
+    // Default household: the budget overview has always read the whole
+    // household, and an omitted `scope` must not quietly change it.
     const summary = await getBudgetSummary(
       req.budgetScope!,
       Number(req.query.month),
-      Number(req.query.year)
+      Number(req.query.year),
+      req.query.scope === 'mine' ? req.user!.id : undefined
     );
     res.json({ summary });
   } catch (err) {

@@ -95,14 +95,19 @@
   background: rgba(255, 255, 255, 0.22);
 }
 
+/* Flex rather than a fixed three-column grid: the transactions card drops the
+   Fixed stat at 'mine' scope, and a fixed grid would leave the vacated column
+   as a gap instead of letting the remaining stats share the width. */
 .stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 24px;
 }
 
 .stat {
   display: flex;
+  flex: 1 1 0;
+  min-width: 0;
   flex-direction: column;
   gap: 4px;
 }

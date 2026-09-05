@@ -9,7 +9,7 @@ import { authedAgent } from '../../../test/helpers/auth';
 import { makeUser, makeBudgetCategory } from '../../../test/helpers/factories';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db/client';
-import { budgets, householdMembers } from '../../db/schema';
+import { budgets, householdMembers, households } from '../../db/schema';
 import { createHousehold, joinByCode } from '../households/household.service';
 
 /**
@@ -234,6 +234,46 @@ describe('GET /budget/summary', () => {
 
   it('rejects a missing month with 400', async () => {
     const res = await agent.get('/budget/summary?year=2026');
+    expect(res.status).toBe(400);
+  });
+
+  it('narrows income to the caller when scope=mine', async () => {
+    const other = await makeUser();
+    const household = await db
+      .select()
+      .from(households)
+      .where(eq(households.id, householdId))
+      .limit(1);
+    await joinByCode(household[0].inviteCode, other.id);
+    await db.insert(budgets).values({ salary: 3000, createdBy: other.id });
+    await db
+      .update(householdMembers)
+      .set({ createdAt: new Date('2020-01-01') })
+      .where(eq(householdMembers.householdId, householdId));
+
+    const both = await agent.get('/budget/summary?month=5&year=2026');
+    const mine = await agent.get('/budget/summary?month=5&year=2026&scope=mine');
+
+    expect(both.body.summary.income).toBe(8000);
+    expect(mine.body.summary.income).toBe(5000);
+  });
+
+  it('defaults to household scope when scope is omitted', async () => {
+    await db
+      .update(householdMembers)
+      .set({ createdAt: new Date('2020-01-01') })
+      .where(eq(householdMembers.householdId, householdId));
+
+    const res = await agent.get(
+      '/budget/summary?month=5&year=2026&scope=household'
+    );
+    const omitted = await agent.get('/budget/summary?month=5&year=2026');
+
+    expect(res.body.summary).toEqual(omitted.body.summary);
+  });
+
+  it('rejects an unknown scope with 400', async () => {
+    const res = await agent.get('/budget/summary?month=5&year=2026&scope=all');
     expect(res.status).toBe(400);
   });
 });

@@ -61,6 +61,7 @@ export const getMonthlyInsights = async (
     creditCount: agg.creditCount,
     averageDebit: agg.averageDebit,
     averageCredit,
+    fixedSpent: agg.fixedSpent,
     matchedFixedCount: agg.matchedFixedCount,
   };
 };

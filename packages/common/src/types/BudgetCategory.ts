@@ -95,5 +95,7 @@ export namespace BudgetCategoryPayloads {
   export interface GetSummary {
     month: number;
     year: number;
+    /** Whose money the figures cover. Defaults to the whole household. */
+    scope?: 'mine' | 'household';
   }
 }
