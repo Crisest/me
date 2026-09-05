@@ -9,3 +9,14 @@
   flex-direction: column;
   gap: 1rem;
 }
+
+/* Declared after .content so it wins the max-width on a specificity tie.
+   The padding rides on `wide` rather than `.content`: a wide page can reach
+   the window edge and needs the breathing room, while the default 1000px band
+   is centred with margin to spare. Keeping it here leaves every page that has
+   not opted in pixel-identical. */
+.wide {
+  max-width: 1400px;
+  padding-left: var(--spacing-lg);
+  padding-right: var(--spacing-lg);
+}

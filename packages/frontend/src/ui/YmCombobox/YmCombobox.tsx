@@ -28,6 +28,8 @@ interface YmComboboxProps<T> {
   isLoading?: boolean;
   onQueryChange?: (query: string) => void;
   query?: string;
+  /** `bare` drops the border and fill for filter bars in a page header. */
+  variant?: 'default' | 'bare';
 }
 
 const YmCombobox = <T,>({
@@ -41,6 +43,7 @@ const YmCombobox = <T,>({
   isLoading = false,
   onQueryChange,
   query: externalQuery,
+  variant = 'default',
 }: YmComboboxProps<T>) => {
   const [internalQuery, setInternalQuery] = useState('');
   const query = externalQuery ?? internalQuery;
@@ -73,7 +76,9 @@ const YmCombobox = <T,>({
       onChange={onChange}
       onClose={() => (onQueryChange ? onQueryChange('') : setInternalQuery(''))}
     >
-      <div className={styles.combobox}>
+      <div
+        className={`${styles.combobox} ${variant === 'bare' ? styles.bare : ''}`.trim()}
+      >
         <ComboboxInput
           aria-label={ariaLabel}
           className={styles.input}

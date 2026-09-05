@@ -1,10 +1,16 @@
+/* Three columns: marker, name group, amounts. Rows are direct children of a
+   Panel, so they own their horizontal padding and the divider sits on every
+   row but the last. */
 .row {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
   gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+  padding: 13px 20px;
+}
+
+.row:not(:last-child) {
+  border-bottom: 1px solid var(--neutral-100);
 }
 
 /* Untagged bills recede so the left edge scans as a to-do list. */
@@ -16,7 +22,8 @@
 .marker {
   display: flex;
   align-items: center;
-  font-size: 1.05rem;
+  align-self: center;
+  font-size: 0.85rem;
   color: var(--color-border-strong);
 }
 
@@ -24,8 +31,16 @@
   color: var(--color-positive);
 }
 
+.nameGroup {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
 .name,
-.amounts {
+.amounts,
+.count {
   background: none;
   border: none;
   padding: 0;
@@ -36,31 +51,54 @@
 }
 
 .name {
+  font-size: var(--font-sm);
   font-weight: 600;
+}
+
+/* The count is both the number and the way into that bill's transactions. */
+.count {
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
+}
+
+.count:hover {
+  color: var(--color-blue);
+  text-decoration: underline;
+}
+
+.countEmpty {
+  font-size: var(--font-xs);
+  color: var(--color-text-secondary);
 }
 
 .amounts {
   display: flex;
   align-items: baseline;
   gap: 6px;
+  font-size: var(--font-sm);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .over {
-  font-size: 0.75rem;
+  font-size: var(--font-xs);
+  font-weight: 400;
   color: var(--color-negative);
 }
 
 .under {
-  font-size: 0.75rem;
+  font-size: var(--font-xs);
+  font-weight: 400;
   color: var(--color-text-secondary);
 }
 
 .badge {
-  padding: 1px 6px;
+  padding: 1px 7px;
   border-radius: 999px;
-  font-size: 0.7rem;
-  background: rgba(128, 128, 128, 0.2);
+  font-size: var(--font-xs);
+  background: var(--neutral-100);
+  color: var(--color-text-secondary);
 }
 
 .editor {
@@ -71,17 +109,6 @@
 
 .input {
   width: 90px;
-}
-
-.drilldown {
-  display: flex;
-  align-items: center;
-  font-size: 0.95rem;
-  opacity: 0.55;
-}
-
-.drilldown:hover {
-  opacity: 1;
 }
 
 /* Button.module.css sizes padding off these two custom properties, so

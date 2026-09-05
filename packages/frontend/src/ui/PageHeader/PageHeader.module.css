@@ -1,0 +1,24 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-family-header);
+  font-weight: 700;
+  font-size: var(--font-xl);
+  letter-spacing: -0.01em;
+}
+
+/* The transactions page passes six controls through here, so this wraps
+   rather than overflowing at narrow widths. */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
