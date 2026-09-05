@@ -19,8 +19,16 @@ export const config = {
   sslKeyPath: process.env.SSL_KEY_PATH || '',
   rateLimit: {
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
+    max: parseInt(process.env.RATE_LIMIT_MAX || '1000', 10),
   },
+  // Comma-separated addresses of reverse proxies whose X-Forwarded-For may be
+  // believed. Empty disables trust entirely, which is the safe default for a
+  // directly-exposed process.
+  //
+  // Deliberately NOT a boolean: the app also listens on the LAN on :3000, so
+  // trusting every hop would let a caller who skips the proxy forge
+  // X-Forwarded-For and hand itself a fresh rate-limit bucket.
+  trustProxy: process.env.TRUST_PROXY || '',
   plaid: {
     clientId: process.env.PLAID_CLIENT_ID || '',
     secret: process.env.PLAID_SECRET || '',

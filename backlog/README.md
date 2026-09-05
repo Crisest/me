@@ -121,26 +121,36 @@ elsewhere), then loops over the household's active members' banks calling
 `syncBank` per bank the same way `syncAllBanksForUser` does. Aggregate the
 `SyncCounts` per member or in total, whichever the frontend needs.
 
-## 8. Insights don't respect the mine/household scope toggle
+## 8. Decide whether the budget page gets the mine/household toggle
 
-**Status:** open — feature gap.
+**Status:** open — design decision, not a bug. The insights half of this item
+shipped; only the budget page is still unscoped.
 
-The transactions page has a real `'mine' | 'household'` scope toggle
-(`packages/frontend/src/components/ScopeToggle/ScopeToggle.tsx`, wired in
-`TransactionsPage.tsx:55,59-66,68-79,221-223`) that's passed to both
-`useGetTransactionsQuery` and `useGetTransactionInsightsQuery`. But
-`aggregateSpend` in `packages/backend/src/modules/shared/insights.query.ts:44-119`
-is keyed only on `householdId` + `ownerWindows` — it has no per-user "mine"
-filter, so insights always aggregate the whole household regardless of what
-the toggle shows for the transaction list underneath it. The budget page
-(`BudgetOverviewPage.tsx`) doesn't have the toggle at all, and
-`resolveBudgetScope.ts:9-40` is the same story — always household-wide.
+Insights already respect the toggle. `GET /transactions/insights/:month` reads
+`scope` (`transaction.insights.controller.ts:16,23`, defaulting to `'mine'`)
+and `getMonthlyInsights` builds `ownerWindows` from it
+(`transaction.insights.service.ts:31-34`) — every member's tenure window for
+`'household'`, one unbounded window for the caller for `'mine'`. Ignored/fixed
+category ids stay resolved by household on purpose: a category authored by the
+other member must still be excluded while viewing `'mine'`. `getAllTransactions`
+(`transaction.service.ts:64-76`) derives its owner filter the same way, so the
+insight totals and the rows beneath them agree. Covered by
+`transaction.insights.service.test.ts:84-130`.
 
-To fix: thread the caller's chosen scope into `aggregateSpend` (filter by
-owner when `scope === 'mine'`) so insights match what the transactions list is
-actually showing. Decide separately whether the budget page should also get
-the toggle, or keep budget summaries household-wide by design — the ask above
-was specifically about insights matching the transactions view.
+What is still household-wide is the budget summary. `getBudgetSummary`
+(`budgetSummary.service.ts:81`) takes no scope parameter at all — `memberIds`
+covers every member present in the month, tagged spend is keyed on
+`transactionCategories.householdId` with no owner filter, and income sums all
+members' salaries. `getSummary` (`budgetCategory.controller.ts:114-119`) has no
+query param to thread, and `BudgetOverviewPage.tsx` has no `ScopeToggle`.
+
+The open question is whether it should. Leaving it household-wide is defensible:
+the summary is planned-vs-actual against *combined* household income, so a
+"mine" view needs a rule for splitting salary and shared fixed categories —
+a different feature from filtering rows. Each category already carries
+`byMember` (`BudgetCategorySummary.byMember`, folded in
+`budgetSummary.service.ts:37-46`), which may be the better answer to "what did
+I spend" than a toggle. Decide before building anything.
 
 ## 9. Clicking the user in the transactions table should open a profile modal
 

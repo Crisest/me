@@ -83,7 +83,15 @@ All routes are mounted in `src/app.ts`. Authentication is cookie-based JWT via `
 - `src/middleware/errorHandler.ts` — centralised error handler using `AppError`
 - `src/config/env.ts` — all config (port 3000, database URI, JWT secret, frontend URL)
 
-**Environment variables** (in `packages/backend/.env`): `NODE_ENV`, `PORT`, `DATABASE_URI`, `JWT_SECRET`, `FRONTEND_URL`
+**Environment variables** (in `packages/backend/.env`): `NODE_ENV`, `PORT`, `DATABASE_URI`, `JWT_SECRET`, `FRONTEND_URL`, `RATE_LIMIT_MAX`, `TRUST_PROXY`
+
+- `RATE_LIMIT_MAX` — requests per 15-minute window, per signed-in user (per IP
+  when unauthenticated). Defaults to 1000.
+- `TRUST_PROXY` — comma-separated addresses of reverse proxies whose
+  `X-Forwarded-For` is believed, passed to `app.set('trust proxy', …)`. Empty
+  means trust nothing. Set it to the proxy's address, never `true`: `:3000` is
+  reachable directly on the LAN, so blanket trust lets a direct caller forge
+  its client IP.
 
 ### Database (`packages/backend/src/db`)
 

@@ -3,7 +3,7 @@ import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
-import rateLimit from 'express-rate-limit';
+import { apiLimiter } from './middleware/rateLimiter';
 import { requestLogger } from './middleware/requestLogger';
 import transactionsRoutes from './modules/transactions';
 import loginRoutes from './modules/auth';
@@ -23,6 +23,20 @@ dotenv.config();
 
 const app: Application = express();
 const config = getConfig();
+
+// Nginx Proxy Manager fronts this app and reaches it over the LAN rather than
+// loopback, so without this every request arrives wearing the proxy's address:
+// req.ip is the proxy for all traffic, and the rate limiter buckets the whole
+// household — every device, every user — together.
+//
+// Scoped to the proxy's specific address (TRUST_PROXY) rather than `true`
+// because :3000 is also reachable directly on the LAN; see config/env.ts.
+if (config.trustProxy) {
+  app.set(
+    'trust proxy',
+    config.trustProxy.split(',').map(entry => entry.trim())
+  );
+}
 
 // Security middleware
 app.use(
@@ -78,12 +92,23 @@ app.use(express.urlencoded({ extended: true }));
 app.use(compression());
 app.use(cookieParser());
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMsm
-});
-app.use(limiter);
+// Rate limiting, mounted on the API surface only: the static bundle, its fonts
+// and favicon.ico are dozens of requests per cold load and have no business
+// spending the same budget as the API.
+app.use(
+  [
+    '/transactions',
+    '/auth',
+    '/banks',
+    '/cards',
+    '/budget',
+    '/uploads',
+    '/households',
+    '/accounts',
+    '/plaid',
+  ],
+  apiLimiter
+);
 
 // Routes
 app.use('/transactions', transactionsRoutes);
