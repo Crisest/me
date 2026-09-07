@@ -3,7 +3,7 @@ import type {
   BudgetCategory,
   BudgetCategoryOverride,
   BudgetCategoryPayloads,
-  BudgetSummary,
+  BudgetSummaryResult,
 } from '@portfolio/common';
 
 export const budgetCategoryApi = apiSlice.injectEndpoints({
@@ -81,14 +81,15 @@ export const budgetCategoryApi = apiSlice.injectEndpoints({
     }),
 
     getBudgetSummary: builder.query<
-      BudgetSummary,
+      BudgetSummaryResult,
       BudgetCategoryPayloads.GetSummary
     >({
       query: ({ month, year, scope }) => ({
         url: '/budget/summary',
         params: { month, year, ...(scope !== undefined && { scope }) },
       }),
-      transformResponse: (res: { summary: BudgetSummary }) => res.summary,
+      // The response now carries the month's close state beside its totals,
+      // so it is returned whole rather than unwrapped to `summary`.
       providesTags: (_r, _e, arg) => [
         { type: tagTypesEnum.BUDGET_SUMMARY, id: `${arg.year}-${arg.month}` },
         tagTypesEnum.BUDGET_SUMMARY,

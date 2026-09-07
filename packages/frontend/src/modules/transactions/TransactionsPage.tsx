@@ -94,11 +94,12 @@ export const TransactionsPage = () => {
   // budget summary — the one place that folds each member's salary override
   // over their base salary — rather than from `/budget`, which only ever
   // knows the caller's own salary.
-  const { data: summary, isLoading: summaryLoading } = useGetBudgetSummaryQuery({
+  const { data: summaryResult, isLoading: summaryLoading } = useGetBudgetSummaryQuery({
     month: selectedMonth,
     year: selectedYear,
     scope: effectiveScope,
   });
+  const summary = summaryResult?.summary;
   // Still the caller's own salary: `Set Actual Income` edits your row, not
   // the household's.
   const { data: budget } = useGetBudgetQuery();

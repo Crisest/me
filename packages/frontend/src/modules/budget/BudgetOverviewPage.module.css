@@ -1,8 +1,11 @@
+/* The close strip separates the hero from the columns; the columns grid
+   supplies its own gap, so only the strip needs margin. */
 .columns {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   gap: var(--spacing-lg);
   align-items: start;
+  margin-top: var(--spacing-md);
 }
 
 @media (max-width: 767px) {
@@ -45,5 +48,10 @@
   border-radius: var(--border-radius-md);
   background: var(--color-day-band);
   color: var(--color-text-primary);
+  font-size: var(--font-sm);
+}
+
+.closeError {
+  color: var(--color-negative);
   font-size: var(--font-sm);
 }
