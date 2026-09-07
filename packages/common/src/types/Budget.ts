@@ -10,6 +10,12 @@ export namespace BudgetPayloads {
   export interface Upsert {
     salary: number;
   }
+
+  /** Body of `POST /budget/close`. */
+  export interface Close {
+    month: number;
+    year: number;
+  }
 }
 
 export interface BudgetOverride {
