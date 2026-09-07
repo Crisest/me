@@ -17,6 +17,9 @@ type Props = {
   onEdit: (categoryId: string) => void;
   /** Optional so the row still compiles where the drilldown isn't wired. */
   onViewTransactions?: (categoryId: string) => void;
+  /** A closed month is a record. Editing its plan would write a row that
+   *  changes nothing on screen, because the summary comes from the snapshot. */
+  readOnly?: boolean;
 };
 
 const FixedRow: React.FC<Props> = ({
@@ -25,6 +28,7 @@ const FixedRow: React.FC<Props> = ({
   year,
   onEdit,
   onViewTransactions,
+  readOnly,
 }) => {
   const [editingTarget, setEditingTarget] = useState(false);
   const [draft, setDraft] = useState('');
@@ -70,13 +74,17 @@ const FixedRow: React.FC<Props> = ({
       </span>
 
       <span className={styles.nameGroup}>
-        <button
-          type="button"
-          className={styles.name}
-          onClick={() => onEdit(summary.categoryId)}
-        >
-          {summary.name}
-        </button>
+        {readOnly ? (
+          <span className={styles.name}>{summary.name}</span>
+        ) : (
+          <button
+            type="button"
+            className={styles.name}
+            onClick={() => onEdit(summary.categoryId)}
+          >
+            {summary.name}
+          </button>
+        )}
 
         {summary.isOverridden && <span className={styles.badge}>custom</span>}
 
@@ -125,6 +133,16 @@ const FixedRow: React.FC<Props> = ({
           <YButton variant="link" onClick={() => setEditingTarget(false)}>
             Cancel
           </YButton>
+        </span>
+      ) : readOnly ? (
+        <span className={styles.amounts}>
+          {formatCAD(isPaid ? summary.actual : summary.planned)}
+          {hasDelta && (
+            <span className={delta > 0 ? styles.over : styles.under}>
+              {delta > 0 ? '+' : '−'}
+              {formatCAD(Math.abs(delta))}
+            </span>
+          )}
         </span>
       ) : (
         <button
