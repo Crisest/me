@@ -3,13 +3,23 @@ import { body, param, query } from 'express-validator';
 import * as controller from './budgetCategory.controller';
 import { authMiddleware } from '../auth';
 import { resolveBudgetScope } from '../../middleware/resolveBudgetScope';
-import { validateRequest, validateBody } from '../../middleware/validateRequest';
+import {
+  validateRequest,
+  validateBody,
+  validateQuery,
+} from '../../middleware/validateRequest';
+import { z } from 'zod';
 import {
   createCategorySchema,
   updateCategorySchema,
 } from './budgetCategory.validation';
 
 const router: Router = Router();
+
+const monthYearSchema = z.object({
+  month: z.coerce.number().int().min(1).max(12),
+  year: z.coerce.number().int().min(1970),
+});
 
 const idParam = [param('id').isUUID().withMessage('id must be a valid id')];
 
@@ -29,6 +39,22 @@ const overrideValidation = [
     .custom(v => v > 0)
     .withMessage('plannedAmount must be a positive number'),
 ];
+
+router.post(
+  '/close',
+  authMiddleware,
+  resolveBudgetScope,
+  validateBody(monthYearSchema),
+  controller.postClose
+);
+
+router.get(
+  '/snapshot',
+  authMiddleware,
+  resolveBudgetScope,
+  validateQuery(monthYearSchema),
+  controller.getSnapshot
+);
 
 router.get(
   '/summary',

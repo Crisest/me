@@ -1,8 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { BudgetCategoryPayloads } from '@portfolio/common';
+import { BudgetCategoryPayloads, BudgetPayloads } from '@portfolio/common';
 import * as categoryService from './budgetCategory.service';
 import * as budgetService from './budget.service';
 import { getBudgetSummary } from './budgetSummary.service';
+import { closeMonth, getMonthCloseState } from './monthClose.service';
+import { getLiveSnapshot } from './monthSnapshot.service';
+import { toBudgetMonthSnapshot } from './monthSnapshot.mapper';
 
 export const getCategories = async (
   req: Request,
@@ -112,15 +115,73 @@ export const getSummary = async (
   next: NextFunction
 ) => {
   try {
+    const month = Number(req.query.month);
+    const year = Number(req.query.year);
     // Default household: the budget overview has always read the whole
     // household, and an omitted `scope` must not quietly change it.
+    const memberId = req.query.scope === 'mine' ? req.user!.id : undefined;
     const summary = await getBudgetSummary(
       req.budgetScope!,
-      Number(req.query.month),
-      Number(req.query.year),
-      req.query.scope === 'mine' ? req.user!.id : undefined
+      month,
+      year,
+      memberId
     );
-    res.json({ summary });
+
+    // Readiness rides on the summary response rather than surfacing as an
+    // error at click time: both members need to see the blockers before
+    // anyone tries to close.
+    //
+    // Only for the household view. Closing is a household act, and computing
+    // it under `scope=mine` would mean a SECOND full getBudgetSummary — the
+    // heaviest read in the app — on every transactions-page load, for a field
+    // that page does not render.
+    if (memberId !== undefined) {
+      res.json({ summary });
+      return;
+    }
+
+    const close = await getMonthCloseState(
+      req.budgetScope!,
+      summary,
+      month,
+      year
+    );
+    res.json({ summary, close });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const postClose = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { month, year } = req.body as BudgetPayloads.Close;
+    const row = await closeMonth(req.budgetScope!, req.user!.id, month, year);
+    req.log.info(
+      { snapshotId: row.id, month, year, transactions: row.transactions.length },
+      'month closed'
+    );
+    res.status(201).json({ snapshot: toBudgetMonthSnapshot(row) });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getSnapshot = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const row = await getLiveSnapshot(
+      req.budgetScope!.householdId,
+      Number(req.query.month),
+      Number(req.query.year)
+    );
+    res.json({ snapshot: row ? toBudgetMonthSnapshot(row) : null });
   } catch (err) {
     next(err);
   }
