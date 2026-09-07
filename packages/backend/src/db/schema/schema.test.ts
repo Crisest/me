@@ -1,4 +1,5 @@
 import { getTableConfig } from 'drizzle-orm/pg-core';
+import { eq } from 'drizzle-orm';
 import { users } from './users';
 import { primaryId } from './columns';
 import { accounts } from './accounts';
@@ -16,6 +17,7 @@ import { transactionCategories } from './transaction-categories';
 import { categorySuggestions } from './category-suggestions';
 import { transactions } from './transactions';
 import { uploads } from './uploads';
+import { budgetMonthSnapshots } from './budget-month-snapshots';
 import { truncateAll, closeTestDb } from '../../../test/setup';
 import {
   makeUser,
@@ -26,6 +28,7 @@ import {
   makeTransaction,
   makeTransactionCategory,
   makeCategorySuggestion,
+  makeBudgetMonthSnapshot,
 } from '../../../test/helpers/factories';
 
 const columnNames = (table: Parameters<typeof getTableConfig>[0]) =>
@@ -373,7 +376,6 @@ describe('household relational query API', () => {
 
 describe('household constraints', () => {
   afterEach(truncateAll);
-  afterAll(closeTestDb);
 
   it('allows only one active membership per user', async () => {
     const user = await makeUser();
@@ -466,5 +468,57 @@ describe('household constraints', () => {
     await expect(
       makeBudgetCategoryOverride(b.id, category.id, { month: 5, year: 2026 })
     ).rejects.toThrow();
+  });
+});
+
+describe('budget_month_snapshots constraints', () => {
+  afterEach(truncateAll);
+  afterAll(closeTestDb);
+
+  it('allows a new snapshot once the previous one is superseded', async () => {
+    // The unique index is PARTIAL. A plain unique constraint would let a
+    // superseded snapshot permanently block its own month from closing again.
+    const user = await makeUser();
+    const household = await makeHousehold(user.id);
+    await makeBudgetMonthSnapshot(household.id, user.id, {
+      month: 3,
+      year: 2026,
+      supersededAt: new Date(),
+    });
+
+    await expect(
+      makeBudgetMonthSnapshot(household.id, user.id, { month: 3, year: 2026, version: 2 })
+    ).resolves.toBeDefined();
+  });
+
+  it('allows only one live snapshot per household month', async () => {
+    const user = await makeUser();
+    const household = await makeHousehold(user.id);
+    await makeBudgetMonthSnapshot(household.id, user.id, { month: 3, year: 2026 });
+
+    await expect(
+      makeBudgetMonthSnapshot(household.id, user.id, { month: 3, year: 2026 })
+    ).rejects.toThrow();
+  });
+
+  it('rejects a month outside 1..12', async () => {
+    const user = await makeUser();
+    const household = await makeHousehold(user.id);
+
+    await expect(
+      makeBudgetMonthSnapshot(household.id, user.id, { month: 13 })
+    ).rejects.toThrow();
+  });
+
+  it('keeps the snapshot when the closing user is deleted', async () => {
+    const user = await makeUser();
+    const household = await makeHousehold(user.id);
+    const row = await makeBudgetMonthSnapshot(household.id, user.id);
+
+    await db.delete(users).where(eq(users.id, user.id));
+
+    const [after] = await db.select().from(budgetMonthSnapshots);
+    expect(after.id).toBe(row.id);
+    expect(after.closedBy).toBeNull();
   });
 });

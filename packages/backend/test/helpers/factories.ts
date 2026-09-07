@@ -1,11 +1,13 @@
 import { v7 as uuidv7 } from 'uuid';
 import { and, eq, isNull } from 'drizzle-orm';
+import type { BudgetSummary } from '@portfolio/common';
 import { db } from '../../src/db/client';
 import {
   accounts,
   banks,
   budgetCategories,
   budgetCategoryOverrides,
+  budgetMonthSnapshots,
   cards,
   categorySuggestions,
   groups,
@@ -18,6 +20,7 @@ import {
   type BankRow,
   type BudgetCategoryOverrideRow,
   type BudgetCategoryRow,
+  type BudgetMonthSnapshotRow,
   type CardRow,
   type CategorySuggestionRow,
   type GroupRow,
@@ -242,6 +245,47 @@ export const makeCategorySuggestion = async (
       reason: 'Test reason',
       source: 'stub',
       createdBy: userId,
+      ...overrides,
+    })
+    .returning();
+  return row;
+};
+
+/** A minimal but structurally complete summary, for snapshot fixtures. */
+export const emptySnapshotSummary = (
+  month: number,
+  year: number,
+  income = 0
+): BudgetSummary => ({
+  month,
+  year,
+  income,
+  usingActualIncome: false,
+  byMember: [],
+  categories: [],
+  untagged: { amount: 0, transactionCount: 0, byMember: [] },
+  totalPlanned: 0,
+  totalCost: 0,
+  moneyLeft: income,
+});
+
+export const makeBudgetMonthSnapshot = async (
+  householdId: string,
+  userId: string,
+  overrides: Partial<typeof budgetMonthSnapshots.$inferInsert> = {}
+): Promise<BudgetMonthSnapshotRow> => {
+  const month = overrides.month ?? 3;
+  const year = overrides.year ?? 2026;
+  const [row] = await db
+    .insert(budgetMonthSnapshots)
+    .values({
+      householdId,
+      month,
+      year,
+      members: [{ userId, from: '2000-01-01T00:00:00.000Z', to: null }],
+      summary: emptySnapshotSummary(month, year),
+      transactions: [],
+      closedBy: userId,
       ...overrides,
     })
     .returning();

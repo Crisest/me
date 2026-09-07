@@ -3,6 +3,7 @@ import { accounts } from './accounts';
 import { banks } from './banks';
 import { budgetCategories } from './budget-categories';
 import { budgetCategoryOverrides } from './budget-category-overrides';
+import { budgetMonthSnapshots } from './budget-month-snapshots';
 import { budgetOverrides } from './budget-overrides';
 import { budgets } from './budgets';
 import { cards } from './cards';
@@ -155,6 +156,7 @@ export const householdsRelations = relations(households, ({ one, many }) => ({
   categories: many(budgetCategories),
   tags: many(transactionCategories),
   suggestions: many(categorySuggestions),
+  snapshots: many(budgetMonthSnapshots),
 }));
 
 export const householdMembersRelations = relations(
@@ -219,6 +221,20 @@ export const categorySuggestionsRelations = relations(
       fields: [categorySuggestions.resolvedBy],
       references: [users.id],
       relationName: 'categorySuggestionsResolvedBy',
+    }),
+  })
+);
+
+export const budgetMonthSnapshotsRelations = relations(
+  budgetMonthSnapshots,
+  ({ one }) => ({
+    household: one(households, {
+      fields: [budgetMonthSnapshots.householdId],
+      references: [households.id],
+    }),
+    closedBy: one(users, {
+      fields: [budgetMonthSnapshots.closedBy],
+      references: [users.id],
     }),
   })
 );
