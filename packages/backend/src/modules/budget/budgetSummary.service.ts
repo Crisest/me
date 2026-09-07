@@ -16,6 +16,7 @@ import {
   users,
 } from '../../db/schema';
 import type { BudgetScope, ScopeMember } from '../../middleware/resolveBudgetScope';
+import { getLiveSnapshot } from './monthSnapshot.service';
 
 /** True when the member was in the household at any point during the month. */
 export const memberCoversMonth = (
@@ -92,6 +93,18 @@ export const getBudgetSummary = async (
   memberId?: string,
   executor: Db | Tx = db
 ): Promise<BudgetSummary> => {
+  // A closed month is a frozen record, not a live calculation. Everything
+  // below is skipped and everything downstream is unchanged — nothing knows
+  // the difference.
+  //
+  // Guarded on `memberId === undefined` because a snapshot is always the
+  // HOUSEHOLD's. Serving it for a single-member view would answer a question
+  // nobody asked.
+  if (memberId === undefined) {
+    const snapshot = await getLiveSnapshot(scope.householdId, month, year, executor);
+    if (snapshot) return snapshot.summary;
+  }
+
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 1);
 

@@ -2,8 +2,10 @@ import { truncateAll, closeTestDb } from '../../../test/setup';
 import {
   makeBudgetCategory,
   makeBudgetCategoryOverride,
+  makeBudgetMonthSnapshot,
   makeTransaction,
   makeUser,
+  emptySnapshotSummary,
 } from '../../../test/helpers/factories';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db/client';
@@ -731,5 +733,88 @@ describe('getBudgetSummary — income by member', () => {
 
     expect(inTx.income).toBe(5000);
     expect(inTx.byMember).toHaveLength(1);
+  });
+});
+
+describe('getBudgetSummary — closed months', () => {
+  it('returns the frozen summary rather than recomputing', async () => {
+    const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
+    await db.insert(budgets).values({ salary: 5000, createdBy: user.id });
+    await makeBudgetMonthSnapshot(household.id, user.id, {
+      month: 5,
+      year: 2026,
+      summary: { ...emptySnapshotSummary(5, 2026, 4242), totalCost: 111 },
+    });
+
+    const result = await getBudgetSummary(soloScope(household.id, user.id), 5, 2026);
+
+    // Live state says 5000. The frozen record says 4242, and the record wins.
+    expect(result.income).toBe(4242);
+    expect(result.totalCost).toBe(111);
+  });
+
+  it('does not let a category rename reach back into a closed month', async () => {
+    const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
+    const category = await makeBudgetCategory(user.id, {
+      name: 'Groceries',
+      kind: 'flexible',
+      plannedAmount: 600,
+      householdId: household.id,
+    });
+    const before = await getBudgetSummary(
+      soloScope(household.id, user.id),
+      5,
+      2026
+    );
+    await makeBudgetMonthSnapshot(household.id, user.id, {
+      month: 5,
+      year: 2026,
+      summary: before,
+    });
+
+    await db
+      .update(budgetCategories)
+      .set({ name: 'Food' })
+      .where(eq(budgetCategories.id, category.id));
+
+    const after = await getBudgetSummary(soloScope(household.id, user.id), 5, 2026);
+    expect(after.categories[0].name).toBe('Groceries');
+  });
+
+  it('leaves other months live', async () => {
+    const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
+    await db.insert(budgets).values({ salary: 5000, createdBy: user.id });
+    await makeBudgetMonthSnapshot(household.id, user.id, {
+      month: 5,
+      year: 2026,
+      summary: emptySnapshotSummary(5, 2026, 4242),
+    });
+
+    const june = await getBudgetSummary(soloScope(household.id, user.id), 6, 2026);
+    expect(june.income).toBe(5000);
+  });
+
+  it('ignores the snapshot for a single-member view', async () => {
+    // A snapshot is always the household's. Serving it for a `mine` request
+    // would answer a different question than the one asked.
+    const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
+    await db.insert(budgets).values({ salary: 5000, createdBy: user.id });
+    await makeBudgetMonthSnapshot(household.id, user.id, {
+      month: 5,
+      year: 2026,
+      summary: emptySnapshotSummary(5, 2026, 4242),
+    });
+
+    const mine = await getBudgetSummary(
+      soloScope(household.id, user.id),
+      5,
+      2026,
+      user.id
+    );
+    expect(mine.income).toBe(5000);
   });
 });
