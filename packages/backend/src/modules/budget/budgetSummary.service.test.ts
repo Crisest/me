@@ -604,3 +604,132 @@ describe('getBudgetSummary — narrowed to one member', () => {
     expect(mine.moneyLeft).toBe(4900);
   });
 });
+
+describe('getBudgetSummary — income by member', () => {
+  it('marks a member who filed an override as actual', async () => {
+    const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
+    await db.insert(budgets).values({ salary: 5000, createdBy: user.id });
+    await db
+      .insert(budgetOverrides)
+      .values({ month: 5, year: 2026, salary: 4700, createdBy: user.id });
+
+    const result = await getBudgetSummary(soloScope(household.id, user.id), 5, 2026);
+
+    expect(result.byMember).toEqual([
+      {
+        userId: user.id,
+        email: user.email,
+        name: 'Test User',
+        amount: 4700,
+        isActual: true,
+      },
+    ]);
+  });
+
+  it('marks a member with no override as not actual, at their base salary', async () => {
+    const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
+    await db.insert(budgets).values({ salary: 5000, createdBy: user.id });
+
+    const result = await getBudgetSummary(soloScope(household.id, user.id), 5, 2026);
+
+    expect(result.byMember).toHaveLength(1);
+    expect(result.byMember[0]).toMatchObject({ amount: 5000, isActual: false });
+  });
+
+  it('distinguishes the two members when only one has filed', async () => {
+    // The bug this exists to prevent: usingActualIncome is an any-member OR,
+    // so it reads true here even though one member has filed nothing.
+    const owner = await makeUser();
+    const joiner = await makeUser();
+    const household = await createHousehold('Home', owner.id);
+    await joinByCode(household.inviteCode, joiner.id);
+    await db.insert(budgets).values({ salary: 5000, createdBy: owner.id });
+    await db.insert(budgets).values({ salary: 3000, createdBy: joiner.id });
+    await db
+      .insert(budgetOverrides)
+      .values({ month: 5, year: 2026, salary: 4700, createdBy: owner.id });
+
+    const scope = {
+      householdId: household.id,
+      members: [
+        { userId: owner.id, from: new Date('2000-01-01'), to: null },
+        { userId: joiner.id, from: new Date('2000-01-01'), to: null },
+      ],
+    };
+
+    const result = await getBudgetSummary(scope, 5, 2026);
+
+    expect(result.usingActualIncome).toBe(true);
+    expect(result.income).toBe(7700);
+    const filed = result.byMember.filter(m => m.isActual);
+    expect(filed).toHaveLength(1);
+    expect(filed[0].userId).toBe(owner.id);
+  });
+
+  it('excludes a member whose tenure does not cover the month', async () => {
+    const owner = await makeUser();
+    const departed = await makeUser();
+    const household = await createHousehold('Home', owner.id);
+    await db.insert(budgets).values({ salary: 5000, createdBy: owner.id });
+    await db.insert(budgets).values({ salary: 3000, createdBy: departed.id });
+
+    const scope = {
+      householdId: household.id,
+      members: [
+        { userId: owner.id, from: new Date('2000-01-01'), to: null },
+        {
+          userId: departed.id,
+          from: new Date('2026-01-01'),
+          to: new Date('2026-02-01'),
+        },
+      ],
+    };
+
+    const result = await getBudgetSummary(scope, 5, 2026);
+
+    expect(result.byMember.map(m => m.userId)).toEqual([owner.id]);
+  });
+
+  it('sorts byMember by userId regardless of the scope\'s member order', async () => {
+    const a = await makeUser();
+    const b = await makeUser();
+    // uuid v7 is time-ordered, so the earlier-created user sorts first.
+    const [first, second] = a.id < b.id ? [a, b] : [b, a];
+    const household = await createHousehold('Home', a.id);
+    await db.insert(budgets).values({ salary: 1, createdBy: a.id });
+    await db.insert(budgets).values({ salary: 2, createdBy: b.id });
+
+    // Scope deliberately holds them in DESCENDING id order: asserting against
+    // `[...ids].sort()` would pass whatever order came back, so assert the
+    // expected order explicitly.
+    const scope = {
+      householdId: household.id,
+      members: [
+        { userId: second.id, from: new Date('2000-01-01'), to: null },
+        { userId: first.id, from: new Date('2000-01-01'), to: null },
+      ],
+    };
+
+    const result = await getBudgetSummary(scope, 5, 2026);
+
+    expect((result.byMember ?? []).map(m => m.userId)).toEqual([
+      first.id,
+      second.id,
+    ]);
+  });
+
+  it('computes the same summary inside a transaction handle', async () => {
+    const user = await makeUser();
+    const household = await createHousehold('Home', user.id);
+    await db.insert(budgets).values({ salary: 5000, createdBy: user.id });
+
+    const inTx = await db.transaction(tx =>
+      getBudgetSummary(soloScope(household.id, user.id), 5, 2026, undefined, tx)
+    );
+
+    expect(inTx.income).toBe(5000);
+    expect(inTx.byMember).toHaveLength(1);
+  });
+});
