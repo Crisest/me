@@ -475,6 +475,51 @@ describe('syncOneBankForUser (real service, mocked Plaid API)', () => {
     expect(rows[0].plaidTransactionId).toBe('plaid-tx-added');
   });
 
+  /**
+   * The real-world case this guards: an institution whose data feed is down
+   * returns no transactions and an empty next_cursor. Storing that empty
+   * string is what disarmed the adoption pass, so it is stored as null —
+   * the Item genuinely has not been synced yet.
+   */
+  it('stores a null cursor when Plaid returns an empty next_cursor', async () => {
+    const { getPlaidClient } = await import('./plaid.client');
+    const { syncOneBankForUser } = await import('./plaid.service');
+
+    const user = await makeUser();
+    const bank = await makeBank(user.id, {
+      isPlaidLinked: true,
+      plaidAccessToken: 'iv:cipher:tag',
+      plaidSyncCursor: null,
+    });
+
+    const fakePlaid = {
+      accountsGet: jest.fn().mockResolvedValue({
+        data: { accounts: [fakePlaidAccount('plaid-acct-1')] },
+      }),
+      transactionsSync: jest.fn().mockResolvedValue({
+        data: {
+          added: [],
+          modified: [],
+          removed: [],
+          next_cursor: '',
+          has_more: false,
+        },
+      }),
+    };
+    (getPlaidClient as jest.Mock).mockReturnValue(fakePlaid);
+    jest
+      .spyOn(await import('@/utils/crypto'), 'decrypt')
+      .mockReturnValue('access-token-123');
+
+    const result = await syncOneBankForUser(user.id, bank.id);
+
+    expect(result).toEqual({ added: 0, modified: 0, removed: 0 });
+
+    const [after] = await db.select().from(banks).where(eq(banks.id, bank.id));
+    expect(after.plaidSyncCursor).toBeNull();
+    expect(after.plaidStatus).toBe('connected');
+  });
+
   it('rolls back the cursor advance when a write inside the sync fails (the data-loss fix)', async () => {
     const { getPlaidClient } = await import('./plaid.client');
     const { syncOneBankForUser } = await import('./plaid.service');
@@ -727,6 +772,52 @@ describe('first sync after a relink (transaction adoption)', () => {
       .from(transactions)
       .where(eq(transactions.createdBy, user.id));
     expect(rows).toHaveLength(2);
+  });
+
+  /**
+   * Plaid returns `next_cursor: ""` for an Item it has no transaction data
+   * for yet — a bank-side outage, or a historical pull that has not landed.
+   * Persisting that empty string used to leave the bank in a state where the
+   * request still replayed from scratch (`'' || undefined`) while the
+   * adoption gate (`=== null`) read it as an incremental sync, so the whole
+   * replayed history inserted a second time under its new Item ids.
+   */
+  it('adopts when the stored cursor is the empty string Plaid sends for an item with no data', async () => {
+    const { syncOneBankForUser } = await import('./plaid.service');
+    const { user, bank, account } = await setup(
+      [
+        fakePlaidTx({
+          transaction_id: 'plaid-tx-new',
+          name: 'Snacks',
+          amount: 9.99,
+          date: '2026-01-06',
+        }),
+      ],
+      ''
+    );
+
+    const [before] = await db
+      .insert(transactions)
+      .values({
+        amount: 9.99,
+        description: 'Snacks',
+        date: new Date('2026-01-04T12:00:00Z'),
+        accountId: account.id,
+        createdBy: user.id,
+        plaidTransactionId: 'plaid-tx-old',
+      })
+      .returning();
+
+    const result = await syncOneBankForUser(user.id, bank.id);
+
+    const rows = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.createdBy, user.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].id).toBe(before.id);
+    expect(rows[0].plaidTransactionId).toBe('plaid-tx-new');
+    expect(result).toEqual({ added: 0, modified: 1, removed: 0 });
   });
 
   it('does not adopt a row on a different account', async () => {

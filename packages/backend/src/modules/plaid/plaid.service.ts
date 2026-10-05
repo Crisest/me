@@ -273,7 +273,14 @@ async function syncBank(bank: BankRow): Promise<SyncCounts> {
   const accessToken = decrypt(bank.plaidAccessToken);
   const userId = bank.createdBy;
 
-  let cursor = bank.plaidSyncCursor || undefined;
+  // Plaid sends `next_cursor: ""` for an Item it has no transaction data for
+  // yet, and that empty string can already be persisted. It means exactly
+  // what null means — never synced — so it is normalised once here, where
+  // both the request below and the adoption gate can read the same value.
+  // Letting them disagree duplicates a replayed history.
+  const storedCursor = bank.plaidSyncCursor || null;
+
+  let cursor = storedCursor ?? undefined;
   let added = 0;
   let modified = 0;
   let removed = 0;
@@ -330,7 +337,7 @@ async function syncBank(bank: BankRow): Promise<SyncCounts> {
         // replay history this bank's accounts already hold. Incremental syncs
         // skip this entirely: there, a repeat of the same amount and merchant
         // is a genuine second purchase, not a duplicate.
-        if (bank.plaidSyncCursor === null) {
+        if (storedCursor === null) {
           const result = await adoptReplayedTransactions(
             tx,
             userId,
@@ -386,7 +393,9 @@ async function syncBank(bank: BankRow): Promise<SyncCounts> {
 
       await tx
         .update(banks)
-        .set({ plaidSyncCursor: cursor, plaidStatus: 'connected' })
+        // `|| null` so an empty next_cursor never persists as '': it means
+        // the Item has no data yet, which is what null already represents.
+        .set({ plaidSyncCursor: cursor || null, plaidStatus: 'connected' })
         .where(eq(banks.id, bank.id));
     });
 
