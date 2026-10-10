@@ -8,8 +8,7 @@ const buildAccountKey = (tx: Transaction): string => {
   const bank = tx.bankName ?? '';
   const account = tx.accountName ?? '';
   const mask = tx.accountMask ?? '';
-  const card = tx.cardName ?? '';
-  return `${bank}|${account}|${mask}|${card}`;
+  return `${bank}|${account}|${mask}`;
 };
 
 const buildAccountLabel = (tx: Transaction): string => {
@@ -18,9 +17,6 @@ const buildAccountLabel = (tx: Transaction): string => {
       ? `${tx.accountName} ••${tx.accountMask}`
       : tx.accountName;
     return tx.bankName ? `${tx.bankName} · ${masked}` : masked;
-  }
-  if (tx.cardName) {
-    return tx.bankName ? `${tx.bankName} · ${tx.cardName}` : tx.cardName;
   }
   return 'Unknown account';
 };

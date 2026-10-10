@@ -4,7 +4,9 @@ import { db } from '../../db/client';
 import { accounts } from '../../db/schema';
 import { truncateAll, closeTestDb } from '../../../test/setup';
 import { makeUser, makeBank, makeAccount } from '../../../test/helpers/factories';
+import { AppError } from '../../middleware/errorHandler';
 import {
+  createManualAccount,
   upsertPlaidAccountsForBank,
   getAccountsByUser,
   findAccountByPlaidId,
@@ -121,6 +123,72 @@ describe('account.service', () => {
       .where(eq(accounts.bankId, bank.id));
     expect(rows).toHaveLength(2);
     expect(rows.every(r => r.deletedAt !== null)).toBe(true);
+  });
+
+  it('createManualAccount creates an unlinked account of type "other"', async () => {
+    const user = await makeUser();
+    const bank = await makeBank(user.id);
+
+    const account = await createManualAccount(user.id, {
+      name: 'Cash',
+      bankId: bank.id,
+    });
+
+    expect(account.plaidAccountId).toBeUndefined();
+    expect(account.type).toBe('other');
+    const [row] = await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.id, account.id));
+    expect(row.plaidAccountId).toBeNull();
+  });
+
+  it("createManualAccount rejects another user's bank with a 404", async () => {
+    const owner = await makeUser();
+    const intruder = await makeUser();
+    const bank = await makeBank(owner.id);
+
+    await expect(
+      createManualAccount(intruder.id, { name: 'Cash', bankId: bank.id })
+    ).rejects.toMatchObject({ statusCode: 404 });
+    await expect(
+      createManualAccount(intruder.id, { name: 'Cash', bankId: bank.id })
+    ).rejects.toBeInstanceOf(AppError);
+  });
+
+  it('getAccountsByUser returns a manual account', async () => {
+    const user = await makeUser();
+    const bank = await makeBank(user.id);
+    const created = await createManualAccount(user.id, {
+      name: 'Cash',
+      bankId: bank.id,
+    });
+
+    const list = await getAccountsByUser(user.id);
+    expect(list.map(a => a.id)).toEqual([created.id]);
+  });
+
+  it('softDeleteAccountsForBank closes Plaid accounts but leaves manual ones', async () => {
+    const user = await makeUser();
+    const bank = await makeBank(user.id);
+    const plaid = await makeAccount(user.id, bank.id);
+    const manual = await makeAccount(user.id, bank.id, {
+      plaidAccountId: null,
+      mask: null,
+    });
+
+    await softDeleteAccountsForBank(bank.id);
+
+    const [plaidRow] = await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.id, plaid.id));
+    const [manualRow] = await db
+      .select()
+      .from(accounts)
+      .where(eq(accounts.id, manual.id));
+    expect(plaidRow.deletedAt).not.toBeNull();
+    expect(manualRow.deletedAt).toBeNull();
   });
 
   it('re-keys an account across a relink instead of duplicating it', async () => {

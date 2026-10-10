@@ -11,7 +11,8 @@ export const accounts = pgTable(
     bankId: uuid('bank_id')
       .notNull()
       .references(() => banks.id, { onDelete: 'cascade' }),
-    plaidAccountId: text('plaid_account_id').notNull().unique(),
+    // NULL for a manual account — one the user created to upload CSVs into, with no Plaid link.
+    plaidAccountId: text('plaid_account_id').unique(),
     name: text('name').notNull(),
     officialName: text('official_name'),
     mask: text('mask'),

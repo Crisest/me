@@ -438,9 +438,9 @@ describe('syncOneBankForUser (real service, mocked Plaid API)', () => {
     });
 
     const fakePlaid = {
-      accountsGet: jest
-        .fn()
-        .mockResolvedValue({ data: { accounts: [fakePlaidAccount('plaid-acct-1')] } }),
+      accountsGet: jest.fn().mockResolvedValue({
+        data: { accounts: [fakePlaidAccount('plaid-acct-1')] },
+      }),
       transactionsSync: jest.fn().mockResolvedValue({
         data: {
           added: [fakePlaidTx()],
@@ -535,9 +535,9 @@ describe('syncOneBankForUser (real service, mocked Plaid API)', () => {
       // The account upsert (syncAccountsForBank) runs inside the same
       // transaction, before the paging loop — a non-atomic implementation
       // would let this row survive a later failure.
-      accountsGet: jest
-        .fn()
-        .mockResolvedValue({ data: { accounts: [fakePlaidAccount('plaid-acct-1')] } }),
+      accountsGet: jest.fn().mockResolvedValue({
+        data: { accounts: [fakePlaidAccount('plaid-acct-1')] },
+      }),
       transactionsSync: jest
         .fn()
         // First page succeeds and writes a real row — this is what a naive,
@@ -765,13 +765,76 @@ describe('first sync after a relink (transaction adoption)', () => {
 
     await syncOneBankForUser(user.id, bank.id);
 
-    // A repeating subscription is not a duplicate. Adoption only runs when
-    // the cursor is null, i.e. the Item is new and Plaid is replaying.
+    // A repeating subscription is not a duplicate. On an incremental sync
+    // only rows without a Plaid id are candidates, and this one has one.
     const rows = await db
       .select()
       .from(transactions)
       .where(eq(transactions.createdBy, user.id));
     expect(rows).toHaveLength(2);
+  });
+
+  it('adopts a CSV row on an incremental sync', async () => {
+    const { syncOneBankForUser } = await import('./plaid.service');
+    const { user, bank, account } = await setup(
+      [
+        fakePlaidTx({
+          transaction_id: 'new-a',
+          name: 'Netflix',
+          amount: 15.99,
+          date: '2026-01-05',
+        }),
+      ],
+      'cursor-0'
+    );
+
+    await db.insert(transactions).values({
+      amount: 15.99,
+      description: 'POS PURCHASE NETFLIX',
+      date: new Date('2026-01-04T12:00:00Z'),
+      accountId: account.id,
+      createdBy: user.id,
+    });
+
+    await syncOneBankForUser(user.id, bank.id);
+
+    const rows = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.createdBy, user.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].plaidTransactionId).toBe('new-a');
+    expect(rows[0].description).toBe('POS PURCHASE NETFLIX');
+  });
+
+  it('adopts across descriptions on relink', async () => {
+    const { syncOneBankForUser } = await import('./plaid.service');
+    const { user, bank, account } = await setup([
+      fakePlaidTx({
+        transaction_id: 'plaid-tx-new',
+        name: 'Starbucks',
+        amount: 5.5,
+        date: '2026-01-05',
+      }),
+    ]);
+
+    await db.insert(transactions).values({
+      amount: 5.5,
+      description: 'STARBUCKS #12',
+      date: new Date('2026-01-04T12:00:00Z'),
+      accountId: account.id,
+      createdBy: user.id,
+      plaidTransactionId: 'plaid-tx-old',
+    });
+
+    await syncOneBankForUser(user.id, bank.id);
+
+    const rows = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.createdBy, user.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].plaidTransactionId).toBe('plaid-tx-new');
   });
 
   /**
@@ -844,5 +907,56 @@ describe('first sync after a relink (transaction adoption)', () => {
       .from(transactions)
       .where(eq(transactions.createdBy, user.id));
     expect(rows).toHaveLength(2);
+  });
+});
+
+describe('resyncBank', () => {
+  it('purges Plaid rows but keeps CSV-uploaded ones', async () => {
+    const { getPlaidClient } = await import('./plaid.client');
+    (getPlaidClient as jest.Mock).mockReturnValue({
+      accountsGet: jest.fn().mockResolvedValue({
+        data: { accounts: [fakePlaidAccount('plaid-acct-1')] },
+      }),
+      transactionsSync: jest.fn().mockResolvedValue({
+        data: {
+          added: [],
+          modified: [],
+          removed: [],
+          next_cursor: 'cursor-1',
+          has_more: false,
+        },
+      }),
+    });
+    jest
+      .spyOn(await import('@/utils/crypto'), 'decrypt')
+      .mockReturnValue('access-token-123');
+    const { resyncBank } = await import('./plaid.service');
+
+    const user = await makeUser();
+    const bank = await makeBank(user.id, {
+      isPlaidLinked: true,
+      plaidAccessToken: 'iv:cipher:tag',
+    });
+    const account = await makeAccount(user.id, bank.id, {
+      plaidAccountId: 'plaid-acct-1',
+    });
+    const base = {
+      amount: 5,
+      date: new Date('2026-01-06T12:00:00Z'),
+      accountId: account.id,
+      createdBy: user.id,
+    };
+    await db.insert(transactions).values([
+      { ...base, description: 'plaid', plaidTransactionId: 'p-1' },
+      { ...base, description: 'csv' },
+    ]);
+
+    await resyncBank(user.id, bank.id);
+
+    const rows = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.createdBy, user.id));
+    expect(rows.map(r => r.description)).toEqual(['csv']);
   });
 });

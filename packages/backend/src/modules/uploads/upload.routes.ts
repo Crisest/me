@@ -9,7 +9,7 @@ const router: Router = Router();
 const checkDuplicateValidation = [
   body('fileName').isString().notEmpty().withMessage('fileName is required'),
   body('fileHash').isString().notEmpty().withMessage('fileHash is required'),
-  body('cardId').isString().notEmpty().withMessage('cardId is required'),
+  body('accountId').isString().notEmpty().withMessage('accountId is required'),
 ];
 
 router.post(

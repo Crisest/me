@@ -11,6 +11,7 @@ import {
   findBankByInstitutionForUser,
 } from '../banks/bank.service';
 import { toBank } from '../banks/bank.mapper';
+import { matchToExisting } from '../transactions/transaction.matching';
 import {
   upsertPlaidAccountsForBank,
   softDeleteAccountsForBank,
@@ -113,7 +114,8 @@ async function upsertAccounts(
   );
 
   const map = new Map<string, string>();
-  for (const row of rows) map.set(row.plaidAccountId, row.id);
+  for (const row of rows)
+    if (row.plaidAccountId) map.set(row.plaidAccountId, row.id);
   return map;
 }
 
@@ -150,38 +152,17 @@ function mapPlaidTxToRow(
 type MappedTxRow = ReturnType<typeof mapPlaidTxToRow>;
 
 /**
- * How far a replayed transaction's date may drift from the local row it
- * matches. Plaid can report a different date for the same purchase under a
- * new Item (authorised vs posted), so an exact date match is too strict.
- */
-const ADOPTION_DATE_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
-
-const normaliseDescription = (d: string): string =>
-  d.trim().toLowerCase().replace(/\s+/g, ' ');
-
-/** Compares money as integer cents — 9.99 never equals 9.99 in float land. */
-const toCents = (amount: number): number => Math.round(amount * 100);
-
-const adoptionKey = (r: {
-  // undefined when Plaid sent a transaction for an account it did not also
-  // return; such a row can never match a stored one, which is correct.
-  accountId: string | null | undefined;
-  amount: number;
-  description: string;
-}): string =>
-  `${r.accountId}|${toCents(r.amount)}|${normaliseDescription(r.description)}`;
-
-/**
- * Re-links replayed Plaid transactions to the rows the user already has.
+ * Re-links Plaid transactions to rows the user already has.
  *
  * A new Item mints new transaction ids for purchases already synced under the
- * old one, so `plaidTransactionId` cannot recognise them and every row would
- * insert a second time. Matching on account + amount + description + a date
- * window does recognise them.
+ * old one, and a CSV upload holds rows Plaid has never delivered, so
+ * `plaidTransactionId` cannot recognise either and every row would insert a
+ * second time. `matchToExisting` (account + amount + date window, equal
+ * description preferred) does recognise them. It also runs on incremental
+ * syncs, restricted to rows Plaid never delivered (`onlyUnlinked`).
  *
- * Candidates are consumed one at a time, which is what keeps two identical
- * same-day purchases as two rows: the second incoming copy cannot claim the
- * candidate the first one took. That property is also why this is not a
+ * Matching claims each candidate once, which is what keeps two identical
+ * same-day purchases as two rows. That property is also why this is not a
  * unique index — a constraint on those columns would collapse the pair
  * permanently.
  *
@@ -191,7 +172,8 @@ async function adoptReplayedTransactions(
   tx: Tx,
   userId: string,
   accountIds: string[],
-  incoming: MappedTxRow[]
+  incoming: MappedTxRow[],
+  onlyUnlinked: boolean
 ): Promise<{ toInsert: MappedTxRow[]; adopted: number }> {
   if (accountIds.length === 0 || incoming.length === 0) {
     return { toInsert: incoming, adopted: 0 };
@@ -209,41 +191,22 @@ async function adoptReplayedTransactions(
     .where(
       and(
         eq(transactions.createdBy, userId),
-        inArray(transactions.accountId, accountIds)
+        inArray(transactions.accountId, accountIds),
+        onlyUnlinked ? isNull(transactions.plaidTransactionId) : undefined
       )
     );
 
-  const candidates = new Map<string, { id: string; date: Date }[]>();
-  for (const row of existing) {
-    const key = adoptionKey(row);
-    const bucket = candidates.get(key);
-    if (bucket) bucket.push({ id: row.id, date: row.date });
-    else candidates.set(key, [{ id: row.id, date: row.date }]);
-  }
-
+  const matched = matchToExisting(incoming, existing);
   const toInsert: MappedTxRow[] = [];
   let adopted = 0;
 
-  for (const row of incoming) {
-    const bucket = candidates.get(adoptionKey(row));
-    // Closest date wins, so a run of similar purchases pairs up in order
-    // rather than by whichever row the database happened to return first.
-    let bestIndex = -1;
-    let bestDelta = Infinity;
-    bucket?.forEach((c, i) => {
-      const delta = Math.abs(c.date.getTime() - row.date.getTime());
-      if (delta <= ADOPTION_DATE_WINDOW_MS && delta < bestDelta) {
-        bestDelta = delta;
-        bestIndex = i;
-      }
-    });
-
-    if (bestIndex === -1 || !bucket) {
+  for (const [i, row] of incoming.entries()) {
+    const id = matched[i];
+    if (!id) {
       toInsert.push(row);
       continue;
     }
 
-    const [claimed] = bucket.splice(bestIndex, 1);
     await tx
       .update(transactions)
       .set({
@@ -257,7 +220,7 @@ async function adoptReplayedTransactions(
         logoUrl: row.logoUrl,
         categoryIconUrl: row.categoryIconUrl,
       })
-      .where(eq(transactions.id, claimed.id));
+      .where(eq(transactions.id, id));
     adopted += 1;
   }
 
@@ -334,19 +297,19 @@ async function syncBank(bank: BankRow): Promise<SyncCounts> {
 
         // A null cursor means this Item has never been synced — either a
         // first link (nothing to adopt) or a relink, where Plaid is about to
-        // replay history this bank's accounts already hold. Incremental syncs
-        // skip this entirely: there, a repeat of the same amount and merchant
-        // is a genuine second purchase, not a duplicate.
-        if (storedCursor === null) {
-          const result = await adoptReplayedTransactions(
-            tx,
-            userId,
-            [...accountIdByPlaidId.values()],
-            toInsert
-          );
-          toInsert = result.toInsert;
-          modified += result.adopted;
-        }
+        // replay history this bank's accounts already hold, so every row on
+        // them is a candidate. On an incremental sync only rows Plaid never
+        // delivered (CSV or manual) are: a repeat of a row that already has a
+        // Plaid id is a genuine second purchase, not a duplicate.
+        const result = await adoptReplayedTransactions(
+          tx,
+          userId,
+          [...accountIdByPlaidId.values()],
+          toInsert,
+          storedCursor !== null
+        );
+        toInsert = result.toInsert;
+        modified += result.adopted;
 
         if (toInsert.length > 0) {
           await tx
@@ -468,20 +431,18 @@ export async function resyncBank(
     .where(eq(accounts.bankId, bank.id));
   const accountIds = accountRows.map(a => a.id);
 
-  await db
-    .delete(transactions)
-    .where(
-      and(
-        eq(transactions.createdBy, bank.createdBy),
-        or(
-          inArray(transactions.accountId, accountIds),
-          and(
-            isNotNull(transactions.plaidTransactionId),
-            isNull(transactions.accountId)
-          )
-        )
+  await db.delete(transactions).where(
+    and(
+      eq(transactions.createdBy, bank.createdBy),
+      // A null plaidTransactionId is a CSV upload — Plaid cannot replay it,
+      // so the purge must not take it.
+      isNotNull(transactions.plaidTransactionId),
+      or(
+        inArray(transactions.accountId, accountIds),
+        isNull(transactions.accountId)
       )
-    );
+    )
+  );
 
   const [updated] = await db
     .update(banks)

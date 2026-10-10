@@ -9,7 +9,6 @@ import { db, type Db, type Tx } from '../../db/client';
 import {
   accounts,
   budgetMonthSnapshots,
-  cards,
   transactionCategories,
   transactions,
   users,
@@ -79,7 +78,6 @@ export const listSnapshotTransactions = async (
       ownerId: transactions.createdBy,
       ownerEmail: users.email,
       ownerName: users.name,
-      cardName: cards.name,
       accountName: accounts.name,
       accountMask: accounts.mask,
     })
@@ -93,7 +91,6 @@ export const listSnapshotTransactions = async (
         isNull(liveTags.deletedAt)
       )
     )
-    .leftJoin(cards, eq(cards.id, transactions.cardId))
     .leftJoin(accounts, eq(accounts.id, transactions.accountId))
     .where(
       and(
@@ -104,6 +101,8 @@ export const listSnapshotTransactions = async (
     )
     .orderBy(asc(transactions.date), asc(transactions.id));
 
+  // `cardName` is no longer written; closed months that have it keep it
+  // (frozen type).
   return rows.map(r => ({
     id: r.id,
     date: r.date.toISOString(),
@@ -113,7 +112,6 @@ export const listSnapshotTransactions = async (
     ownerId: r.ownerId,
     ownerEmail: r.ownerEmail,
     ...(r.ownerName ? { ownerName: r.ownerName } : {}),
-    ...(r.cardName ? { cardName: r.cardName } : {}),
     ...(r.accountName ? { accountName: r.accountName } : {}),
     ...(r.accountMask ? { accountMask: r.accountMask } : {}),
   }));

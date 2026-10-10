@@ -2,7 +2,7 @@ import { truncateAll, closeTestDb } from '../../../test/setup';
 import {
   makeUser,
   makeBank,
-  makeCard,
+  makeAccount,
   makeTransaction,
   makeBudgetCategory,
   makeTransactionCategory,
@@ -74,11 +74,15 @@ describe('getLiveSnapshot', () => {
 });
 
 describe('listSnapshotTransactions', () => {
-  it('denormalises owner, card and category onto each row', async () => {
+  it('denormalises owner, account and category onto each row', async () => {
     const user = await makeUser({ name: 'Ada', email: 'ada@example.com' });
     const household = await createHousehold('Home', user.id);
     const bank = await makeBank(user.id);
-    const card = await makeCard(user.id, bank.id, { name: 'Visa' });
+    const account = await makeAccount(user.id, bank.id, {
+      plaidAccountId: null,
+      mask: null,
+      name: 'Visa',
+    });
     const category = await makeBudgetCategory(user.id, {
       kind: 'flexible',
       plannedAmount: 600,
@@ -88,7 +92,7 @@ describe('listSnapshotTransactions', () => {
       amount: 61.25,
       description: 'Groceries',
       date: MARCH,
-      cardId: card.id,
+      accountId: account.id,
     });
     await makeTransactionCategory(txn.id, category.id, household.id, user.id);
 
@@ -108,7 +112,7 @@ describe('listSnapshotTransactions', () => {
       ownerId: user.id,
       ownerName: 'Ada',
       ownerEmail: 'ada@example.com',
-      cardName: 'Visa',
+      accountName: 'Visa',
     });
   });
 

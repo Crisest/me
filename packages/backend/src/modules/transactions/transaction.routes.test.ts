@@ -11,6 +11,7 @@ import {
   makeUser,
   makeBank,
   makeCard,
+  makeAccount,
   makeTransaction,
   makeHousehold,
   makeHouseholdMember,
@@ -76,14 +77,14 @@ describe('Transactions routes — validation', () => {
     const agent = authedAgent(app, user.id);
     const res = await agent.post('/transactions/bulk').send({
       transactions: [],
-      cardId: uuidv7(),
+      accountId: uuidv7(),
       fileName: 'a.csv',
       fileHash: 'h1',
     });
     expect(res.status).toBe(400);
   });
 
-  it('POST /transactions/bulk missing cardId returns 400', async () => {
+  it('POST /transactions/bulk missing accountId returns 400', async () => {
     const user = await makeUser();
     const agent = authedAgent(app, user.id);
     const res = await agent.post('/transactions/bulk').send({
@@ -100,7 +101,9 @@ describe('Transactions routes — happy path & isolation', () => {
     const userA = await makeUser();
     const userB = await makeUser();
     const bankA = await makeBank(userA.id);
-    const cardA = await makeCard(userA.id, bankA.id);
+    const accountA = await makeAccount(userA.id, bankA.id, {
+      plaidAccountId: null,
+    });
 
     const bankB = await makeBank(userB.id);
     const cardB = await makeCard(userB.id, bankB.id);
@@ -112,7 +115,7 @@ describe('Transactions routes — happy path & isolation', () => {
         { amount: 10, description: 'A1', date: '2026-05-10' },
         { amount: 20, description: 'A2', date: '2026-05-11' },
       ],
-      cardId: cardA.id,
+      accountId: accountA.id,
       fileName: 'a.csv',
       fileHash: 'hash-A',
     });
@@ -128,12 +131,14 @@ describe('Transactions routes — happy path & isolation', () => {
   it('POST /transactions/bulk twice with the same fileHash documents current behavior', async () => {
     const user = await makeUser();
     const bank = await makeBank(user.id);
-    const card = await makeCard(user.id, bank.id);
+    const account = await makeAccount(user.id, bank.id, {
+      plaidAccountId: null,
+    });
     const agent = authedAgent(app, user.id);
 
     const body = {
       transactions: [{ amount: 10, description: 'dup', date: '2026-05-10' }],
-      cardId: card.id,
+      accountId: account.id,
       fileName: 'dup.csv',
       fileHash: 'same-hash',
     };

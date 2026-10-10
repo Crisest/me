@@ -35,7 +35,7 @@ export const transactionApi = apiSlice.injectEndpoints({
       invalidatesTags: [tagTypesEnum.TRANSACTIONS, tagTypesEnum.BUDGET_SUMMARY],
     }),
     createManyTransactions: builder.mutation<
-      Transaction[],
+      TransactionPayloads.CreateManyResponse,
       TransactionPayloads.CreateMany
     >({
       query: payload => ({
@@ -43,7 +43,7 @@ export const transactionApi = apiSlice.injectEndpoints({
         method: 'POST',
         body: {
           transactions: payload.transactions,
-          cardId: payload.cardId,
+          accountId: payload.accountId,
           fileName: payload.fileName,
           fileHash: payload.fileHash,
         },

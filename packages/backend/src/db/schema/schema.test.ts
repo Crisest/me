@@ -105,12 +105,12 @@ describe('banks / cards / accounts tables', () => {
     expect(getTableConfig(cards).foreignKeys[0].onDelete).toBe('cascade');
   });
 
-  it('accounts.plaidAccountId is unique and not null', () => {
+  it('accounts.plaidAccountId is unique and nullable', () => {
     const col = getTableConfig(accounts).columns.find(
       c => c.name === 'plaid_account_id'
     )!;
     expect(col.isUnique).toBe(true);
-    expect(col.notNull).toBe(true);
+    expect(col.notNull).toBe(false);
   });
 
   it('accounts.type is the account_type enum with all five values', () => {
@@ -267,6 +267,7 @@ describe('transactions table', () => {
 describe('uploads table', () => {
   it('has the columns from upload.model.ts plus updated_at', () => {
     expect(columnNames(uploads).sort()).toEqual([
+      'account_id',
       'card_id',
       'created_at',
       'created_by',
@@ -278,9 +279,9 @@ describe('uploads table', () => {
     ]);
   });
 
-  it('keeps both lookup indexes non-unique', () => {
+  it('keeps all four lookup indexes non-unique', () => {
     const idx = getTableConfig(uploads).indexes;
-    expect(idx).toHaveLength(2);
+    expect(idx).toHaveLength(4);
     expect(idx.every(i => i.config.unique !== true)).toBe(true);
   });
 });

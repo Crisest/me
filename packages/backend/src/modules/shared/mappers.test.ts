@@ -1,5 +1,4 @@
 import { toBank } from '../banks/bank.mapper';
-import { toCard } from '../cards/card.mapper';
 import { toAccount } from '../accounts/account.mapper';
 import { toTransaction } from '../transactions/transaction.mapper';
 import { toUpload } from '../uploads/upload.mapper';
@@ -12,7 +11,6 @@ import {
 } from '../budget/budget.mapper';
 import type {
   BankRow,
-  CardRow,
   AccountRow,
   TransactionRow,
   UploadRow,
@@ -65,18 +63,6 @@ describe('mappers', () => {
     expect(dto.plaidStatus).toBe('connected');
     expect(dto).not.toHaveProperty('plaidAccessToken');
     expect(dto).not.toHaveProperty('plaidSyncCursor');
-  });
-
-  it('toCard passes Date objects through unchanged', () => {
-    const row: CardRow = {
-      id: 'c1',
-      name: 'Visa',
-      bankId: 'b1',
-      createdBy: 'u1',
-      createdAt: AT,
-      updatedAt: AT,
-    };
-    expect(toCard(row).createdAt).toBeInstanceOf(Date);
   });
 
   it('toTransaction emits ISO date and epoch-ms timestamps', () => {

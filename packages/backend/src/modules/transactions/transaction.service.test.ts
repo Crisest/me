@@ -2,7 +2,6 @@ import { truncateAll, closeTestDb } from '../../../test/setup';
 import {
   makeUser,
   makeBank,
-  makeCard,
   makeAccount,
   makeTransaction,
   makeBudgetCategory,
@@ -16,7 +15,7 @@ import { checkDuplicate } from '../uploads/upload.service';
 import { createHousehold } from '../households/household.service';
 import type { BudgetScope } from '../../middleware/resolveBudgetScope';
 import { db } from '../../db/client';
-import { transactions, transactionCategories } from '../../db/schema';
+import { transactions, transactionCategories, uploads } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 
 const emptyScope = (householdId: string): BudgetScope => ({ householdId, members: [] });
@@ -36,44 +35,205 @@ describe('createManyTransactionsByUser', () => {
   it('inserts transactions and creates an upload record', async () => {
     const user = await makeUser();
     const bank = await makeBank(user.id);
-    const card = await makeCard(user.id, bank.id);
+    const account = await makeAccount(user.id, bank.id, {
+      plaidAccountId: null,
+    });
 
     const result = await createManyTransactionsByUser(user.id, {
       transactions: [
         { amount: 1, description: 'a', date: '2026-05-10' } as never,
         { amount: 2, description: 'b', date: '2026-05-10' } as never,
       ],
-      cardId: card.id,
+      accountId: account.id,
       fileName: 'statement.csv',
       fileHash: 'abc123',
     });
 
-    expect(result).toHaveLength(2);
+    expect(result.transactions).toHaveLength(2);
+    expect(result.skipped).toBe(0);
 
     const dup = await checkDuplicate(
-      { fileName: 'statement.csv', fileHash: 'abc123', cardId: card.id },
+      { fileName: 'statement.csv', fileHash: 'abc123', accountId: account.id },
       user.id
     );
     expect(dup.isDuplicate).toBe(true);
+
+    const rows = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.createdBy, user.id));
+    expect(
+      rows.every(r => r.accountId === account.id && r.cardId === null)
+    ).toBe(true);
+    const [upload] = await db.select().from(uploads);
+    expect(upload.accountId).toBe(account.id);
+    expect(upload.cardId).toBeNull();
+  });
+
+  const upload = (accountId: string, rows: object[], fileHash: string) => ({
+    transactions: rows as never[],
+    accountId,
+    fileName: `${fileHash}.csv`,
+    fileHash,
+  });
+
+  it('skips rows that Plaid already delivered', async () => {
+    const user = await makeUser();
+    const bank = await makeBank(user.id);
+    const account = await makeAccount(user.id, bank.id);
+    await makeTransaction(user.id, {
+      accountId: account.id,
+      amount: 12.5,
+      description: 'Starbucks',
+      date: new Date('2026-08-03'),
+      plaidTransactionId: 'p-1',
+    });
+
+    const result = await createManyTransactionsByUser(
+      user.id,
+      upload(
+        account.id,
+        [
+          {
+            amount: 12.5,
+            description: 'POS PURCHASE STARBUCKS #1',
+            date: '2026-08-04',
+          },
+          { amount: 30, description: 'GROCER', date: '2026-08-20' },
+        ],
+        'plaid-overlap'
+      )
+    );
+
+    expect(result.skipped).toBe(1);
+    expect(result.transactions).toHaveLength(1);
+    const rows = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.accountId, account.id));
+    expect(rows).toHaveLength(2);
+    const [record] = await db.select().from(uploads);
+    expect(record.transactionCount).toBe(1);
+  });
+
+  it('skips every row when the same CSV is uploaded twice', async () => {
+    const user = await makeUser();
+    const bank = await makeBank(user.id);
+    const account = await makeAccount(user.id, bank.id, {
+      plaidAccountId: null,
+    });
+    const rows = [
+      { amount: 1, description: 'a', date: '2026-05-10' },
+      { amount: 2, description: 'b', date: '2026-05-11' },
+    ];
+
+    await createManyTransactionsByUser(user.id, upload(account.id, rows, 'h1'));
+    const second = await createManyTransactionsByUser(
+      user.id,
+      upload(account.id, rows, 'h2')
+    );
+
+    expect(second.skipped).toBe(2);
+    expect(second.transactions).toHaveLength(0);
+    expect(await db.select().from(transactions)).toHaveLength(2);
+  });
+
+  it('keeps genuine identical purchases beyond the stored count', async () => {
+    const user = await makeUser();
+    const bank = await makeBank(user.id);
+    const account = await makeAccount(user.id, bank.id, {
+      plaidAccountId: null,
+    });
+    await makeTransaction(user.id, {
+      accountId: account.id,
+      amount: 5,
+      date: new Date('2026-08-01'),
+    });
+
+    const result = await createManyTransactionsByUser(
+      user.id,
+      upload(
+        account.id,
+        [
+          { amount: 5, description: 'Coffee', date: '2026-08-01' },
+          { amount: 5, description: 'Coffee', date: '2026-08-01' },
+        ],
+        'identical'
+      )
+    );
+
+    expect(result.skipped).toBe(1);
+    expect(result.transactions).toHaveLength(1);
+  });
+
+  it('does not skip a row that matches another account', async () => {
+    const user = await makeUser();
+    const bank = await makeBank(user.id);
+    const account = await makeAccount(user.id, bank.id, {
+      plaidAccountId: null,
+    });
+    const other = await makeAccount(user.id, bank.id, { plaidAccountId: null });
+    await makeTransaction(user.id, {
+      accountId: other.id,
+      amount: 5,
+      date: new Date('2026-08-01'),
+    });
+
+    const result = await createManyTransactionsByUser(
+      user.id,
+      upload(
+        account.id,
+        [{ amount: 5, description: 'Coffee', date: '2026-08-01' }],
+        'other-account'
+      )
+    );
+
+    expect(result.skipped).toBe(0);
+    expect(result.transactions).toHaveLength(1);
+  });
+
+  it('rejects an account owned by another user with 404 and inserts nothing', async () => {
+    const user = await makeUser();
+    const other = await makeUser();
+    const otherBank = await makeBank(other.id);
+    const foreign = await makeAccount(other.id, otherBank.id, {
+      plaidAccountId: null,
+    });
+
+    await expect(
+      createManyTransactionsByUser(user.id, {
+        transactions: [
+          { amount: 1, description: 'a', date: '2026-05-10' } as never,
+        ],
+        accountId: foreign.id,
+        fileName: 'x.csv',
+        fileHash: 'x-hash',
+      })
+    ).rejects.toMatchObject({ statusCode: 404 });
+
+    expect(await db.select().from(transactions)).toHaveLength(0);
+    expect(await db.select().from(uploads)).toHaveLength(0);
   });
 
   it('rolls back the upload record when transaction insertion fails', async () => {
     const user = await makeUser();
     const bank = await makeBank(user.id);
-    const card = await makeCard(user.id, bank.id);
+    const account = await makeAccount(user.id, bank.id, {
+      plaidAccountId: null,
+    });
 
     await expect(
       createManyTransactionsByUser(user.id, {
         // amount is NOT NULL — this batch cannot commit
         transactions: [{ description: 'bad' } as never],
-        cardId: card.id,
+        accountId: account.id,
         fileName: 'bad.csv',
         fileHash: 'bad-hash',
       })
     ).rejects.toThrow();
 
     const dup = await checkDuplicate(
-      { fileName: 'bad.csv', fileHash: 'bad-hash', cardId: card.id },
+      { fileName: 'bad.csv', fileHash: 'bad-hash', accountId: account.id },
       user.id
     );
     expect(dup.isDuplicate).toBe(false);
@@ -89,7 +249,9 @@ describe('createManyTransactionsByUser', () => {
     // the transaction rows committed even though the overall import failed.
     const user = await makeUser();
     const bank = await makeBank(user.id);
-    const card = await makeCard(user.id, bank.id);
+    const account = await makeAccount(user.id, bank.id, {
+      plaidAccountId: null,
+    });
 
     await expect(
       createManyTransactionsByUser(user.id, {
@@ -97,7 +259,7 @@ describe('createManyTransactionsByUser', () => {
           { amount: 1, description: 'a', date: '2026-05-10' } as never,
           { amount: 2, description: 'b', date: '2026-05-10' } as never,
         ],
-        cardId: card.id,
+        accountId: account.id,
         fileName: null as never,
         fileHash: 'reverse-order-hash',
       })
@@ -112,7 +274,11 @@ describe('createManyTransactionsByUser', () => {
     expect(rows).toHaveLength(0);
 
     const dup = await checkDuplicate(
-      { fileName: 'null', fileHash: 'reverse-order-hash', cardId: card.id },
+      {
+        fileName: 'null',
+        fileHash: 'reverse-order-hash',
+        accountId: account.id,
+      },
       user.id
     );
     expect(dup.isDuplicate).toBe(false);
@@ -120,12 +286,16 @@ describe('createManyTransactionsByUser', () => {
 });
 
 describe('getAllTransactions — enrichment', () => {
-  it('enriches transactions with card and bank names via a join', async () => {
+  it('enriches a manual-account transaction with account and bank names', async () => {
     const user = await makeUser();
     const bank = await makeBank(user.id, { name: 'Chase' });
-    const card = await makeCard(user.id, bank.id, { name: 'Visa' });
+    const account = await makeAccount(user.id, bank.id, {
+      plaidAccountId: null,
+      mask: null,
+      name: 'Visa',
+    });
     await makeTransaction(user.id, {
-      cardId: card.id,
+      accountId: account.id,
       date: new Date('2026-01-15T12:00:00Z'),
     });
 
@@ -134,7 +304,7 @@ describe('getAllTransactions — enrichment', () => {
       { month: 1, year: 2026 },
       emptyScope(user.id)
     );
-    expect(tx.cardName).toBe('Visa');
+    expect(tx.accountName).toBe('Visa');
     expect(tx.bankName).toBe('Chase');
   });
 
@@ -160,7 +330,7 @@ describe('getAllTransactions — enrichment', () => {
     expect(tx.bankName).toBe('Chase');
   });
 
-  it('leaves enrichment undefined for a transaction with no card or account', async () => {
+  it('leaves enrichment undefined for a transaction with no account', async () => {
     const user = await makeUser();
     await makeTransaction(user.id, { date: new Date('2026-01-15T12:00:00Z') });
 
@@ -169,7 +339,6 @@ describe('getAllTransactions — enrichment', () => {
       { month: 1, year: 2026 },
       emptyScope(user.id)
     );
-    expect(tx.cardName).toBeUndefined();
     expect(tx.accountName).toBeUndefined();
     expect(tx.bankName).toBeUndefined();
   });

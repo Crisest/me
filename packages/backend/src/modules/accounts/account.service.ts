@@ -1,8 +1,9 @@
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { AccountsGetResponse } from 'plaid';
-import { Account, AccountType } from '@portfolio/common';
+import { Account, AccountType, CreateAccountPayload } from '@portfolio/common';
 import { db, type Db, type Tx } from '../../db/client';
-import { accounts, type AccountRow } from '../../db/schema';
+import { accounts, banks, type AccountRow } from '../../db/schema';
+import { AppError } from '../../middleware/errorHandler';
 import { toAccount } from './account.mapper';
 
 type PlaidAccount = AccountsGetResponse['accounts'][number];
@@ -165,6 +166,28 @@ export async function getAccountsByUser(userId: string): Promise<Account[]> {
   return rows.map(toAccount);
 }
 
+export async function createManualAccount(
+  userId: string,
+  data: CreateAccountPayload
+): Promise<Account> {
+  const bank = await db.query.banks.findFirst({
+    where: and(eq(banks.id, data.bankId), eq(banks.createdBy, userId)),
+  });
+  if (!bank) throw new AppError('Bank not found', 404);
+
+  const [row] = await db
+    .insert(accounts)
+    .values({
+      name: data.name,
+      bankId: data.bankId,
+      createdBy: userId,
+      type: 'other',
+      plaidAccountId: null,
+    })
+    .returning();
+  return toAccount(row);
+}
+
 export async function findAccountByPlaidId(
   userId: string,
   plaidAccountId: string
@@ -179,8 +202,8 @@ export async function findAccountByPlaidId(
 }
 
 /**
- * Closes a bank's accounts without touching the transactions hanging off
- * them — the rows stay joinable, so unlinked history keeps its account name
+ * Closes a bank's Plaid accounts. Manual accounts are left alone. The
+ * transactions hanging off them are untouched — the rows stay joinable, so unlinked history keeps its account name
  * and mask and can be revived by a relink.
  */
 export async function softDeleteAccountsForBank(
@@ -190,5 +213,11 @@ export async function softDeleteAccountsForBank(
   await executor
     .update(accounts)
     .set({ deletedAt: new Date() })
-    .where(and(eq(accounts.bankId, bankId), isNull(accounts.deletedAt)));
+    .where(
+      and(
+        eq(accounts.bankId, bankId),
+        isNotNull(accounts.plaidAccountId),
+        isNull(accounts.deletedAt)
+      )
+    );
 }
