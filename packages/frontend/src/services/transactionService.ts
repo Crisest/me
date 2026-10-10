@@ -32,7 +32,7 @@ export const transactionApi = apiSlice.injectEndpoints({
         method: 'POST',
         body: transaction,
       }),
-      invalidatesTags: [tagTypesEnum.TRANSACTIONS],
+      invalidatesTags: [tagTypesEnum.TRANSACTIONS, tagTypesEnum.BUDGET_SUMMARY],
     }),
     createManyTransactions: builder.mutation<
       Transaction[],
@@ -51,6 +51,7 @@ export const transactionApi = apiSlice.injectEndpoints({
       invalidatesTags: [
         { type: tagTypesEnum.TRANSACTIONS, id: abstractTagTypesEnum.LIST },
         tagTypesEnum.UPLOADS,
+        tagTypesEnum.BUDGET_SUMMARY,
       ],
     }),
     getTransactionInsights: builder.query<

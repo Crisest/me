@@ -50,12 +50,41 @@ export interface BudgetCategorySummary {
   byMember: CategoryMemberActual[];
 }
 
+/** One member's income contribution to a month. */
+export interface MemberIncome {
+  userId: string;
+  name?: string;
+  email: string;
+  /** The month's override when filed, else the member's base salary. */
+  amount: number;
+  /** false = fell back to base salary; no actual income filed for this month. */
+  isActual: boolean;
+}
+
+/**
+ * FROZEN TYPE. Instances of this are stored verbatim as jsonb in
+ * `budget_month_snapshots.summary`. A closed month is read back exactly as it
+ * was written, so this type may only ever GAIN OPTIONAL FIELDS. Removing or
+ * renaming one orphans every closed month and no migration can repair it —
+ * the pre-change values are the record.
+ */
 export interface BudgetSummary {
   month: number;
   year: number;
   /** Salary override for the month when set, else the base salary. */
   income: number;
+  /**
+   * True when ANY member filed actual income. Kept for compatibility — it
+   * cannot answer "did everyone file", so read `byMember` for that.
+   */
   usingActualIncome: boolean;
+  /**
+   * One entry per member whose tenure covers the month, sorted by userId.
+   * Optional per this type's frozen-field rule — always present on a summary
+   * this codebase computes, absent only on one frozen before the field
+   * existed. Read it as `byMember ?? []`.
+   */
+  byMember?: MemberIncome[];
   categories: BudgetCategorySummary[];
   untagged: {
     amount: number;

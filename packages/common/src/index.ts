@@ -6,6 +6,7 @@ export * from './types/Bank';
 export * from './types/Card';
 export * from './types/Budget';
 export * from './types/BudgetCategory';
+export * from './types/BudgetSnapshot';
 export * from './types/Insights';
 export * from './types/Upload';
 export * from './types/Plaid';

@@ -8,6 +8,7 @@ export * from './budget-categories';
 export * from './budgets';
 export * from './budget-overrides';
 export * from './budget-category-overrides';
+export * from './budget-month-snapshots';
 export * from './groups';
 export * from './group-members';
 export * from './households';

@@ -10,13 +10,24 @@ import { SummaryCard, SummaryStat } from '@/components/SummaryCard/SummaryCard';
 import CategoryRow from '@/components/CategoryRow/CategoryRow';
 import FixedRow from '@/components/FixedRow/FixedRow';
 import CategoryModal from '@/components/CategoryModal/CategoryModal';
+import MonthCloseCard from '@/components/MonthCloseCard/MonthCloseCard';
+import CloseMonthDialog from '@/components/CloseMonthDialog/CloseMonthDialog';
 import { TRANSFER_PRIMARIES } from '@/components/AssignCategoryDialog/AssignCategoryDialog';
 import {
   useGetBudgetSummaryQuery,
   useGetBudgetCategoriesQuery,
   useCreateBudgetCategoryMutation,
 } from '@/services/budgetCategoryService';
+import {
+  useCloseMonthMutation,
+  useLazyGetMonthSnapshotQuery,
+} from '@/services/monthCloseService';
+import { useGetMyHouseholdQuery } from '@/services/householdService';
 import { useGetTransactionsQuery } from '@/services/transactionService';
+import {
+  buildMonthStatementPdf,
+  monthStatementFileName,
+} from '@/utils/monthStatementPdf';
 import { formatCAD } from '@/utils/format';
 import type { BudgetCategory } from '@portfolio/common';
 import styles from './BudgetOverviewPage.module.css';
@@ -29,16 +40,70 @@ export const BudgetOverviewPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<BudgetCategory | null>(null);
 
-  const { data: summary, isLoading } = useGetBudgetSummaryQuery({
+  const { data: summaryResult, isLoading } = useGetBudgetSummaryQuery({
     month: selectedMonth,
     year: selectedYear,
   });
+  const summary = summaryResult?.summary;
+  const closeState = summaryResult?.close;
   const { data: categories } = useGetBudgetCategoriesQuery();
   const { data: monthTransactions } = useGetTransactionsQuery({
     month: selectedMonth,
     year: selectedYear,
   });
   const [createCategory] = useCreateBudgetCategoryMutation();
+  const [confirmClose, setConfirmClose] = useState(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
+  const [closeMonth, { isLoading: closing }] = useCloseMonthMutation();
+  const [fetchSnapshot, { isFetching: downloading }] =
+    useLazyGetMonthSnapshotQuery();
+  const { data: household } = useGetMyHouseholdQuery();
+
+  // The endpoint is the authority on whether a month may close, so it can
+  // refuse one this page believed was ready — the other member closed it
+  // first, or tagged a transaction since this summary was fetched.
+  const handleClose = async () => {
+    setCloseError(null);
+    try {
+      await closeMonth({ month: selectedMonth, year: selectedYear }).unwrap();
+      setConfirmClose(false);
+    } catch {
+      setConfirmClose(false);
+      setCloseError('Could not close the month. Refresh and try again.');
+    }
+  };
+
+  // The PDF renders ONE snapshot version, so it is built from the fetched
+  // snapshot rather than from the page's live state — reprinting the same
+  // snapshot always produces the same document.
+  const handleDownload = async () => {
+    setCloseError(null);
+    let snapshot;
+    try {
+      snapshot = await fetchSnapshot({
+        month: selectedMonth,
+        year: selectedYear,
+      }).unwrap();
+    } catch {
+      setCloseError('Could not download the statement. Please try again.');
+      return;
+    }
+    if (!snapshot) return;
+    const blob = buildMonthStatementPdf(
+      snapshot,
+      household?.name ?? 'Household',
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = monthStatementFileName(snapshot);
+    // A detached <a download> does not reliably fire in Firefox, and revoking
+    // in the same tick cancels the download in Safari and Firefox.
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
 
   // Offer a transfers category only when it would actually be useful: the user
   // has none, and this month holds untagged debits Plaid calls payments or
@@ -132,10 +197,12 @@ export const BudgetOverviewPage = () => {
             onMonthChange={setSelectedMonth}
             onYearChange={setSelectedYear}
           >
-            <YmMenu
-              ariaLabel="Budget actions"
-              items={[{ label: 'New category', onClick: openCreate }]}
-            />
+            {!closeState?.closed && (
+              <YmMenu
+                ariaLabel="Budget actions"
+                items={[{ label: 'New category', onClick: openCreate }]}
+              />
+            )}
           </MonthYearFilter>
         </PageHeader>
 
@@ -147,6 +214,20 @@ export const BudgetOverviewPage = () => {
           stats={stats}
           loading={isLoading}
         />
+
+        {closeState && (
+          <MonthCloseCard
+            state={closeState}
+            month={selectedMonth}
+            year={selectedYear}
+            onClose={() => setConfirmClose(true)}
+            onDownload={handleDownload}
+            closing={closing}
+            downloading={downloading}
+          />
+        )}
+
+        {closeError && <p className={styles.closeError}>{closeError}</p>}
 
         {summary && summary.categories.length === 0 && (
           <p className={styles.empty}>
@@ -193,6 +274,7 @@ export const BudgetOverviewPage = () => {
                     year={selectedYear}
                     onEdit={openEdit}
                     onViewTransactions={viewTransactions}
+                    readOnly={closeState?.closed}
                   />
                 ))}
               </Panel>
@@ -208,6 +290,7 @@ export const BudgetOverviewPage = () => {
                     year={selectedYear}
                     onEdit={openEdit}
                     onViewTransactions={viewTransactions}
+                    readOnly={closeState?.closed}
                   />
                 ))}
               </Panel>
@@ -239,6 +322,7 @@ export const BudgetOverviewPage = () => {
                     year={selectedYear}
                     onEdit={openEdit}
                     onViewTransactions={viewTransactions}
+                    readOnly={closeState?.closed}
                   />
                 ))}
               </Panel>
@@ -251,6 +335,17 @@ export const BudgetOverviewPage = () => {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         category={editing}
+      />
+
+      <CloseMonthDialog
+        open={confirmClose}
+        onCancel={() => setConfirmClose(false)}
+        onConfirm={handleClose}
+        month={selectedMonth}
+        year={selectedYear}
+        summary={summary}
+        transactionCount={(monthTransactions ?? []).length}
+        closing={closing}
       />
     </>
   );

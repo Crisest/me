@@ -1,6 +1,11 @@
 import { and, asc, eq, gt, gte, inArray, isNull, lt, or, sql } from 'drizzle-orm';
-import { BudgetSummary, BudgetCategorySummary, CategoryMemberActual } from '@portfolio/common';
-import { db } from '../../db/client';
+import {
+  BudgetSummary,
+  BudgetCategorySummary,
+  CategoryMemberActual,
+  MemberIncome,
+} from '@portfolio/common';
+import { db, type Db, type Tx } from '../../db/client';
 import {
   budgets,
   budgetOverrides,
@@ -11,6 +16,7 @@ import {
   users,
 } from '../../db/schema';
 import type { BudgetScope, ScopeMember } from '../../middleware/resolveBudgetScope';
+import { getLiveSnapshot } from './monthSnapshot.service';
 
 /** True when the member was in the household at any point during the month. */
 export const memberCoversMonth = (
@@ -84,8 +90,21 @@ export const getBudgetSummary = async (
   scope: BudgetScope,
   month: number,
   year: number,
-  memberId?: string
+  memberId?: string,
+  executor: Db | Tx = db
 ): Promise<BudgetSummary> => {
+  // A closed month is a frozen record, not a live calculation. Everything
+  // below is skipped and everything downstream is unchanged — nothing knows
+  // the difference.
+  //
+  // Guarded on `memberId === undefined` because a snapshot is always the
+  // HOUSEHOLD's. Serving it for a single-member view would answer a question
+  // nobody asked.
+  if (memberId === undefined) {
+    const snapshot = await getLiveSnapshot(scope.householdId, month, year, executor);
+    if (snapshot) return snapshot.summary;
+  }
+
   const startDate = new Date(year, month - 1, 1);
   const endDate = new Date(year, month, 1);
 
@@ -103,7 +122,7 @@ export const getBudgetSummary = async (
     )
   );
 
-  const categories = await db
+  const categories = await executor
     .select()
     .from(budgetCategories)
     .where(
@@ -130,11 +149,17 @@ export const getBudgetSummary = async (
           })
         );
 
-  const [categoryOverrides, budgetRows, salaryOverrideRows, taggedRows, untaggedRows] =
-    await Promise.all([
+  const [
+    categoryOverrides,
+    budgetRows,
+    salaryOverrideRows,
+    taggedRows,
+    untaggedRows,
+    memberRows,
+  ] = await Promise.all([
       categoryIds.length === 0
         ? Promise.resolve([])
-        : db
+        : executor
             .select()
             .from(budgetCategoryOverrides)
             .where(
@@ -146,10 +171,10 @@ export const getBudgetSummary = async (
             ),
       memberIds.length === 0
         ? Promise.resolve([])
-        : db.select().from(budgets).where(inArray(budgets.createdBy, memberIds)),
+        : executor.select().from(budgets).where(inArray(budgets.createdBy, memberIds)),
       memberIds.length === 0
         ? Promise.resolve([])
-        : db
+        : executor
             .select()
             .from(budgetOverrides)
             .where(
@@ -159,7 +184,7 @@ export const getBudgetSummary = async (
                 eq(budgetOverrides.year, year)
               )
             ),
-      db
+      executor
         .select({
           categoryId: transactionCategories.categoryId,
           userId: transactions.createdBy,
@@ -194,7 +219,7 @@ export const getBudgetSummary = async (
         ),
       untaggedOwnerCondition === undefined
         ? Promise.resolve([])
-        : db
+        : executor
             .select({
               userId: transactions.createdBy,
               email: users.email,
@@ -219,6 +244,12 @@ export const getBudgetSummary = async (
               )
             )
             .groupBy(transactions.createdBy, users.email, users.name),
+      memberIds.length === 0
+        ? Promise.resolve([])
+        : executor
+            .select({ id: users.id, email: users.email, name: users.name })
+            .from(users)
+            .where(inArray(users.id, memberIds)),
     ]);
 
   // A soft-deleted category still has its tag rows live: "load deleted
@@ -233,7 +264,7 @@ export const getBudgetSummary = async (
   const deletedReferencedCategories =
     missingCategoryIds.length === 0
       ? []
-      : await db
+      : await executor
           .select()
           .from(budgetCategories)
           .where(inArray(budgetCategories.id, missingCategoryIds));
@@ -249,17 +280,32 @@ export const getBudgetSummary = async (
   const budgetByUser = new Map(budgetRows.map(b => [b.createdBy, b.salary]));
   const overrideByUser = new Map(salaryOverrideRows.map(o => [o.createdBy, o.salary]));
 
+  const identityByUser = new Map(memberRows.map(u => [u.id, u]));
+
+  // `usingActualIncome` is an any-member OR and cannot answer "did everyone
+  // file". `byMember` records each member's answer separately, which is what
+  // the close precondition and the PDF read.
   let income = 0;
   let usingActualIncome = false;
+  const byMember: MemberIncome[] = [];
   for (const id of memberIds) {
     const override = overrideByUser.get(id);
-    if (override !== undefined) {
-      usingActualIncome = true;
-      income += override;
-    } else {
-      income += budgetByUser.get(id) ?? 0;
-    }
+    const isActual = override !== undefined;
+    const amount = isActual ? override : (budgetByUser.get(id) ?? 0);
+    if (isActual) usingActualIncome = true;
+    income += amount;
+    const identity = identityByUser.get(id);
+    byMember.push({
+      userId: id,
+      email: identity?.email ?? '',
+      name: identity?.name ?? undefined,
+      amount,
+      isActual,
+    });
   }
+  // Sorted for the same reason `foldByMember` sorts: the API response must be
+  // reproducible regardless of Postgres's row order.
+  byMember.sort((a, b) => (a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0));
 
   const taggedRowsByCategory = new Map<string, MemberActualRow[]>();
   for (const row of taggedRows) {
@@ -307,6 +353,7 @@ export const getBudgetSummary = async (
     year,
     income,
     usingActualIncome,
+    byMember,
     categories: categorySummaries,
     untagged: {
       amount: untaggedAmount,

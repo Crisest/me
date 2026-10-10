@@ -201,3 +201,35 @@ are polled via the existing `GET /suggestions`), and have the frontend poll
 `GET /suggestions` until results appear instead of waiting on the POST. Worth
 deciding whether this needs a real job queue or can stay in-process given
 current volume.
+
+## 11. Decide whether a closed month's transactions become read-only
+
+**Status:** open — deliberately deferred by the 2026-09-06 close-the-month
+design, which lists it as an open question.
+
+The snapshot is immune either way: `getBudgetSummary` returns
+`snapshot.summary` verbatim for a closed month, and the frozen
+`snapshot.transactions` are what the PDF renders. But a user who edits or
+retags a March transaction after closing March gets no feedback that it will
+not affect the frozen numbers — the transactions table has no idea the month is
+closed.
+
+`GET /budget/summary` already returns `close.closed` for a month, so the signal
+exists; what is missing is a decision about what the transactions page should
+do with it — badge the month, disable the category cell, or say nothing.
+
+A second half of the same gap: the snapshot short-circuit in
+`budgetSummary.service.ts` is guarded on `memberId === undefined`, because a
+snapshot is always the household's. So the transactions page's **Mine** toggle
+keeps recomputing a closed month from live state — rename a category in June and
+March's Mine figures move while its Household figures do not. That is the
+correct behaviour for a household-scoped snapshot, but the two views silently
+disagree and nothing tells the user which one is the record. Settling this
+probably means settling item 8 first: if the budget page never gets a Mine
+toggle, the cheapest fix is for the transactions page to stop asking for a
+`mine` summary of a closed month.
+
+Related and also still open: where the close action lives is the conservative
+choice made in `docs/superpowers/plans/2026-09-07-close-the-month.md` Task 7.1
+(a strip under the hero card), not a designed placement, and `MonthYearFilter`
+does not mark which months are closed.

@@ -1,0 +1,46 @@
+/* A one-line status strip, bordered but unshadowed, so it sits a step below
+   the panels rather than competing with them — matching `.untagged` on the
+   budget page. */
+.card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--border-radius-md);
+  background: var(--color-surface);
+  font-size: var(--font-sm);
+}
+
+.closed {
+  background: var(--color-day-band);
+}
+
+.text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-text-primary);
+  color: var(--color-surface);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.detail {
+  color: var(--color-text-primary);
+}
+
+.blockers,
+.late {
+  color: var(--color-text-secondary);
+}

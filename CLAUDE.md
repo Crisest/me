@@ -112,6 +112,10 @@ All routes are mounted in `src/app.ts`. Authentication is cookie-based JWT via `
 - Row types (`$inferSelect`) never leave the backend. Mappers convert them to
   the DTOs in `packages/common`.
 - Environment variable is `DATABASE_URI`.
+- `budget_month_snapshots.summary` and `.transactions` store `packages/common`
+  types as jsonb and are read back verbatim. `BudgetSummary` and
+  `SnapshotTransaction` may therefore only ever **gain optional fields** —
+  removing or renaming one orphans every closed month with no migration path.
 
 ### Frontend (`packages/frontend`)
 
