@@ -24,7 +24,7 @@ type transactionTableProps = {
 
 const columnHelper = createColumnHelper<Transaction>();
 
-const HIDE_ON_MOBILE_COLUMNS = new Set(['cardName', 'category']);
+const HIDE_ON_MOBILE_COLUMNS = new Set(['accountName', 'category']);
 
 const buildHeaderClass = (columnId: string): string | undefined => {
   const classes: string[] = [];
@@ -111,21 +111,17 @@ const TransactionsTable: React.FC<transactionTableProps> = ({
           );
         },
       }),
-      columnHelper.accessor('cardName', {
+      columnHelper.accessor('accountName', {
         header: 'Account',
         cell: info => {
           const row = info.row.original;
           const bankName = row.bankName;
           const accountName = row.accountName;
           const accountMask = row.accountMask;
-          const cardName = info.getValue();
 
           if (accountName) {
             const masked = accountMask ? `${accountName} ••${accountMask}` : accountName;
             return bankName ? `${bankName} · ${masked}` : masked;
-          }
-          if (cardName) {
-            return bankName ? `${bankName} · ${cardName}` : cardName;
           }
           return null;
         },

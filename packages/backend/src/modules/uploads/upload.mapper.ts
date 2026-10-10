@@ -5,7 +5,7 @@ export const toUpload = (row: UploadRow): Upload => ({
   id: row.id,
   fileName: row.fileName,
   fileHash: row.fileHash,
-  cardId: row.cardId,
+  accountId: row.accountId ?? '',
   transactionCount: row.transactionCount,
   createdBy: row.createdBy,
   createdAt: row.createdAt.getTime(),

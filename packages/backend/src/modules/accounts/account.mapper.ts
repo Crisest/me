@@ -4,7 +4,7 @@ import type { AccountRow } from '../../db/schema';
 export const toAccount = (row: AccountRow): Account => ({
   id: row.id,
   bankId: row.bankId,
-  plaidAccountId: row.plaidAccountId,
+  plaidAccountId: row.plaidAccountId ?? undefined,
   name: row.name,
   officialName: row.officialName ?? undefined,
   mask: row.mask ?? undefined,

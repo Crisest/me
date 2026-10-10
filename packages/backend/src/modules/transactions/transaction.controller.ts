@@ -30,18 +30,22 @@ export const getTransactionsByUserId = async (
 
 export const postManyTransactionsByUser = async (
   req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const payload = req.body as TransactionPayloads.CreateMany;
     const userId = req.user!.id;
 
-    await transactionService.createManyTransactionsByUser(userId, payload);
+    const result = await transactionService.createManyTransactionsByUser(
+      userId,
+      payload
+    );
 
-    res.status(201).json();
+    res.status(201).json(result);
   } catch (err) {
     req.log.error({ err }, 'Failed to create transactions in bulk');
-    res.status(400).json({ error: 'Failed to create transactions in bulk' });
+    next(err);
   }
 };
 

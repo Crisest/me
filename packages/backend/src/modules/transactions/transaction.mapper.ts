@@ -6,7 +6,6 @@ import type { TransactionRow } from '../../db/schema';
  * caller from a `with:` clause; previously produced by Mongoose populate.
  */
 export type TransactionEnrichment = {
-  cardName?: string;
   bankName?: string;
   accountName?: string;
   accountMask?: string;
@@ -30,7 +29,6 @@ export const toTransaction = (
   createdBy: row.createdBy,
   createdAt: row.createdAt.getTime(),
   updatedAt: row.updatedAt?.getTime(),
-  cardId: row.cardId ?? undefined,
   accountId: row.accountId ?? undefined,
   categoryId: row.categoryId ?? undefined,
   plaidTransactionId: row.plaidTransactionId ?? undefined,

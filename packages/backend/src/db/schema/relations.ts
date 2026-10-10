@@ -55,6 +55,7 @@ export const accountsRelations = relations(accounts, ({ one, many }) => ({
     references: [users.id],
   }),
   transactions: many(transactions),
+  uploads: many(uploads),
 }));
 
 export const budgetCategoriesRelations = relations(
@@ -144,6 +145,10 @@ export const transactionsRelations = relations(
 
 export const uploadsRelations = relations(uploads, ({ one }) => ({
   card: one(cards, { fields: [uploads.cardId], references: [cards.id] }),
+  account: one(accounts, {
+    fields: [uploads.accountId],
+    references: [accounts.id],
+  }),
   createdBy: one(users, { fields: [uploads.createdBy], references: [users.id] }),
 }));
 

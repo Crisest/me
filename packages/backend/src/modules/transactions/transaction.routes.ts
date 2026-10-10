@@ -17,7 +17,7 @@ const bulkCreateBody = z.object({
   transactions: z
     .array(z.any())
     .min(1, { message: 'transactions must be a non-empty array' }),
-  cardId: z.string().min(1, { message: 'cardId is required' }),
+  accountId: z.string().uuid({ message: 'accountId must be a valid id' }),
   fileName: z.string().min(1, { message: 'fileName is required' }),
   fileHash: z.string().min(1, { message: 'fileHash is required' }),
 });

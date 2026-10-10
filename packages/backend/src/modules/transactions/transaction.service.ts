@@ -1,23 +1,33 @@
 import { alias } from 'drizzle-orm/pg-core';
-import { and, desc, eq, gte, inArray, isNull, lt, ne, or } from 'drizzle-orm';
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  lte,
+  ne,
+  or,
+} from 'drizzle-orm';
 import { Transaction, TransactionPayloads } from '@portfolio/common';
 import { db, type Tx } from '../../db/client';
 import {
   accounts,
   banks,
   budgetCategories,
-  cards,
   transactionCategories,
   transactions,
   users,
 } from '../../db/schema';
+import { matchToExisting, MATCH_DATE_WINDOW_MS } from './transaction.matching';
 import { toTransaction, type TransactionEnrichment } from './transaction.mapper';
 import { createUploadRecord } from '../uploads/upload.service';
 import { AppError } from '../../middleware/errorHandler';
 import type { BudgetScope } from '../../middleware/resolveBudgetScope';
 import { householdOwnerFilter } from '../shared/householdScope';
 
-const cardBanks = alias(banks, 'card_banks');
 const accountBanks = alias(banks, 'account_banks');
 
 /**
@@ -105,8 +115,6 @@ export const getAllTransactions = async (
   const rows = await db
     .select({
       transaction: transactions,
-      cardName: cards.name,
-      cardBankName: cardBanks.name,
       accountName: accounts.name,
       accountMask: accounts.mask,
       accountBankName: accountBanks.name,
@@ -115,8 +123,6 @@ export const getAllTransactions = async (
     })
     .from(transactions)
     .innerJoin(users, eq(users.id, transactions.createdBy))
-    .leftJoin(cards, eq(cards.id, transactions.cardId))
-    .leftJoin(cardBanks, eq(cardBanks.id, cards.bankId))
     .leftJoin(accounts, eq(accounts.id, transactions.accountId))
     .leftJoin(accountBanks, eq(accountBanks.id, accounts.bankId))
     .where(and(...filters))
@@ -132,14 +138,10 @@ export const getAllTransactions = async (
       ownerEmail: r.ownerEmail,
       ownerName: r.ownerName ?? undefined,
     };
-    if (r.cardName) {
-      enrichment.cardName = r.cardName;
-      enrichment.bankName = r.cardBankName ?? undefined;
-    }
     if (r.accountName) {
       enrichment.accountName = r.accountName;
       enrichment.accountMask = r.accountMask ?? undefined;
-      enrichment.bankName = r.accountBankName ?? enrichment.bankName;
+      enrichment.bankName = r.accountBankName ?? undefined;
     }
     const tx = toTransaction(r.transaction, enrichment);
     // The live tag row is the source of truth for categoryId; row.categoryId
@@ -158,7 +160,7 @@ export const getAllTransactions = async (
  */
 const fromCreateManyPayload = (
   incoming: TransactionPayloads.CreateMany['transactions'],
-  cardId: string,
+  accountId: string,
   userId: string
 ) =>
   incoming.map(tx => ({
@@ -167,23 +169,77 @@ const fromCreateManyPayload = (
     category: tx.category ?? null,
     subDescription: tx.subDescription ?? null,
     date: new Date(tx.date),
-    cardId,
+    accountId,
     createdBy: userId,
   }));
 
 export const createManyTransactionsByUser = async (
   userId: string,
   payload: TransactionPayloads.CreateMany
-): Promise<Transaction[]> => {
-  const { transactions: incoming, cardId, fileName, fileHash } = payload;
+): Promise<TransactionPayloads.CreateManyResponse> => {
+  const { transactions: incoming, accountId, fileName, fileHash } = payload;
 
-  const values = fromCreateManyPayload(incoming, cardId, userId);
+  const values = fromCreateManyPayload(incoming, accountId, userId);
 
   // One transaction so a failed insert cannot leave an orphaned upload record.
   return db.transaction(async tx => {
-    const rows = await tx.insert(transactions).values(values).returning();
-    await createUploadRecord(fileName, fileHash, cardId, rows.length, userId, tx);
-    return rows.map(row => toTransaction(row));
+    const owned = await tx.query.accounts.findFirst({
+      columns: { id: true },
+      where: and(
+        eq(accounts.id, accountId),
+        eq(accounts.createdBy, userId),
+        isNull(accounts.deletedAt)
+      ),
+    });
+    if (!owned) throw new AppError('Account not found', 404);
+
+    let fresh = values;
+    if (values.length > 0) {
+      const times = values.map(v => v.date.getTime());
+      const existing = await tx
+        .select({
+          id: transactions.id,
+          accountId: transactions.accountId,
+          amount: transactions.amount,
+          description: transactions.description,
+          date: transactions.date,
+        })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.createdBy, userId),
+            eq(transactions.accountId, accountId),
+            gte(
+              transactions.date,
+              new Date(Math.min(...times) - MATCH_DATE_WINDOW_MS)
+            ),
+            lte(
+              transactions.date,
+              new Date(Math.max(...times) + MATCH_DATE_WINDOW_MS)
+            )
+          )
+        );
+      const matched = matchToExisting(values, existing);
+      fresh = values.filter((_, i) => matched[i] === null);
+    }
+
+    // drizzle rejects an empty values(), so an all-duplicate file skips it.
+    const rows =
+      fresh.length > 0
+        ? await tx.insert(transactions).values(fresh).returning()
+        : [];
+    await createUploadRecord(
+      fileName,
+      fileHash,
+      accountId,
+      rows.length,
+      userId,
+      tx
+    );
+    return {
+      transactions: rows.map(row => toTransaction(row)),
+      skipped: values.length - rows.length,
+    };
   });
 };
 

@@ -5,9 +5,9 @@ import {
 } from '@/services/bankService';
 import { ComboboxUtils } from '@/utils/combobox';
 import {
-  useCreateCardMutation,
-  useGetCardsQuery,
-} from '@/services/cardService';
+  useCreateAccountMutation,
+  useGetAccountsQuery,
+} from '@/services/accountService';
 
 export const useBankSelect = () => {
   const [selectedBank, setSelectedBank] = useState<string>();
@@ -35,38 +35,38 @@ export const useBankSelect = () => {
   };
 };
 
-export const useCardSelect = (selectedBankId?: string) => {
-  const [selectedCard, setSelectedCard] = useState<string>();
+export const useAccountSelect = (selectedBankId?: string) => {
+  const [selectedAccount, setSelectedAccount] = useState<string>();
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const { data: cards, isLoading, error } = useGetCardsQuery();
-  const [createCard] = useCreateCardMutation();
+  const { data: accounts, isLoading, error } = useGetAccountsQuery();
+  const [createAccount] = useCreateAccountMutation();
 
-  const handleCreateCard = () => {
+  const handleCreateAccount = () => {
     if (!selectedBankId) return;
-    createCard({ name: searchQuery, bankId: selectedBankId });
+    createAccount({ name: searchQuery, bankId: selectedBankId });
   };
 
-  const filteredCards = useMemo(
+  const filteredAccounts = useMemo(
     () =>
-      (cards ?? []).filter(
-        card => !selectedBankId || card.bankId === selectedBankId
+      (accounts ?? []).filter(
+        account => !selectedBankId || account.bankId === selectedBankId,
       ),
-    [cards, selectedBankId]
+    [accounts, selectedBankId],
   );
 
-  const cardOptions = useMemo(
-    () => ComboboxUtils.cardsToOptions(filteredCards),
-    [filteredCards]
+  const accountOptions = useMemo(
+    () => ComboboxUtils.accountsToOptions(filteredAccounts),
+    [filteredAccounts],
   );
 
   return {
-    cardState: [selectedCard, setSelectedCard] as const,
+    accountState: [selectedAccount, setSelectedAccount] as const,
     searchState: [searchQuery, setSearchQuery] as const,
-    cardOptions,
+    accountOptions,
     isLoading,
     error,
-    handleCreateCard,
-    canCreateCard: !!selectedBankId,
+    handleCreateAccount,
+    canCreateAccount: !!selectedBankId,
   };
 };

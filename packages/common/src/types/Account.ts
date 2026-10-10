@@ -5,10 +5,15 @@ export type AccountType =
   | 'investment'
   | 'other';
 
+export interface CreateAccountPayload {
+  name: string;
+  bankId: string;
+}
+
 export interface Account {
   id: string;
   bankId: string;
-  plaidAccountId: string;
+  plaidAccountId?: string; // absent for a manual account
   name: string; // e.g. "Plaid Checking"
   officialName?: string; // e.g. "Plaid Gold Standard 0% Interest Checking"
   mask?: string; // last 4 digits, e.g. "0000"

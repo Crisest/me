@@ -24,25 +24,43 @@ export const plaidApi = apiSlice.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: [tagTypesEnum.BANKS, tagTypesEnum.PLAID],
+      invalidatesTags: [
+        tagTypesEnum.BANKS,
+        tagTypesEnum.ACCOUNTS,
+        tagTypesEnum.PLAID,
+      ],
     }),
     syncBank: builder.mutation<PlaidPayloads.SyncResponse, { bankId: string }>({
       query: ({ bankId }) => ({
         url: `/plaid/sync/${bankId}`,
         method: 'POST',
       }),
-      invalidatesTags: [tagTypesEnum.TRANSACTIONS, tagTypesEnum.BANKS, tagTypesEnum.PLAID],
+      invalidatesTags: [
+        tagTypesEnum.TRANSACTIONS,
+        tagTypesEnum.BANKS,
+        tagTypesEnum.ACCOUNTS,
+        tagTypesEnum.PLAID,
+      ],
     }),
     syncAllBanks: builder.mutation<PlaidPayloads.SyncResponse, void>({
       query: () => ({ url: '/plaid/sync', method: 'POST' }),
-      invalidatesTags: [tagTypesEnum.TRANSACTIONS, tagTypesEnum.BANKS, tagTypesEnum.PLAID],
+      invalidatesTags: [
+        tagTypesEnum.TRANSACTIONS,
+        tagTypesEnum.BANKS,
+        tagTypesEnum.ACCOUNTS,
+        tagTypesEnum.PLAID,
+      ],
     }),
     unlinkBank: builder.mutation<void, { bankId: string }>({
       query: ({ bankId }) => ({
         url: `/plaid/bank/${bankId}`,
         method: 'DELETE',
       }),
-      invalidatesTags: [tagTypesEnum.BANKS, tagTypesEnum.PLAID],
+      invalidatesTags: [
+        tagTypesEnum.BANKS,
+        tagTypesEnum.ACCOUNTS,
+        tagTypesEnum.PLAID,
+      ],
     }),
   }),
 });

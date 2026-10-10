@@ -50,6 +50,20 @@
       "when": 1788801747765,
       "tag": "0006_shallow_victor_mancha",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791648641490,
+      "tag": "0007_flat_white_tiger",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791648642276,
+      "tag": "0008_cards_to_accounts",
+      "breakpoints": true
     }
   ]
 }

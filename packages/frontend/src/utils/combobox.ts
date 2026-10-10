@@ -1,5 +1,5 @@
 import { Option } from '@ui/YmCombobox/YmCombobox';
-import { Bank, Card } from '@portfolio/common';
+import { Account, Bank } from '@portfolio/common';
 
 export namespace ComboboxUtils {
   export const banksToOptions = (banks: Bank[] = []): Option<string>[] =>
@@ -9,10 +9,12 @@ export namespace ComboboxUtils {
       value: bank.id,
     }));
 
-  export const cardsToOptions = (cards: Card[] = []): Option<string>[] =>
-    cards.map(card => ({
-      id: card.id,
-      label: card.name,
-      value: card.id,
+  export const accountsToOptions = (
+    accounts: Account[] = [],
+  ): Option<string>[] =>
+    accounts.map(a => ({
+      id: a.id,
+      label: a.mask ? `${a.name} ••${a.mask}` : a.name,
+      value: a.id,
     }));
 }

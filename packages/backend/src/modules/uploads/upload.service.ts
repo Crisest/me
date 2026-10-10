@@ -11,7 +11,7 @@ export const checkDuplicate = async (
   const existing = await db.query.uploads.findFirst({
     where: and(
       eq(uploads.createdBy, userId),
-      eq(uploads.cardId, params.cardId),
+      eq(uploads.accountId, params.accountId),
       // Mongo's $or over the two lookup indexes.
       or(
         eq(uploads.fileHash, params.fileHash),
@@ -33,14 +33,20 @@ export const checkDuplicate = async (
 export const createUploadRecord = async (
   fileName: string,
   fileHash: string,
-  cardId: string,
+  accountId: string,
   transactionCount: number,
   userId: string,
   executor: Db | Tx = db
 ): Promise<Upload> => {
   const [row] = await executor
     .insert(uploads)
-    .values({ fileName, fileHash, cardId, transactionCount, createdBy: userId })
+    .values({
+      fileName,
+      fileHash,
+      accountId,
+      transactionCount,
+      createdBy: userId,
+    })
     .returning();
   return toUpload(row);
 };

@@ -8,7 +8,6 @@ import { requestLogger } from './middleware/requestLogger';
 import transactionsRoutes from './modules/transactions';
 import loginRoutes from './modules/auth';
 import bankRoutes from './modules/banks/bank.routes';
-import cardRoutes from './modules/cards/card.routes';
 import budgetRoutes from './modules/budget';
 import uploadRoutes from './modules/uploads';
 import householdRoutes from './modules/households';
@@ -100,7 +99,6 @@ app.use(
     '/transactions',
     '/auth',
     '/banks',
-    '/cards',
     '/budget',
     '/uploads',
     '/households',
@@ -114,7 +112,6 @@ app.use(
 app.use('/transactions', transactionsRoutes);
 app.use('/auth', loginRoutes);
 app.use('/banks', bankRoutes);
-app.use('/cards', cardRoutes);
 app.use('/budget', budgetRoutes);
 app.use('/uploads', uploadRoutes);
 app.use('/households', householdRoutes);
