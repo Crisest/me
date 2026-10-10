@@ -2,7 +2,7 @@
 
 ## CSV Parser
 
-`paparseCSVToTransaction(text)` (in `csv/index.ts`) parses the file with PapaParse, trimming and lowercasing headers. It picks the first format in the `formats` array whose `detect` matches the headers, then calls that format's `mapRow` on each row (a `null` return skips the row). Each result must have `date`, `amount` and `description`. Errors carry the file line number. Formats are tried in order, and `scotiabank` is the generic fallback, so it stays last.
+`paparseCSVToTransaction(text)` (in `csv/index.ts`) strips a BOM, then scans up to the first 10 lines for a header row that some format's `detect` recognises, so bank preamble lines are skipped. It parses the rest with PapaParse, trimming and lowercasing headers, and uses the first format in the `formats` array that matched, then calls that format's `mapRow` on each row (a `null` return skips the row). Each result must have `date`, `amount` and `description`. Errors carry the real file line number, preamble included. Registered formats are `bmo` and `scotiabank`; formats are tried in order, and `scotiabank` is the generic fallback, so it stays last.
 
 ```ts
 // csv/types.ts

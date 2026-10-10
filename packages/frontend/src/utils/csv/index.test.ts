@@ -120,4 +120,64 @@ describe('paparseCSVToTransaction', () => {
     );
     expect(() => paparseCSVToTransaction(csv)).toThrow(/transaction date/);
   });
+
+  it('skips preamble lines and a BOM before the header', () => {
+    const csv = [
+      '\uFEFFFollowing data is valid as of 20261010125943:',
+      '',
+      'Date,Description,Amount',
+      '2024-03-05,Rent,-1',
+    ].join('\r\n');
+
+    const result = paparseCSVToTransaction(csv);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].description).toBe('Rent');
+    expect(result[0].amount).toBe(-1);
+  });
+
+  it('reports real file line numbers after a preamble', () => {
+    const csv = [
+      'Following data is valid as of 20261010125943:',
+      '',
+      'Date,Description,Amount',
+      '2024-03-06,Food,abc',
+    ].join('\n');
+
+    expect(() => paparseCSVToTransaction(csv)).toThrow(/line 4/);
+  });
+
+  it('rejects a CSV with no recognisable header in the scan window', () => {
+    const csv = [
+      'Following data is valid as of 20261010125943:',
+      '',
+      'Transaction Date,Debit,Credit,Details',
+      '2024-03-05,1,,Rent',
+    ].join('\n');
+
+    expect(() => paparseCSVToTransaction(csv)).toThrow(
+      /Unrecognized CSV format/,
+    );
+  });
+
+  it('parses a BMO export and never surfaces the card number', () => {
+    const csv = [
+      '\uFEFFFollowing data is valid as of 20261010125943:',
+      '',
+      'Item #,Card #,Transaction Date,Posting Date,Transaction Amount,Description',
+      "1,'5524000000000000',20260808,20260810,78.1,9528-2828 * SAINTECATH SAINT HIPPOLYQC",
+      "2,'5524000000000000',20260815,20260817,-10.0,CARMA FARMS MARKHAM ON",
+    ].join('\r\n');
+
+    const result = paparseCSVToTransaction(csv);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].date).toBe('2026-08-08T00:00:00.000Z');
+    expect(result[0].amount).toBe(78.1);
+    expect(result[0].description).toBe(
+      '9528-2828 * SAINTECATH SAINT HIPPOLYQC',
+    );
+    expect(result[1].amount).toBe(-10);
+    expect(JSON.stringify(result)).not.toContain('5524000000000000');
+  });
 });
