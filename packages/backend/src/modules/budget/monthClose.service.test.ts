@@ -135,6 +135,55 @@ describe('getCloseReadiness', () => {
     expect(readiness.canClose).toBe(true);
   });
 
+  it('does not require income from someone who left mid-month', () => {
+    // They overlap the month, so their income is still counted — but they can
+    // no longer file it, so they must not block the close.
+    const summary = summaryWith({
+      byMember: [
+        { userId: 'u1', email: 'a@x.com', amount: 5000, isActual: true },
+        { userId: 'u2', email: 'b@x.com', amount: 3000, isActual: false },
+      ],
+    });
+
+    const readiness = getCloseReadiness(
+      summary,
+      scope([
+        { userId: 'u1', ...ALWAYS },
+        { userId: 'u2', from: new Date('2000-01-01'), to: new Date('2026-03-08') },
+      ]),
+      3,
+      2026
+    );
+
+    expect(readiness.membersMissingIncome).toEqual([]);
+    expect(readiness.canClose).toBe(true);
+  });
+
+  it('still requires income from someone who left and rejoined', () => {
+    const summary = summaryWith({
+      byMember: [
+        { userId: 'u1', email: 'a@x.com', amount: 5000, isActual: true },
+        { userId: 'u2', email: 'b@x.com', amount: 3000, isActual: false },
+      ],
+    });
+
+    const readiness = getCloseReadiness(
+      summary,
+      scope([
+        { userId: 'u1', ...ALWAYS },
+        { userId: 'u2', from: new Date('2000-01-01'), to: new Date('2026-03-08') },
+        { userId: 'u2', from: new Date('2026-03-20'), to: null },
+      ]),
+      3,
+      2026
+    );
+
+    expect(readiness.membersMissingIncome).toEqual([
+      { userId: 'u2', email: 'b@x.com' },
+    ]);
+    expect(readiness.canClose).toBe(false);
+  });
+
   it('reports both blockers at once', () => {
     const summary = summaryWith({
       byMember: [

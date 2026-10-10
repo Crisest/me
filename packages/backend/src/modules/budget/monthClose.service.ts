@@ -28,7 +28,8 @@ import {
  * Precondition 1: every debit in the month is categorised. The untagged bucket
  * already filters `amount > 0`, so its count IS the number of untagged debits.
  *
- * Precondition 2: every member whose tenure covers the month filed their OWN
+ * Precondition 2: every member still in the household at month end (tenure
+ * covers the month and has not closed before it ended) filed their OWN
  * actual income. `usingActualIncome` cannot answer this — it is an any-member
  * OR — so this reads `byMember[].isActual` per member. One member cannot close
  * on another's behalf.
@@ -45,9 +46,14 @@ export const getCloseReadiness = (
     (summary.byMember ?? []).map(m => [m.userId, m])
   );
 
+  const monthEnd = new Date(year, month, 1);
   const membersMissingIncome: MissingIncomeMember[] = [];
   for (const member of scope.members) {
     if (!memberCoversMonth(member, month, year)) continue;
+    // Left before the month ended: their income still counts in the totals,
+    // but they can no longer file it, so they must not block the close. A
+    // member who rejoined has a second, open window and is still checked.
+    if (member.to && member.to < monthEnd) continue;
     if (membersMissingIncome.some(m => m.userId === member.userId)) continue;
     const income = incomeByUser.get(member.userId);
     if (income?.isActual) continue;
