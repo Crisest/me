@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",
+    "@noble/hashes": "^2.4.0",
     "@portfolio/common": "workspace:*",
     "@react-aria/textfield": "^3.17.2",
     "@reduxjs/toolkit": "^2.7.0",

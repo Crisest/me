@@ -24,6 +24,7 @@ const TransactionUploadModal = ({
   const [fileHash, setFileHash] = useState<string>('');
   const [duplicateWarning, setDuplicateWarning] = useState<string>();
   const [resultMessage, setResultMessage] = useState<string>();
+  const [error, setError] = useState<string>();
   const [saveTransactions] = useCreateManyTransactionsMutation();
   const [checkDuplicate] = useCheckDuplicateUploadMutation();
 
@@ -45,18 +46,40 @@ const TransactionUploadModal = ({
   } = useAccountSelect(selectedBank);
 
   const handleFileSelect = async (file: File) => {
+    setDuplicateWarning(undefined);
+    setResultMessage(undefined);
+    setError(undefined);
+    setTempTransactions(undefined);
+    setFileName('');
+    setFileHash('');
+
     try {
-      setDuplicateWarning(undefined);
-      setResultMessage(undefined);
-      const [transactionData, hash] = await Promise.all([
-        parseFileContent(file, paparseCSVToTransaction),
-        computeFileHash(file),
-      ]);
+      const transactionData = await parseFileContent(
+        file,
+        paparseCSVToTransaction,
+      );
       setTempTransactions(transactionData);
       setFileName(file.name);
-      setFileHash(hash);
+    } catch (error) {
+      console.error('Error parsing file:', error);
+      setError(error instanceof Error ? error.message : 'Failed to parse file');
+      return;
+    }
 
-      if (selectedAccount) {
+    let hash: string;
+    try {
+      hash = await computeFileHash(file);
+    } catch (error) {
+      console.error('Error hashing file:', error);
+      setError(
+        `Could not fingerprint this file: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return;
+    }
+    setFileHash(hash);
+
+    if (selectedAccount) {
+      try {
         const result = await checkDuplicate({
           fileName: file.name,
           fileHash: hash,
@@ -68,15 +91,16 @@ const TransactionUploadModal = ({
             `This file appears to have been uploaded before (${result.existingUpload?.fileName}). You can still proceed if intended.`
           );
         }
+      } catch (error) {
+        console.error('Error checking for duplicate upload:', error);
       }
-    } catch (error) {
-      console.error('Error processing file:', error);
     }
   };
 
   const handleSubmit = async () => {
     if (!tempTransactions || !selectedAccount || !fileName || !fileHash) return;
 
+    setError(undefined);
     try {
       const { transactions, skipped } = await saveTransactions({
         transactions: tempTransactions,
@@ -98,6 +122,11 @@ const TransactionUploadModal = ({
       setOpenUploadModal(false);
     } catch (error) {
       console.error('Failed to save transactions:', error);
+      const message = (error as { data?: { message?: unknown } })?.data
+        ?.message;
+      setError(
+        typeof message === 'string' ? message : 'Failed to save transactions',
+      );
     }
   };
 
@@ -106,6 +135,7 @@ const TransactionUploadModal = ({
       isOpen={openUploadModal}
       onClose={() => {
         setResultMessage(undefined);
+        setError(undefined);
         setOpenUploadModal(false);
       }}
       title="Upload transactions"
@@ -145,6 +175,12 @@ const TransactionUploadModal = ({
         {duplicateWarning && (
           <p style={{ color: 'var(--color-warning, #e67e22)', margin: 0 }}>
             {duplicateWarning}
+          </p>
+        )}
+
+        {error && (
+          <p style={{ color: 'var(--color-error, #c0392b)', margin: 0 }}>
+            {error}
           </p>
         )}
 

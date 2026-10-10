@@ -1,3 +1,6 @@
+import { sha256 } from '@noble/hashes/sha2.js';
+import { bytesToHex } from '@noble/hashes/utils.js';
+
 export const readFileContent = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -15,12 +18,9 @@ export const readFileContent = (file: File): Promise<string> => {
   });
 };
 
-export const computeFileHash = async (file: File): Promise<string> => {
-  const buffer = await file.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-};
+// crypto.subtle needs a secure context; prod is served over plain http.
+export const computeFileHash = async (file: File): Promise<string> =>
+  bytesToHex(sha256(new Uint8Array(await file.arrayBuffer())));
 
 export const parseFileContent = async <T>(
   file: File,
