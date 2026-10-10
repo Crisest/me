@@ -50,7 +50,13 @@ describe('getCloseReadiness', () => {
       byMember: [
         { userId: 'u1', email: 'a@x.com', amount: 5000, isActual: true },
       ],
-      untagged: { amount: 40, transactionCount: 2, byMember: [] },
+      untagged: {
+        amount: 40,
+        transactionCount: 2,
+        byMember: [
+          { userId: 'u1', email: 'a@x.com', actual: 40, transactionCount: 2 },
+        ],
+      },
     });
 
     const readiness = getCloseReadiness(
@@ -184,12 +190,108 @@ describe('getCloseReadiness', () => {
     expect(readiness.canClose).toBe(false);
   });
 
+  it('does not block on untagged debits owned by someone who left mid-month', () => {
+    // The debits still count toward the month (they freeze into the
+    // snapshot's untagged bucket), but nobody left can tag them.
+    const summary = summaryWith({
+      byMember: [
+        { userId: 'u1', email: 'a@x.com', amount: 5000, isActual: true },
+        { userId: 'u2', email: 'b@x.com', amount: 3000, isActual: false },
+      ],
+      untagged: {
+        amount: 105,
+        transactionCount: 3,
+        byMember: [
+          { userId: 'u2', email: 'b@x.com', actual: 105, transactionCount: 3 },
+        ],
+      },
+    });
+
+    const readiness = getCloseReadiness(
+      summary,
+      scope([
+        { userId: 'u1', ...ALWAYS },
+        { userId: 'u2', from: new Date('2000-01-01'), to: new Date('2026-03-08') },
+      ]),
+      3,
+      2026
+    );
+
+    expect(readiness.untaggedCount).toBe(0);
+    expect(readiness.canClose).toBe(true);
+  });
+
+  it('counts only the untagged debits of members still in at month end', () => {
+    const summary = summaryWith({
+      byMember: [
+        { userId: 'u1', email: 'a@x.com', amount: 5000, isActual: true },
+      ],
+      untagged: {
+        amount: 60,
+        transactionCount: 4,
+        byMember: [
+          { userId: 'u1', email: 'a@x.com', actual: 20, transactionCount: 1 },
+          { userId: 'u2', email: 'b@x.com', actual: 40, transactionCount: 3 },
+        ],
+      },
+    });
+
+    const readiness = getCloseReadiness(
+      summary,
+      scope([
+        { userId: 'u1', ...ALWAYS },
+        { userId: 'u2', from: new Date('2000-01-01'), to: new Date('2026-03-08') },
+      ]),
+      3,
+      2026
+    );
+
+    expect(readiness.untaggedCount).toBe(1);
+    expect(readiness.canClose).toBe(false);
+  });
+
+  it('still blocks on untagged debits of someone who left and rejoined', () => {
+    const summary = summaryWith({
+      byMember: [
+        { userId: 'u1', email: 'a@x.com', amount: 5000, isActual: true },
+        { userId: 'u2', email: 'b@x.com', amount: 3000, isActual: true },
+      ],
+      untagged: {
+        amount: 40,
+        transactionCount: 2,
+        byMember: [
+          { userId: 'u2', email: 'b@x.com', actual: 40, transactionCount: 2 },
+        ],
+      },
+    });
+
+    const readiness = getCloseReadiness(
+      summary,
+      scope([
+        { userId: 'u1', ...ALWAYS },
+        { userId: 'u2', from: new Date('2000-01-01'), to: new Date('2026-03-08') },
+        { userId: 'u2', from: new Date('2026-03-20'), to: null },
+      ]),
+      3,
+      2026
+    );
+
+    expect(readiness.untaggedCount).toBe(2);
+    expect(readiness.canClose).toBe(false);
+  });
+
   it('reports both blockers at once', () => {
     const summary = summaryWith({
       byMember: [
         { userId: 'u1', email: 'a@x.com', amount: 5000, isActual: false },
       ],
-      untagged: { amount: 40, transactionCount: 2, byMember: [] },
+      untagged: {
+        amount: 40,
+        transactionCount: 2,
+        byMember: [
+          { userId: 'u1', email: 'a@x.com', actual: 40, transactionCount: 2 },
+        ],
+      },
     });
 
     const readiness = getCloseReadiness(

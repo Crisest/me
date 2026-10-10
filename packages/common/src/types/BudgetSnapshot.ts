@@ -69,7 +69,7 @@ export interface MissingIncomeMember {
 
 /** Why a month can or cannot be closed. Reported before anyone tries. */
 export interface CloseReadiness {
-  /** Untagged debits in the month. Must be 0. */
+  /** Untagged debits in the month owned by members still in at month end. Must be 0. */
   untaggedCount: number;
   /** Members whose tenure covers the month and who filed no override. */
   membersMissingIncome: MissingIncomeMember[];

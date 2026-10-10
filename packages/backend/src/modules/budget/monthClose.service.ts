@@ -25,8 +25,10 @@ import {
  * whoever happened to click, which is too late to force the reconciliation
  * conversation the preconditions exist for.
  *
- * Precondition 1: every debit in the month is categorised. The untagged bucket
- * already filters `amount > 0`, so its count IS the number of untagged debits.
+ * Precondition 1: every debit in the month, owned by someone still in the
+ * household at month end, is categorised. The untagged bucket already filters
+ * `amount > 0`, so its per-member counts ARE the untagged debits. A departed
+ * member's untagged debits do not block — nobody can reach them.
  *
  * Precondition 2: every member still in the household at month end (tenure
  * covers the month and has not closed before it ended) filed their OWN
@@ -40,20 +42,32 @@ export const getCloseReadiness = (
   month: number,
   year: number
 ): CloseReadiness => {
-  const untaggedCount = summary.untagged.transactionCount;
-
   const incomeByUser = new Map(
     (summary.byMember ?? []).map(m => [m.userId, m])
   );
 
   const monthEnd = new Date(year, month, 1);
+  // Left before the month ended: they can no longer file income or tag their
+  // own transactions, so they must not block the close. Their income and
+  // spending still count in the totals, and any of their untagged debits
+  // freeze into the snapshot's untagged bucket. A member who rejoined has a
+  // second, open window and is still checked.
+  const leftEarly = (member: BudgetScope['members'][number]): boolean =>
+    member.to !== null && member.to < monthEnd;
+  const stillInAtMonthEnd = new Set(
+    scope.members
+      .filter(m => memberCoversMonth(m, month, year) && !leftEarly(m))
+      .map(m => m.userId)
+  );
+
+  const untaggedCount = summary.untagged.byMember
+    .filter(m => stillInAtMonthEnd.has(m.userId))
+    .reduce((sum, m) => sum + m.transactionCount, 0);
+
   const membersMissingIncome: MissingIncomeMember[] = [];
   for (const member of scope.members) {
     if (!memberCoversMonth(member, month, year)) continue;
-    // Left before the month ended: their income still counts in the totals,
-    // but they can no longer file it, so they must not block the close. A
-    // member who rejoined has a second, open window and is still checked.
-    if (member.to && member.to < monthEnd) continue;
+    if (leftEarly(member)) continue;
     if (membersMissingIncome.some(m => m.userId === member.userId)) continue;
     const income = incomeByUser.get(member.userId);
     if (income?.isActual) continue;
