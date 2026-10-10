@@ -17,7 +17,10 @@
     "backend:bunyan": "pnpm --filter backend dev:pretty",
     "backend:build": "pnpm --filter backend build",
     "common:build": "pnpm --filter common build",
-    "start:all": "pnpm run backend:bunyan & pnpm run frontend:dev"
+    "start:all": "pnpm run backend:bunyan & pnpm run frontend:dev",
+    "db:up": "docker compose -f packages/backend/docker-compose.test.yml up -d",
+    "db:down": "docker compose -f packages/backend/docker-compose.test.yml down",
+    "db:logs": "docker compose -f packages/backend/docker-compose.test.yml logs -f postgres"
   },
   "devDependencies": {
     "eslint": "^9.25.1",
