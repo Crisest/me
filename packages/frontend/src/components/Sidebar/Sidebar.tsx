@@ -1,29 +1,17 @@
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import styles from './Sidebar.module.css';
 import useSideBar, { buttonData } from './useSideBar';
 import YButton from '@ui/Button/Button';
-import { useGetUserQuery, useLogoutMutation } from '@/services/authService';
-import { protectedRoutes, Route as RouteEnum } from '@/enums/routerEnum';
+import { useGetUserQuery } from '@/services/authService';
+import { Route as RouteEnum } from '@/enums/routerEnum';
+import useLogout from '@/hooks/useLogout';
 
 const Sidebar: React.FC = () => {
   const selectedTab = useSideBar();
   const { data: user } = useGetUserQuery();
-  const [logout] = useLogoutMutation();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { handleLogout, isLoggingOut } = useLogout();
   const displayLogout = !!user;
-
-  const handleLogout = async () => {
-    try {
-      await logout().unwrap();
-      if (protectedRoutes.includes(location.pathname as RouteEnum)) {
-        navigate(RouteEnum.LOGIN);
-      }
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-  };
   // TODO: Use Icons when min width's is reached
   return (
     <div className={styles.container}>
@@ -57,6 +45,7 @@ const Sidebar: React.FC = () => {
             customClass={styles.logout}
             variant="link"
             onClick={handleLogout}
+            isDisabled={isLoggingOut}
           >
             Logout
           </YButton>

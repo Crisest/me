@@ -3,7 +3,7 @@ import request from 'supertest';
 import type { Application } from 'express';
 
 export function signTestJwt(userId: string): string {
-  const secret = process.env.JWT_SECRET || 'test-secret';
+  const secret = process.env.JWT_SECRET || 'your-secret-key';
   return jwt.sign({ userId }, secret, { expiresIn: '1h' });
 }
 

@@ -1,17 +1,17 @@
 // packages/frontend/src/components/MobileNav/MobileNav.tsx
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import styles from './MobileNav.module.css';
 import { buttonData } from '@/components/Sidebar/useSideBar';
 import YButton from '@ui/Button/Button';
-import { useGetUserQuery, useLogoutMutation } from '@/services/authService';
-import { protectedRoutes, Route as RouteEnum } from '@/enums/routerEnum';
+import { useGetUserQuery } from '@/services/authService';
+import { Route as RouteEnum } from '@/enums/routerEnum';
+import useLogout from '@/hooks/useLogout';
 
 const MobileNav: React.FC = () => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const { data: user } = useGetUserQuery();
-  const [logout] = useLogoutMutation();
-  const navigate = useNavigate();
+  const { handleLogout, isLoggingOut } = useLogout();
   const location = useLocation();
   const displayLogout = !!user;
 
@@ -29,17 +29,6 @@ const MobileNav: React.FC = () => {
       document.body.style.overflow = previous;
     };
   }, [isOpen]);
-
-  const handleLogout = async (): Promise<void> => {
-    try {
-      await logout().unwrap();
-      if (protectedRoutes.includes(location.pathname as RouteEnum)) {
-        navigate(RouteEnum.LOGIN);
-      }
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-  };
 
   const isSelected = (path: string): boolean => location.pathname === path;
 
@@ -95,6 +84,7 @@ const MobileNav: React.FC = () => {
                 customClass={styles.logout}
                 variant="link"
                 onClick={handleLogout}
+                isDisabled={isLoggingOut}
               >
                 Logout
               </YButton>

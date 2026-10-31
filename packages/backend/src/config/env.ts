@@ -52,6 +52,9 @@ if (!config.databaseUri) {
 }
 
 if (config.nodeEnv === 'production') {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET must be set in production');
+  }
   const missing = (
     ['clientId', 'secret', 'tokenEncryptionKey'] as const
   ).filter(k => !config.plaid[k]);
