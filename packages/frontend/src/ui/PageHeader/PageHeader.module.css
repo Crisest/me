@@ -48,14 +48,12 @@
   min-width: 0;
 }
 
-/* Past this point the row has run out of room to give. Stack, and hand the
-   controls their full-size metrics back rather than leaving them at the
-   squeezed end of the clamp. */
-@media (max-width: 720px) {
+/* Mobile (< md, see MEDIA.mobile in src/styles/breakpoints.ts): pages hand
+   PageHeader only a month button and a menu here — their other filters move
+   into a sheet — so title and controls fit on one row at full-size metrics. */
+@media (max-width: 767px) {
   .header {
-    flex-wrap: wrap;
-
-    --control-gap: var(--spacing-md);
+    --control-gap: var(--spacing-sm);
     --control-font-size: var(--font-sm);
     --control-padding-x: var(--input-padding-x);
     --control-field-width: auto;
@@ -65,7 +63,7 @@
     --segment-padding-x: 14px;
   }
 
-  .controls {
-    flex-wrap: wrap;
+  .title {
+    font-size: var(--font-lg);
   }
 }

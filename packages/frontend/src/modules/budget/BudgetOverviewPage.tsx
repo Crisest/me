@@ -5,6 +5,9 @@ import Content from '@ui/Content/Content';
 import Panel from '@ui/Panel/Panel';
 import PageHeader from '@ui/PageHeader/PageHeader';
 import YmMenu from '@ui/YmMenu/YmMenu';
+import YmMonthPicker from '@ui/YmMonthPicker/YmMonthPicker';
+import useMediaQuery from '@/hooks/useMediaQuery';
+import { MEDIA } from '@/styles/breakpoints';
 import { MonthYearFilter } from '@/components/MonthYearFilter/MonthYearFilter';
 import { SummaryCard, SummaryStat } from '@/components/SummaryCard/SummaryCard';
 import CategoryRow from '@/components/CategoryRow/CategoryRow';
@@ -37,6 +40,7 @@ export const BudgetOverviewPage = () => {
   const prevMonthIndex = (now.getMonth() + 11) % 12;
   const [selectedMonth, setSelectedMonth] = useState(prevMonthIndex + 1);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const isMobile = useMediaQuery(MEDIA.mobile);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<BudgetCategory | null>(null);
 
@@ -148,6 +152,13 @@ export const BudgetOverviewPage = () => {
     setModalOpen(true);
   };
 
+  const actionsMenu = !closeState?.closed && (
+    <YmMenu
+      ariaLabel="Budget actions"
+      items={[{ label: 'New category', onClick: openCreate }]}
+    />
+  );
+
   const navigate = useNavigate();
 
   // The month/year ride along so the drilldown lands on the month the user
@@ -191,19 +202,28 @@ export const BudgetOverviewPage = () => {
     <>
       <Content width="wide">
         <PageHeader title="Budget">
-          <MonthYearFilter
-            selectedMonth={selectedMonth}
-            selectedYear={selectedYear}
-            onMonthChange={setSelectedMonth}
-            onYearChange={setSelectedYear}
-          >
-            {!closeState?.closed && (
-              <YmMenu
-                ariaLabel="Budget actions"
-                items={[{ label: 'New category', onClick: openCreate }]}
+          {isMobile ? (
+            <>
+              <YmMonthPicker
+                month={selectedMonth}
+                year={selectedYear}
+                onChange={(month, year) => {
+                  setSelectedMonth(month);
+                  setSelectedYear(year);
+                }}
               />
-            )}
-          </MonthYearFilter>
+              {actionsMenu}
+            </>
+          ) : (
+            <MonthYearFilter
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              onMonthChange={setSelectedMonth}
+              onYearChange={setSelectedYear}
+            >
+              {actionsMenu}
+            </MonthYearFilter>
+          )}
         </PageHeader>
 
         <SummaryCard

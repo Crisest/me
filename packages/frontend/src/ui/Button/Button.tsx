@@ -8,6 +8,8 @@ interface YButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   customClass?: string | null;
   fullWidth?: boolean;
   icon?: ReactNode;
+  /** Count pill after the label; hidden when 0 or undefined. */
+  badge?: number;
 }
 type ButtonProps = AriaButtonProps & YButtonProps;
 
@@ -17,6 +19,7 @@ const YButton: React.FC<ButtonProps> = ({
   customClass,
   fullWidth,
   icon,
+  badge,
   ...rest
 }) => {
   const ref = useRef<HTMLButtonElement>(null);
@@ -42,6 +45,7 @@ const YButton: React.FC<ButtonProps> = ({
     >
       {icon && <span className={styles.icon}>{icon}</span>}
       {children}
+      {!!badge && <span className={styles.badge}>{badge}</span>}
     </button>
   );
 };
