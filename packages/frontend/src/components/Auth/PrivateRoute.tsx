@@ -12,9 +12,13 @@ export const PrivateRoutes = () => {
   }
 
   if (!isAuthenticated) {
-    // Save the current attempted path, not the previous location
+    // Save the full attempted URL (path, query, hash); replace so Back skips the guard
     return (
-      <Navigate to={RouteEnum.LOGIN} state={{ from: location.pathname }} />
+      <Navigate
+        to={RouteEnum.LOGIN}
+        replace
+        state={{ from: location.pathname + location.search + location.hash }}
+      />
     );
   }
 

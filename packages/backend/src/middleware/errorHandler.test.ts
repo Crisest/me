@@ -85,4 +85,17 @@ describe('errorHandler', () => {
     expect(status).toHaveBeenCalledWith(404);
     expect(json).toHaveBeenCalledWith({ status: 'fail', message: 'nope' });
   });
+
+  it('hides the message of an unexpected error in production', () => {
+    process.env.NODE_ENV = 'production';
+    const { req, res, next, status, json } = buildReqRes();
+
+    errorHandler(new Error('connection refused at 10.0.0.5'), req, res, next);
+
+    expect(status).toHaveBeenCalledWith(500);
+    expect(json).toHaveBeenCalledWith({
+      status: 'error',
+      message: 'Internal server error',
+    });
+  });
 });

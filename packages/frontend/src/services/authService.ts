@@ -4,6 +4,7 @@ import type {
   LoginResponse,
   MeResponse,
   RegisterPayload,
+  RegisterResponse,
 } from '@portfolio/common';
 
 export const authApi = apiSlice.injectEndpoints({
@@ -16,12 +17,13 @@ export const authApi = apiSlice.injectEndpoints({
       }),
       invalidatesTags: [tagTypesEnum.USER],
     }),
-    register: builder.mutation<LoginResponse, RegisterPayload>({
+    register: builder.mutation<RegisterResponse, RegisterPayload>({
       query: userData => ({
         url: '/auth/register',
         method: 'POST',
         body: userData,
       }),
+      invalidatesTags: [tagTypesEnum.USER],
     }),
     getUser: builder.query<MeResponse | null, void>({
       query: () => '/auth/me',
@@ -49,6 +51,5 @@ export const {
   useLoginMutation,
   useRegisterMutation,
   useGetUserQuery,
-  useLazyGetUserQuery,
   useLogoutMutation,
 } = authApi;

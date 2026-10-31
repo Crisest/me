@@ -66,7 +66,7 @@ export const errorHandler = (
     // Production mode: don't leak error details
     res.status(statusCode).json({
       status,
-      message: err.message,
+      message: statusCode >= 500 ? 'Internal server error' : err.message,
     });
   }
 };

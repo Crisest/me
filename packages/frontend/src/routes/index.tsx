@@ -9,14 +9,17 @@ import { BudgetOverviewPage } from '@/modules/budget/BudgetOverviewPage';
 import { TransactionsPage } from '@/modules/transactions/TransactionsPage';
 import { ProfilePage } from '@/modules/profile/ProfilePage';
 import { PrivateRoutes } from '@/components/Auth/PrivateRoute';
+import { PublicOnlyRoutes } from '@/components/Auth/PublicOnlyRoute';
 import AppLayout from '@/components/Layout/AppLayout';
 
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* Public routes */}
-      <Route path={RouteEnum.LOGIN} element={<LoginPage />} />
-      <Route path={RouteEnum.REGISTER} element={<RegisterPage />} />
+      <Route element={<PublicOnlyRoutes />}>
+        <Route path={RouteEnum.LOGIN} element={<LoginPage />} />
+        <Route path={RouteEnum.REGISTER} element={<RegisterPage />} />
+      </Route>
 
       {/* Protected routes */}
       <Route element={<PrivateRoutes />}>

@@ -1,10 +1,13 @@
 import { Request } from 'express';
 import jwt from 'jsonwebtoken';
-import { apiKeyGenerator, callerUserId } from './rateLimiter';
+import { apiKeyGenerator, authKeyGenerator, callerUserId } from './rateLimiter';
 import { getConfig } from '@/config/env';
 
 const asRequest = (cookies: Record<string, string>, ip?: string): Request =>
   ({ cookies, ip }) as unknown as Request;
+
+const asAuthRequest = (body: unknown, ip?: string): Request =>
+  ({ body, ip }) as unknown as Request;
 
 const signFor = (userId: string): string =>
   jwt.sign({ userId }, getConfig().jwtSecret, { expiresIn: '1h' });
@@ -69,6 +72,34 @@ describe('rate limiter key generation', () => {
       expect(apiKeyGenerator(asRequest({ jwt: forged }, '192.168.1.55'))).toBe(
         'ip:192.168.1.55'
       );
+    });
+  });
+
+  describe('authKeyGenerator', () => {
+    it('normalizes email case and surrounding whitespace', () => {
+      expect(
+        authKeyGenerator(asAuthRequest({ email: 'A@x.com ' }, '10.0.0.1'))
+      ).toBe(authKeyGenerator(asAuthRequest({ email: 'a@x.com' }, '10.0.0.1')));
+    });
+
+    it('gives different emails from the same ip different keys', () => {
+      expect(
+        authKeyGenerator(asAuthRequest({ email: 'a@x.com' }, '10.0.0.1'))
+      ).not.toBe(
+        authKeyGenerator(asAuthRequest({ email: 'b@x.com' }, '10.0.0.1'))
+      );
+    });
+
+    it('does not throw when the body is missing', () => {
+      expect(authKeyGenerator(asAuthRequest(undefined, '10.0.0.1'))).toMatch(
+        /:$/
+      );
+    });
+
+    it('treats an ipv4-mapped address as the same bucket as its plain form', () => {
+      expect(
+        authKeyGenerator(asAuthRequest({ email: 'a@x.com' }, '::ffff:10.0.0.1'))
+      ).toBe(authKeyGenerator(asAuthRequest({ email: 'a@x.com' }, '10.0.0.1')));
     });
   });
 });

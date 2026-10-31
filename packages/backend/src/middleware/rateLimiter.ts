@@ -59,3 +59,27 @@ export const apiLimiter = rateLimit({
     message: 'Too many requests, please try again later.',
   },
 });
+
+/**
+ * Brute-force guard for login/register. Keyed by IP and the submitted email so
+ * one household behind a shared IP isn't locked out by a single bad actor,
+ * while guesses against any one account stay capped. Only failures count.
+ */
+export const authKeyGenerator = (req: Request): string => {
+  const email =
+    typeof req.body?.email === 'string'
+      ? req.body.email.trim().toLowerCase()
+      : '';
+  return `auth:${normalizeIp(req.ip ?? 'unknown')}:${email}`;
+};
+
+export const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  skipSuccessfulRequests: true,
+  keyGenerator: authKeyGenerator,
+  message: {
+    status: 'error',
+    message: 'Too many attempts, please try again later.',
+  },
+});

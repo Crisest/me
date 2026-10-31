@@ -4,54 +4,43 @@ import styles from '@/modules/Auth/Login/LoginPage.module.css';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Route } from '@/enums/routerEnum';
 import { Form } from 'react-aria-components';
-import { useState, useEffect } from 'react';
-import { useLazyGetUserQuery, useLoginMutation } from '@/services/authService';
+import { useState } from 'react';
+import { useLoginMutation } from '@/services/authService';
 import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import type { SerializedError } from '@reduxjs/toolkit';
 import { LoginPayload } from '@portfolio/common';
 import AuthLayout from '@/modules/Auth/AuthLayout';
 
-interface LocationState {
-  from: string;
-}
+const getErrorMessage = (err: unknown): string => {
+  const error = err as FetchBaseQueryError | SerializedError;
+  if (!error || typeof error !== 'object')
+    return 'An error occurred during login';
+
+  if ('data' in error) {
+    return (
+      (error.data as { message?: string })?.message ||
+      'An error occurred during login'
+    );
+  }
+  if ('message' in error && typeof error.message === 'string') {
+    return error.message;
+  }
+  return 'An error occurred during login';
+};
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as LocationState)?.from || Route.HOME;
 
   const [credentials, setCredentials] = useState<LoginPayload>({
     email: '',
     password: '',
   });
-  const [login, { isLoading, error, data }] = useLoginMutation();
-  const [getUser] = useLazyGetUserQuery();
+  const [login, { isLoading, error }] = useLoginMutation();
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const user = await getUser().unwrap();
-        if (user) {
-          navigate(from, { replace: true });
-        }
-      } catch (err) {
-        console.error('Error fetching user:', err);
-      }
-    };
-    if (data) {
-      fetchUser();
-    }
-  }, [data, from, navigate]);
-
-  const handleLogin = async (
-    event: React.FormEvent<HTMLFormElement>,
-  ): Promise<void> => {
+  const handleLogin = (event: React.FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
-    try {
-      await login(credentials);
-    } catch (err) {
-      console.error('Login failed:', err);
-    }
+    login(credentials);
   };
 
   const handleInputChange =
@@ -62,29 +51,7 @@ const LoginPage: React.FC = () => {
     };
 
   const handleRegister = (): void => {
-    navigate(Route.REGISTER);
-  };
-
-  const getErrorMessage = (err: unknown): string => {
-    const error = err as FetchBaseQueryError | SerializedError;
-    if (!error || typeof error !== 'object')
-      return 'An error occurred during login';
-
-    if ('data' in error) {
-      return (
-        (error.data as { message?: string })?.message ||
-        'An error occurred during login'
-      );
-    }
-    if ('message' in error && typeof error.message === 'string') {
-      return error.message;
-    }
-    return 'An error occurred during login';
-  };
-
-  const ErrorMessage = ({ error }: { error: unknown }): JSX.Element | null => {
-    if (!error) return null;
-    return <div className={styles.error}>{getErrorMessage(error)}</div>;
+    navigate(Route.REGISTER, { state: location.state });
   };
 
   return (
@@ -112,7 +79,9 @@ const LoginPage: React.FC = () => {
             onChange={handleInputChange('password')}
             isDisabled={isLoading}
           />
-          <ErrorMessage error={error} />
+          {error && (
+            <div className={styles.error}>{getErrorMessage(error)}</div>
+          )}
           <Button
             variant="primary"
             type="submit"

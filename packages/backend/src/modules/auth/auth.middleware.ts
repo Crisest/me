@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { findUserById } from '@/modules/users/user.service';
 import { getConfig } from '@/config/env';
+import { clearAuthCookie } from './auth.cookie';
 
 export const authMiddleware = async (
   req: Request,
@@ -19,32 +20,28 @@ export const authMiddleware = async (
     return;
   }
 
+  let userId: string;
   try {
-    const config = getConfig();
-    const decoded = jwt.verify(token, config.jwtSecret) as {
+    ({ userId } = jwt.verify(token, getConfig().jwtSecret) as {
       userId: string;
-    };
-
-    const user = await findUserById(decoded.userId);
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    req.user = {
-      id: user.id,
-      email: user.email,
-      name: user.name || '',
-    };
-
-    next();
-  } catch (error) {
-    // Clear the invalid cookie
-    res.cookie('jwt', '', {
-      httpOnly: true,
-      expires: new Date(0),
-      path: '/',
     });
+  } catch {
+    clearAuthCookie(res);
     return res.status(401).json({ message: 'Invalid authentication token' });
   }
+
+  let user;
+  try {
+    user = await findUserById(userId);
+  } catch (err) {
+    return next(err); // DB failure → errorHandler 500, session kept
+  }
+
+  if (!user) {
+    clearAuthCookie(res);
+    return res.status(401).json({ message: 'User not found' });
+  }
+
+  req.user = { id: user.id, email: user.email, name: user.name || '' };
+  next();
 };

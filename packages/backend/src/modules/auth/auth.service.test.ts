@@ -1,5 +1,8 @@
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { getConfig } from '../../config/env';
+import { db } from '../../db/client';
+import { users } from '../../db/schema';
 import { truncateAll, closeTestDb } from '../../../test/setup';
 import { register, login } from './auth.service';
 import { findUserById } from '../users/user.service';
@@ -18,8 +21,29 @@ describe('auth.service', () => {
   it('rejects a duplicate email', async () => {
     await register('dupe@example.com', 'password123');
     await expect(register('dupe@example.com', 'password123')).rejects.toThrow(
-      'User already exists'
+      'An account with this email already exists'
     );
+  });
+
+  it('stores the email lowercased and trimmed', async () => {
+    const user = await register('  Mixed@Example.COM ', 'password123');
+    expect(user.email).toBe('mixed@example.com');
+  });
+
+  it('logs in regardless of email case', async () => {
+    const created = await register('case@example.com', 'password123');
+    const { user } = await login('CASE@Example.com', 'password123');
+    expect(user.id).toBe(created.id);
+  });
+
+  it('finds legacy mixed-case rows', async () => {
+    await db.insert(users).values({
+      email: 'Legacy@Example.com',
+      passwordHash: await bcrypt.hash('password123', 10),
+    });
+    await expect(
+      login('legacy@example.com', 'password123')
+    ).resolves.toBeDefined();
   });
 
   it('logs in with correct credentials and signs a usable token', async () => {
@@ -43,6 +67,12 @@ describe('auth.service', () => {
     await expect(login('nobody@example.com', 'password123')).rejects.toThrow(
       'Invalid credentials'
     );
+    await expect(login('who@example.com', 'wrong')).rejects.toMatchObject({
+      statusCode: 401,
+    });
+    await expect(
+      login('nobody@example.com', 'password123')
+    ).rejects.toMatchObject({ statusCode: 401 });
   });
 
   it('findUserById returns undefined for an unknown id', async () => {

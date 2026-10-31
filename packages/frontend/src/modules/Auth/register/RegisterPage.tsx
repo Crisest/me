@@ -1,7 +1,7 @@
 import Textbox from '@ui/Textbox/Textbox';
 import Button from '@ui/Button/Button';
 import styles from '@/modules/Auth/Login/LoginPage.module.css';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Route } from '@/enums/routerEnum';
 import { Form } from 'react-aria-components';
 import { RegisterPayload } from '@portfolio/common';
@@ -11,8 +11,26 @@ import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import type { SerializedError } from '@reduxjs/toolkit';
 import AuthLayout from '@/modules/Auth/AuthLayout';
 
+const getErrorMessage = (err: unknown): string => {
+  const error = err as FetchBaseQueryError | SerializedError;
+  if (!error || typeof error !== 'object')
+    return 'An error occurred during registration';
+
+  if ('data' in error) {
+    return (
+      (error.data as { message?: string })?.message ||
+      'An error occurred during registration'
+    );
+  }
+  if ('message' in error && typeof error.message === 'string') {
+    return error.message;
+  }
+  return 'An error occurred during registration';
+};
+
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [formData, setFormData] = useState<RegisterPayload>({
     email: '',
     password: '',
@@ -25,9 +43,10 @@ const RegisterPage: React.FC = () => {
   ): Promise<void> => {
     event.preventDefault();
     try {
-      await register(formData).unwrap();
-      // Redirect to login after successful registration
-      navigate(Route.LOGIN);
+      await register({
+        ...formData,
+        name: formData.name?.trim() || undefined,
+      }).unwrap();
     } catch (err) {
       console.error('Registration failed:', err);
     }
@@ -39,28 +58,6 @@ const RegisterPage: React.FC = () => {
       const newValue = typeof value === 'string' ? value : value.target.value;
       setFormData(prev => ({ ...prev, [field]: newValue }));
     };
-
-  const getErrorMessage = (err: unknown): string => {
-    const error = err as FetchBaseQueryError | SerializedError;
-    if (!error || typeof error !== 'object')
-      return 'An error occurred during registration';
-
-    if ('data' in error) {
-      return (
-        (error.data as { message?: string })?.message ||
-        'An error occurred during registration'
-      );
-    }
-    if ('message' in error && typeof error.message === 'string') {
-      return error.message;
-    }
-    return 'An error occurred during registration';
-  };
-
-  const ErrorMessage = ({ error }: { error: unknown }): JSX.Element | null => {
-    if (!error) return null;
-    return <div className={styles.error}>{getErrorMessage(error)}</div>;
-  };
 
   return (
     <AuthLayout>
@@ -95,7 +92,7 @@ const RegisterPage: React.FC = () => {
           onChange={handleInputChange('password')}
           isDisabled={isLoading}
         />
-        <ErrorMessage error={error} />
+        {error && <div className={styles.error}>{getErrorMessage(error)}</div>}
         <Button
           variant="primary"
           type="submit"
@@ -106,7 +103,7 @@ const RegisterPage: React.FC = () => {
         </Button>
         <Button
           variant="link"
-          onPress={() => navigate(Route.LOGIN)}
+          onPress={() => navigate(Route.LOGIN, { state: location.state })}
           isDisabled={isLoading}
         >
           Back to Login
