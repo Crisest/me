@@ -16,6 +16,8 @@ interface YmDialogProps {
   footerButtonText?: string;
   footerButtonAction?: () => void;
   footerButtonDisabled?: boolean;
+  /** 'sheet' anchors the panel to the bottom edge — use on mobile. */
+  variant?: 'center' | 'sheet';
 }
 
 const YmDialog: React.FC<YmDialogProps> = ({
@@ -26,6 +28,7 @@ const YmDialog: React.FC<YmDialogProps> = ({
   footerButtonText = 'Close',
   footerButtonAction,
   footerButtonDisabled,
+  variant = 'center',
 }) => {
   const handleFooterAction = () => {
     if (footerButtonAction) {
@@ -39,8 +42,21 @@ const YmDialog: React.FC<YmDialogProps> = ({
     <Dialog open={isOpen} onClose={onClose} className={styles.dialogWrapper}>
       <DialogBackdrop transition className={styles.backdrop} />
 
-      <div className={styles.container}>
-        <DialogPanel transition className={styles.panel}>
+      <div
+        className={
+          variant === 'sheet'
+            ? `${styles.container} ${styles.containerSheet}`
+            : styles.container
+        }
+      >
+        <DialogPanel
+          transition
+          className={
+            variant === 'sheet'
+              ? `${styles.panel} ${styles.panelSheet}`
+              : styles.panel
+          }
+        >
           {title && (
             <DialogTitle as="h2" className={styles.title}>
               {title}

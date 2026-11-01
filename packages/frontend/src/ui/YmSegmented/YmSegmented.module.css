@@ -1,4 +1,4 @@
-.toggle {
+.group {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
@@ -31,4 +31,15 @@
 .optionActive {
   background-color: var(--segment-active-bg);
   color: var(--segment-active-fg);
+}
+
+.fullWidth {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  width: 100%;
+}
+
+.fullWidth .option {
+  min-height: 40px;
 }

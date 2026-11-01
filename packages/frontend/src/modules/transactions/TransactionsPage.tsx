@@ -7,6 +7,10 @@ import TransactionsTable, {
 import { SortDirectionFilter } from '@/components/TransactionsTable/SortDirectionFilter';
 import { ScopeToggle, Scope } from '@/components/ScopeToggle/ScopeToggle';
 import YmMenu from '@ui/YmMenu/YmMenu';
+import YmMonthPicker from '@ui/YmMonthPicker/YmMonthPicker';
+import { TransactionFilterSheet } from '@/components/TransactionFilterSheet/TransactionFilterSheet';
+import useMediaQuery from '@/hooks/useMediaQuery';
+import { MEDIA } from '@/styles/breakpoints';
 import {
   useGetTransactionsQuery,
   useGetTransactionInsightsQuery,
@@ -42,6 +46,7 @@ const ownerColumn: ColumnDef<Transaction, any>[] = [
 ];
 
 export const TransactionsPage = () => {
+  const isMobile = useMediaQuery(MEDIA.mobile);
   const now = new Date();
   const prevMonthIndex = (now.getMonth() + 11) % 12;
   const previousMonth = prevMonthIndex + 1;
@@ -217,53 +222,71 @@ export const TransactionsPage = () => {
         ]),
   ];
 
+  const actionsMenu = (
+    <YmMenu
+      ariaLabel="Budget actions"
+      items={[
+        {
+          label: 'Set Monthly Income',
+          onClick: () => setOpenBudgetModal(true),
+        },
+        {
+          label: 'Set Actual Income',
+          onClick: () => setOpenActualModal(true),
+        },
+        {
+          label: 'Upload CSV',
+          onClick: () => setOpenUploadModal(true),
+        },
+        {
+          label: 'Suggest categories',
+          onClick: () => setSuggestOpen(true),
+        },
+      ]}
+    />
+  );
+
   return (
     <>
       <Content width="wide">
         <PageHeader title="Transactions">
-          <MonthYearFilter
-            selectedMonth={selectedMonth}
-            selectedYear={selectedYear}
-            onMonthChange={setSelectedMonth}
-            onYearChange={setSelectedYear}
-          >
-            <YmCombobox
-              options={accountOptions}
-              value={selectedAccountId}
-              onChange={setSelectedAccountId}
-              placeholder="All accounts"
-              ariaLabel="Account filter"
-              variant="bare"
-            />
-            <SortDirectionFilter
-              value={sortDirection}
-              onChange={setSortDirection}
-            />
-            {isSharedHousehold && (
-              <ScopeToggle value={effectiveScope} onChange={setScope} />
-            )}
-            <YmMenu
-              ariaLabel="Budget actions"
-              items={[
-                {
-                  label: 'Set Monthly Income',
-                  onClick: () => setOpenBudgetModal(true),
-                },
-                {
-                  label: 'Set Actual Income',
-                  onClick: () => setOpenActualModal(true),
-                },
-                {
-                  label: 'Upload CSV',
-                  onClick: () => setOpenUploadModal(true),
-                },
-                {
-                  label: 'Suggest categories',
-                  onClick: () => setSuggestOpen(true),
-                },
-              ]}
-            />
-          </MonthYearFilter>
+          {isMobile ? (
+            <>
+              <YmMonthPicker
+                month={selectedMonth}
+                year={selectedYear}
+                onChange={(m, y) => {
+                  setSelectedMonth(m);
+                  setSelectedYear(y);
+                }}
+              />
+              {actionsMenu}
+            </>
+          ) : (
+            <MonthYearFilter
+              selectedMonth={selectedMonth}
+              selectedYear={selectedYear}
+              onMonthChange={setSelectedMonth}
+              onYearChange={setSelectedYear}
+            >
+              <YmCombobox
+                options={accountOptions}
+                value={selectedAccountId}
+                onChange={setSelectedAccountId}
+                placeholder="All accounts"
+                ariaLabel="Account filter"
+                variant="bare"
+              />
+              <SortDirectionFilter
+                value={sortDirection}
+                onChange={setSortDirection}
+              />
+              {isSharedHousehold && (
+                <ScopeToggle value={effectiveScope} onChange={setScope} />
+              )}
+              {actionsMenu}
+            </MonthYearFilter>
+          )}
         </PageHeader>
 
         <SummaryCard
@@ -274,6 +297,19 @@ export const TransactionsPage = () => {
           stats={stats}
           loading={loading}
         />
+
+        {isMobile && (
+          <TransactionFilterSheet
+            resultCount={filteredTransactions.length}
+            accountOptions={accountOptions}
+            selectedAccountId={selectedAccountId}
+            onAccountChange={setSelectedAccountId}
+            sortDirection={sortDirection}
+            onSortChange={setSortDirection}
+            scope={isSharedHousehold ? effectiveScope : undefined}
+            onScopeChange={isSharedHousehold ? setScope : undefined}
+          />
+        )}
 
         {selectedCategory && (
           <div

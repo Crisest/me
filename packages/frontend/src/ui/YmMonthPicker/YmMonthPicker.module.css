@@ -1,0 +1,70 @@
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-height: 44px;
+  padding: 0 var(--spacing-sm);
+  border: none;
+  background: var(--color-blue-light);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-header);
+  font-weight: 700;
+  font-size: var(--font-sm);
+  border-radius: var(--border-radius-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.yearRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.yearArrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.yearArrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.year {
+  font-family: var(--font-family-header);
+  font-weight: 700;
+  font-size: var(--font-lg);
+  color: var(--color-text-primary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+.month {
+  min-height: 48px;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border-radius: var(--border-radius-sm);
+  font-family: var(--font-family-body);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.monthActive {
+  border: 2px solid var(--color-blue);
+  background: var(--color-blue-light);
+  color: var(--color-blue-darker);
+}
